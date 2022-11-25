@@ -8,7 +8,7 @@ from script.eval import Plots_for
 from script.Verification import verification
 
 sequential = False
-epochs = 20
+epochs = 10
 batch_size = 1
 number_of_train_samples = 10000
 hyper_lambda = 1
@@ -28,17 +28,24 @@ train_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 dataset = ConvexDataset(data=ambient_space)
 ambient_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
-# torch.save(ambient_space, "ambient_space.pt")
-# torch.save(included_space, "included_space.pt")
+#torch.save(ambient_space, "ambient_space.pt")
+#torch.save(included_space, "included_space.pt")
 
 plots = Plots_for(0, icnn, included_space, ambient_space, true_extremal_points, x_range, y_range)
 plots.plt_initial()
 
 history = train_icnn(icnn, train_loader, ambient_loader, epochs=epochs, sequential=sequential)
 
-# torch.save(icnn.state_dict(), "icnn.pt")
+#torch.save(icnn.state_dict(), "icnn.pt")
 
-plots.plt_mesh()
+"""icnn.load_state_dict(torch.load("icnn.pt"), strict=False)
+ambient_space = torch.load("ambient_space.pt")
+included_space = torch.load("included_space.pt")
+true_extremal_points = Rhombus().get_extremal_points()
+
+plots = Plots_for(0, icnn, included_space, ambient_space, true_extremal_points, x_range, y_range)
+plots.plt_initial()
+plots.plt_mesh()"""
 
 result = verification(icnn, sequential)
 

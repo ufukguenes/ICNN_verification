@@ -13,11 +13,12 @@ def load(icnn):
 def verification(icnn, sequential=False):
     m = Model()
     input_var = m.addMVar(2, lb=-float('inf'), name="in_var")
-    output_var = m.addVar(1, name="output_var")
+    output_var = m.addVar(lb=-float('inf'), name="output_var")
 
     A, b = Rhombus().get_A(), Rhombus().get_b()
 
-    m.addMConstr(A, input_var, "<=", b)
+    m.addMConstr(A, input_var, "<=", b) # todo hier wird das <= wahrscheinlich nicht als <= sondern nur als < erkannt, Gurobi meckert nämlich auch nicht, wenn man "<k" dahin schreibt
+
 
     if sequential:
         add_sequential_constr(m, icnn, input_var, output_var)
@@ -32,7 +33,13 @@ def verification(icnn, sequential=False):
     if m.Status == GRB.OPTIMAL:
         inp = input_var.getAttr("x")
         inp = [inp[0], inp[1]]
-        print("optimum at: {}, with value {}".format(inp, output_var.getAttr("x")))
+        print("optimum solution at: {}, with value {}".format(inp, output_var.getAttr("x")))
+
+        for i in range(1, m.getAttr("SolCount")):
+            m.setParam("SolutionNumber", i)
+            inp = m.getAttr("Xn")
+            inp = [inp[0], inp[1]]
+            print("sub-optimal solution at: {}, with value {}".format(inp, m.getAttr("PoolObjVal")))
 
         return output_var.X
 
@@ -43,8 +50,8 @@ def add_non_sequential_constr(model, predictor: ICNN, input_vars, output_vars):
 
     in_var = input_vars
     # todo lower und upper bounds für variablen und relu berechnen
-    lb = -100
-    ub = 100
+    lb = -10
+    ub = 10
     for i in range(0, len(ws), 2):
         affine_W, affine_b = torch.clone(ws[i]).detach().numpy(), torch.clone(ws[i + 1]).detach().numpy()
 
@@ -53,16 +60,16 @@ def add_non_sequential_constr(model, predictor: ICNN, input_vars, output_vars):
         out_vars = model.addMVar(out_fet, lb=lb, ub=ub, name="affine_skip_var" + str(i))
 
         affine_const = model.addConstrs(
-            (affine_W[i] @ in_var + affine_b[i] == affine_var[i] for i in range(len(affine_W))))
+            affine_W[i] @ in_var + affine_b[i] == affine_var[i] for i in range(len(affine_W)))
         if i != 0:
             k = math.floor(i / 2) - 1
             skip_W = torch.clone(us[k]).detach().numpy()  # has no bias
             skip_var = model.addMVar(out_fet, lb=lb, ub=ub, name="skip_var" + str(k))
-            skip_const = model.addConstrs((skip_W[i] @ input_vars == skip_var[i] for i in range(len(affine_W))))
+            skip_const = model.addConstrs(skip_W[i] @ input_vars == skip_var[i] for i in range(len(affine_W)))
             affine_skip_cons = model.addConstrs(
-                (affine_var[i] + skip_var[i] == out_vars[i] for i in range(len(affine_W))))
+                affine_var[i] + skip_var[i] == out_vars[i] for i in range(len(affine_W)))
         else:
-            affine_no_skip_cons = model.addConstrs((affine_var[i] == out_vars[i] for i in range(len(affine_W))))
+            affine_no_skip_cons = model.addConstrs(affine_var[i] == out_vars[i] for i in range(len(affine_W)))
 
         in_var = out_vars
 
