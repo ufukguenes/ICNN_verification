@@ -2,7 +2,7 @@ from script.lossFunction import *
 
 
 def train_icnn(model, train_loader, ambient_loader, criterion=deep_hull_simple_loss, epochs=10, opt=None,
-               return_history=False, sequential=False):
+               return_history=False, sequential=False, hyper_lambda=1):
     history = []
     if opt is None:
         opt = torch.optim.Adam(model.parameters())
@@ -17,7 +17,7 @@ def train_icnn(model, train_loader, ambient_loader, criterion=deep_hull_simple_l
 
             prediction_ambient = model(X_ambient)
             output = model(X)
-            loss = criterion(output, prediction_ambient)
+            loss = criterion(output, prediction_ambient, hyper_lambda=hyper_lambda)
             opt.zero_grad()
             loss.backward()
             opt.step()
@@ -53,7 +53,7 @@ def train_icnn(model, train_loader, ambient_loader, criterion=deep_hull_simple_l
 
 def train_icnn_adversarial(model, adversarial, train_loader, adversarial_loader,
                            criterion=deep_hull_loss, epochs=10,
-                           opt_model=None, opt_adv=None, return_history=False):
+                           opt_model=None, opt_adv=None, return_history=False, hyper_lambda=1):
     history = []
     model.train()
     adversarial.train()
@@ -76,7 +76,7 @@ def train_icnn_adversarial(model, adversarial, train_loader, adversarial_loader,
             prediction_from_adv = model(output_adv)
             output = model(X)
 
-            loss, a, b, c = criterion(output, prediction_from_adv)
+            loss, a, b, c = criterion(output, prediction_from_adv, hyper_lambda=hyper_lambda)
 
             opt_model.zero_grad()
             opt_adv.zero_grad()

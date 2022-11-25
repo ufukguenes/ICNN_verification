@@ -8,7 +8,7 @@ from script.eval import Plots_for
 from script.Verification import verification
 
 sequential = False
-epochs = 10
+epochs = 1
 batch_size = 1
 number_of_train_samples = 10000
 hyper_lambda = 1
@@ -34,8 +34,8 @@ ambient_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 plots = Plots_for(0, icnn, included_space, ambient_space, true_extremal_points, x_range, y_range)
 plots.plt_initial()
 
-history = train_icnn(icnn, train_loader, ambient_loader, epochs=epochs, sequential=sequential)
-
+history = train_icnn(icnn, train_loader, ambient_loader, epochs=epochs, sequential=sequential, hyper_lambda=0.1)
+plots.plt_mesh()
 #torch.save(icnn.state_dict(), "icnn.pt")
 
 """icnn.load_state_dict(torch.load("icnn.pt"), strict=False)
