@@ -48,13 +48,13 @@ class Multivariate():
 
         ambient_space = np.array(ambient)
 
-        included_space = torch.from_numpy(included_space)
-        ambient_space = torch.from_numpy(ambient_space)
+        included_space = torch.from_numpy(included_space).to(torch.float32)
+        ambient_space = torch.from_numpy(ambient_space).to(torch.float32)
 
         return included_space, ambient_space
 
     def contained(self, x, A, b):
-        eps = np.finfo(np.float64).eps
+        eps = np.finfo(np.float32).eps
 
         return np.all(np.asarray(x) @ A.T + b.T < eps, axis=1)
 
@@ -116,8 +116,8 @@ class Rhombus(Polytope):
             else:
                 ambient_space = np.append(ambient_space, [x], axis=0)
 
-        included_space = torch.from_numpy(included_space)
-        ambient_space = torch.from_numpy(ambient_space)
+        included_space = torch.from_numpy(included_space).to(torch.float32)
+        ambient_space = torch.from_numpy(ambient_space).to(torch.float32)
 
         return included_space, ambient_space
 

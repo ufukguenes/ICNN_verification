@@ -125,7 +125,7 @@ class Plots_for():
         x = np.linspace(*self.x_range, 500)
         y = np.linspace(*self.y_range, 500)
         xx, yy = np.meshgrid(x, y)
-        x_in = torch.tensor(np.c_[xx.ravel(), yy.ravel()])
+        x_in = torch.tensor(np.c_[xx.ravel(), yy.ravel()], dtype=torch.float32)
 
         y_pred = self.model(x_in)
         y_pred = np.round(y_pred.detach().numpy(), decimals=5).reshape(xx.shape)
@@ -156,6 +156,7 @@ class Plots_for():
             pred_y_arr.append(v[1])
 
         plt.scatter(pred_x_arr, pred_y_arr)
+        self._create_plot_true_convex_hull()
         plt.show()
 
     def plt_adversarial_dotted(self):
@@ -165,6 +166,10 @@ class Plots_for():
         pred_x_arr = []
         pred_y_arr = []
         fig = plt.figure(figsize=(20, 10))
+        ax = plt.axes()
+        ax.set_xlim([self.x_range[0], self.x_range[1]])
+        ax.set_ylim([self.y_range[0], self.y_range[1]])
+
 
         for x in self.adversarial_values:
             pred = self.adversarial(x)
@@ -174,10 +179,11 @@ class Plots_for():
 
         plt.scatter(pred_x_arr, pred_y_arr)
 
+
         x = np.linspace(*self.x_range, 100)
         y = np.linspace(*self.y_range, 100)
         xx, yy = np.meshgrid(x, y)
-        x_in = torch.tensor(np.c_[xx.ravel(), yy.ravel()])
+        x_in = torch.tensor(np.c_[xx.ravel(), yy.ravel()], dtype=torch.float32)
 
         y_pred = self.adversarial(x_in)
         rounded = np.round(y_pred.detach().numpy(), decimals=5)
@@ -185,5 +191,6 @@ class Plots_for():
         y_s = rounded[:, 1]
 
         plt.scatter(x_s, y_s)
+        self._create_plot_true_convex_hull()
 
         plt.show()
