@@ -1,4 +1,6 @@
 import math
+
+import numpy as np
 import torch
 from gurobipy import Model, GRB, max_, MVar
 
@@ -13,12 +15,12 @@ def load(icnn):
 def verification(icnn, sequential=False):
     m = Model()
     input_var = m.addMVar(2, lb=-float('inf'), name="in_var")
-    output_var = m.addVar(lb=-float('inf'), name="output_var")
+    output_var = m.addMVar(1, lb=-float('inf'), name="output_var")
 
     A, b = Rhombus().get_A(), Rhombus().get_b()
 
-    m.addMConstr(A, input_var, "<=", b) # todo hier wird das <= wahrscheinlich nicht als <= sondern nur als < erkannt, Gurobi meckert nämlich auch nicht, wenn man "<k" dahin schreibt
-
+    m.addMConstr(A, input_var, "<=",
+                 b)  # todo hier wird das <= wahrscheinlich nicht als <= sondern nur als < erkannt, Gurobi meckert nämlich auch nicht, wenn man "<k" dahin schreibt
 
     if sequential:
         add_sequential_constr(m, icnn, input_var, output_var)
@@ -27,7 +29,7 @@ def verification(icnn, sequential=False):
         add_non_sequential_constr(m, icnn, input_var, output_var)
 
     m.update()
-    m.setObjective(output_var, GRB.MAXIMIZE)
+    m.setObjective(output_var[0], GRB.MAXIMIZE)
     m.optimize()
 
     if m.Status == GRB.OPTIMAL:
@@ -41,7 +43,50 @@ def verification(icnn, sequential=False):
             inp = [inp[0], inp[1]]
             print("sub-optimal solution at: {}, with value {}".format(inp, m.getAttr("PoolObjVal")))
 
-        return output_var.X
+        return output_var.X[0]
+
+
+def verification_of_normal(model, input, label, eps=0.01, time_limit=None, bound=None):
+    m = Model()
+    input_size = 32 * 32 * 3
+    input_flattened = torch.flatten(input).numpy()
+
+    if time_limit is not None:
+        m.setParam("TimeLimit", time_limit)
+
+    if bound is not None:
+        m.setParam("BestObjStop", bound)
+
+    input_var = m.addMVar(input_size, lb=-1, ub=1, name="in_var")
+    output_var = m.addMVar(10, lb=-10, ub=10, name="output_var")
+
+    m.addConstrs(input_var[i] <= input_flattened[i] + eps for i in range(input_size))
+
+    m.addConstrs(input_var[i] >= input_flattened[i] - eps for i in range(input_size))
+
+    add_sequential_constr(m, model, input_var, output_var)
+
+    difference = m.addVars(9, lb=-float('inf'))
+    m.addConstrs(difference[i] == output_var.tolist()[i] - output_var.tolist()[label] for i in range(0, label))
+    m.addConstrs(difference[i-1] == output_var.tolist()[i] - output_var.tolist()[label] for i in range(label+1, 10))
+
+    #m.addConstrs(difference[i] == output_var.tolist()[i] - output_var.tolist()[label] for i in range(10))
+    max_var = m.addVar(lb=-float('inf'), ub=10)
+    m.addConstr(max_var == max_(difference))
+
+    m.update()
+    m.setObjective(max_var, GRB.MAXIMIZE)
+    m.optimize()
+
+
+    if m.Status == GRB.OPTIMAL or m.Status == GRB.TIME_LIMIT or m.Status == GRB.USER_OBJ_LIMIT:
+        inp = input_var.getAttr("x")
+        for o in difference.select():
+            print(o.getAttr("x"))
+        print("optimum solution with value \n {}".format(output_var.getAttr("x")))
+        print("max_var {}".format(max_var.getAttr("x")))
+        test_inp = torch.tensor([inp], dtype=torch.float32)
+        return test_inp, output_var
 
 
 def add_non_sequential_constr(model, predictor: ICNN, input_vars, output_vars):
@@ -53,7 +98,7 @@ def add_non_sequential_constr(model, predictor: ICNN, input_vars, output_vars):
     lb = -10
     ub = 10
     for i in range(0, len(ws), 2):
-        affine_W, affine_b = torch.clone(ws[i]).detach().numpy(), torch.clone(ws[i + 1]).detach().numpy()
+        affine_W, affine_b = ws[i].detach().numpy(), ws[i + 1].detach().numpy()
 
         out_fet = len(affine_b)
         affine_var = model.addMVar(out_fet, lb=lb, ub=ub, name="affine_var" + str(i))
@@ -78,7 +123,7 @@ def add_non_sequential_constr(model, predictor: ICNN, input_vars, output_vars):
             in_var = relu_vars
             out_vars = relu_vars
 
-    const = model.addConstr(out_vars[0] == output_vars)
+    const = model.addConstrs(out_vars[i] == output_vars[i] for i in range(out_fet))
 
 
 def add_sequential_constr(model, predictor: Model, input_vars, output_vars):
@@ -89,12 +134,10 @@ def add_sequential_constr(model, predictor: Model, input_vars, output_vars):
     lb = -10
     ub = 10
     for i in range(0, len(parameter_list), 2):
-        layer = parameter_list[i]
-        out_fet = parameter_list[i + 1].size()
-        out_fet = out_fet[0]
+        W, b = parameter_list[i].detach().numpy(), parameter_list[i + 1].detach().numpy()
+
+        out_fet = len(b)
         out_vars = model.addMVar(out_fet, lb=lb, ub=ub, name="affine_var" + str(i))
-        W, b = layer, parameter_list[i + 1]
-        W, b = W.detach().numpy(), b.detach().numpy()
         const = model.addConstrs((W[i] @ in_var + b[i] == out_vars[i] for i in range(len(W))))
         in_var = out_vars
 
@@ -103,7 +146,7 @@ def add_sequential_constr(model, predictor: Model, input_vars, output_vars):
             in_var = relu_vars
             out_vars = relu_vars
 
-    const = model.addConstr(out_vars[0] == output_vars)
+    const = model.addConstrs(out_vars[i] == output_vars[i] for i in range(out_fet))
 
 
 def add_relu_constr(model, input_vars, number_of_out_features, lb, ub, i):

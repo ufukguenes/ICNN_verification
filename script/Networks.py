@@ -14,16 +14,15 @@ class SequentialNN(nn.Sequential):
         super(SequentialNN, self).__init__()
 
         d_in = layer_widths[0]
-        for lw in layer_widths[1:len(layer_widths)-1]:
-            self.append(nn.Linear(d_in, lw, dtype=torch.float64))
+        for lw in layer_widths[1:len(layer_widths) - 1]:
+            self.append(nn.Linear(d_in, lw, dtype=torch.float32))
             self.append(nn.ReLU())
             d_in = lw
 
-        self.append(nn.Linear(d_in, layer_widths[-1], dtype=torch.float64))
+        self.append(nn.Linear(d_in, layer_widths[-1], dtype=torch.float32))
 
-        for tens in self.parameters():
-            torch.nn.init.uniform_(tens, -1, 1)
-            tens = tens
+    def forward(self, input):
+        return super().forward(Flatten()(input))
 
 
 class ICNN(nn.Module):
@@ -37,11 +36,11 @@ class ICNN(nn.Module):
         self.ws = nn.ParameterList([])  # positive weights for propagation
         self.us = nn.ParameterList([])  # weights tied to inputs
 
-        self.ws.append(nn.Linear(layer_widths[0], layer_widths[1], bias=True, dtype=torch.float64))
+        self.ws.append(nn.Linear(layer_widths[0], layer_widths[1], bias=True, dtype=torch.float32))
         d_in = layer_widths[1]
 
         for lw in layer_widths[2:]:
-            w = nn.Linear(d_in, lw, dtype=torch.float64)
+            w = nn.Linear(d_in, lw, dtype=torch.float32)
 
             with torch.no_grad():
                 if force_positive_init:
@@ -50,7 +49,7 @@ class ICNN(nn.Module):
                             p[:] = torch.maximum(torch.Tensor([0]), p)
 
             d_in = lw
-            u = nn.Linear(layer_widths[0], lw, bias=False, dtype=torch.float64)
+            u = nn.Linear(layer_widths[0], lw, bias=False, dtype=torch.float32)
 
             self.ws.append(w)
             self.us.append(u)
