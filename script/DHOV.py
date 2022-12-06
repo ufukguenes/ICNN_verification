@@ -18,7 +18,7 @@ from script.eval import Plots_for
 from script.trainFunction import train_icnn
 
 
-def start_verification(nn: SequentialNN, input, eps=0.01, solver_time_limit=None, solver_bound=None, icnn_batch_size=4,
+def start_verification(nn: SequentialNN, input, eps=0.07, solver_time_limit=None, solver_bound=None, icnn_batch_size=4,
                        icnn_epochs=5, sample_count=10000, sample_new=False):
     # todo Achtung ich muss schauen, ob gurobi upper bound inklusive ist, da ich aktuell die upper bound mit eps nicht inklusive habe
     m = Model()
