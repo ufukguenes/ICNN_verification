@@ -16,13 +16,16 @@ def train_icnn(model, train_loader, ambient_loader, epochs=10, opt=None,
 
         print("=== Epoch: {}===".format(epoch))
 
-        for i, (X, X_ambient) in enumerate(zip(train_loader, ambient_loader)):
 
+        for i, (X, X_ambient) in enumerate(zip(train_loader, ambient_loader)):
+            model.double()
+            X, X_ambient = X.double(), X_ambient.double()
             prediction_ambient = model(X_ambient)
             output = model(X)
             loss = deep_hull_simple_loss(output, prediction_ambient, hyper_lambda=hyper_lambda)
             opt.zero_grad()
             loss.backward()
+            model.float()
             opt.step()
 
             if not sequential:

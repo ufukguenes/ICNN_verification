@@ -125,7 +125,7 @@ class Plots_for():
         x = np.linspace(*self.x_range, 500)
         y = np.linspace(*self.y_range, 500)
         xx, yy = np.meshgrid(x, y)
-        x_in = torch.tensor(np.c_[xx.ravel(), yy.ravel()], dtype=torch.float32)
+        x_in = torch.tensor(np.c_[xx.ravel(), yy.ravel()], dtype=torch.float64)
 
         y_pred = self.model(x_in)
         y_pred = np.round(y_pred.detach().numpy(), decimals=5).reshape(xx.shape)
@@ -183,7 +183,7 @@ class Plots_for():
         x = np.linspace(*self.x_range, 100)
         y = np.linspace(*self.y_range, 100)
         xx, yy = np.meshgrid(x, y)
-        x_in = torch.tensor(np.c_[xx.ravel(), yy.ravel()], dtype=torch.float32)
+        x_in = torch.tensor(np.c_[xx.ravel(), yy.ravel()], dtype=torch.float64)
 
         y_pred = self.adversarial(x_in)
         rounded = np.round(y_pred.detach().numpy(), decimals=5)

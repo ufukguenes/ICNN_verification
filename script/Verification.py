@@ -98,7 +98,7 @@ def verification_of_normal(model, input, label, eps=0.01, time_limit=None, bound
             print(o.getAttr("x"))
         print("optimum solution with value \n {}".format(output_var.getAttr("x")))
         print("max_var {}".format(max_var.getAttr("x")))
-        test_inp = torch.tensor([inp], dtype=torch.float32)
+        test_inp = torch.tensor([inp], dtype=torch.float64)
         return test_inp, output_var
 
 

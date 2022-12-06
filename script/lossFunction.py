@@ -29,7 +29,7 @@ def deep_hull_loss(model_output, output_adv, adversarial_output, hyper_lambda=1,
 
     a = l_pos(model_output)
     if use_max_distance:
-        b = torch.tensor([0], dtype=torch.float32)
+        b = torch.tensor([0], dtype=torch.float64)
         c = l_generative_max_Distance(adversarial_output, output_adv)
     else:
         b = hyper_lambda * l_neg(adversarial_output)
