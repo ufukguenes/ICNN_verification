@@ -36,7 +36,7 @@ if init:
         y = np.random.default_rng().uniform(low=y_range[0], high=y_range[1])
         random_samples.append([[x, y]])
 
-    value = torch.tensor(random_samples, requires_grad=True, dtype=torch.float32)
+    value = torch.tensor(random_samples, requires_grad=True, dtype=torch.float64)
     adversarial_set = ConvexDataset(data=value)
     adversarial_loader = DataLoader(adversarial_set, batch_size=batch_size, shuffle=True)
 
