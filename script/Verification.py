@@ -12,15 +12,30 @@ def load(icnn):
     icnn.load_state_dict(torch.load("../convexHullModel.pth"), strict=False)
 
 
-def verification(icnn, sequential=False):
+def verification(icnn, center=None, eps=None, A=None, b=None, sequential=False):
     m = Model()
-    input_var = m.addMVar(2, lb=-float('inf'), name="in_var")
-    output_var = m.addMVar(1, lb=-float('inf'), name="output_var")
+    input_size = icnn.layer_widths[0]
+    output_size = icnn.layer_widths[-1]
+    input_var = m.addMVar(input_size, lb=-float('inf'), name="in_var")
+    output_var = m.addMVar(output_size, lb=-float('inf'), name="output_var")
 
-    A, b = Rhombus().get_A(), Rhombus().get_b()
+    # A, b = Rhombus().get_A(), Rhombus().get_b()
+    # todo hier wird das <= wahrscheinlich nicht als <= sondern nur als < erkannt, Gurobi meckert nämlich auch nicht, wenn man "<k" dahin schreibt
+    # m.addMConstr(A, input_var, "<=", b)
 
-    m.addMConstr(A, input_var, "<=",
-                 b)  # todo hier wird das <= wahrscheinlich nicht als <= sondern nur als < erkannt, Gurobi meckert nämlich auch nicht, wenn man "<k" dahin schreibt
+    if center is not None and eps is not None:
+        max_vars = m.addVars(input_size, lb=-float('inf'))
+        min_vars = m.addVars(input_size, lb=-float('inf'))
+
+        m.addConstrs(max_vars[i] == max_(0, center[i] + eps) for i in range(input_size))
+        m.addConstrs(min_vars[i] == max_(0, center[i] - eps) for i in range(input_size))
+
+        m.addConstrs(input_var[i] <= max_vars[i] for i in range(input_size))
+        m.addConstrs(input_var[i] >= min_vars[i] for i in range(input_size))
+    elif A is not None and b is not None:
+        m.addMConstr(A, input_var, "<=", b)
+    else:
+        return
 
     if sequential:
         add_sequential_constr(m, icnn, input_var, output_var)
@@ -34,16 +49,15 @@ def verification(icnn, sequential=False):
 
     if m.Status == GRB.OPTIMAL:
         inp = input_var.getAttr("x")
-        inp = [inp[0], inp[1]]
-        print("optimum solution at: {}, with value {}".format(inp, output_var.getAttr("x")))
+        # inp = [inp[0], inp[1]]
+        # print("optimum solution at: {}, with value {}".format(inp, output_var.getAttr("x")))
 
-        for i in range(1, m.getAttr("SolCount")):
+        """for i in range(1, m.getAttr("SolCount")):
             m.setParam("SolutionNumber", i)
             inp = m.getAttr("Xn")
             inp = [inp[0], inp[1]]
-            print("sub-optimal solution at: {}, with value {}".format(inp, m.getAttr("PoolObjVal")))
-
-        return output_var.X[0]
+            print("sub-optimal solution at: {}, with value {}".format(inp, m.getAttr("PoolObjVal")))"""
+        return inp, output_var.X[0]
 
 
 def verification_of_normal(model, input, label, eps=0.01, time_limit=None, bound=None):
@@ -68,16 +82,15 @@ def verification_of_normal(model, input, label, eps=0.01, time_limit=None, bound
 
     difference = m.addVars(9, lb=-float('inf'))
     m.addConstrs(difference[i] == output_var.tolist()[i] - output_var.tolist()[label] for i in range(0, label))
-    m.addConstrs(difference[i-1] == output_var.tolist()[i] - output_var.tolist()[label] for i in range(label+1, 10))
+    m.addConstrs(difference[i - 1] == output_var.tolist()[i] - output_var.tolist()[label] for i in range(label + 1, 10))
 
-    #m.addConstrs(difference[i] == output_var.tolist()[i] - output_var.tolist()[label] for i in range(10))
+    # m.addConstrs(difference[i] == output_var.tolist()[i] - output_var.tolist()[label] for i in range(10))
     max_var = m.addVar(lb=-float('inf'), ub=10)
     m.addConstr(max_var == max_(difference))
 
     m.update()
     m.setObjective(max_var, GRB.MAXIMIZE)
     m.optimize()
-
 
     if m.Status == GRB.OPTIMAL or m.Status == GRB.TIME_LIMIT or m.Status == GRB.USER_OBJ_LIMIT:
         inp = input_var.getAttr("x")
@@ -95,8 +108,8 @@ def add_non_sequential_constr(model, predictor: ICNN, input_vars, output_vars):
 
     in_var = input_vars
     # todo lower und upper bounds für variablen und relu berechnen
-    lb = -10
-    ub = 10
+    lb = -1000
+    ub = 1000
     for i in range(0, len(ws), 2):
         affine_W, affine_b = ws[i].detach().numpy(), ws[i + 1].detach().numpy()
 
@@ -131,8 +144,8 @@ def add_sequential_constr(model, predictor: Model, input_vars, output_vars):
 
     in_var = input_vars
     # todo lower und upper bounds für variablen und relu berechnen
-    lb = -10
-    ub = 10
+    lb = -1000
+    ub = 1000
     for i in range(0, len(parameter_list), 2):
         W, b = parameter_list[i].detach().numpy(), parameter_list[i + 1].detach().numpy()
 
