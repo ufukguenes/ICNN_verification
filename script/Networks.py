@@ -22,7 +22,8 @@ class SequentialNN(nn.Sequential):
         self.append(nn.Linear(d_in, layer_widths[-1], dtype=torch.float32))
 
     def forward(self, input):
-        return super().forward(Flatten()(input))
+        x = Flatten()(input)
+        return super().forward(x)
 
 
 class ICNN(nn.Module):
@@ -35,7 +36,7 @@ class ICNN(nn.Module):
 
         self.ws = nn.ParameterList([])  # positive weights for propagation
         self.us = nn.ParameterList([])  # weights tied to inputs
-
+        self.layer_widths = layer_widths
         self.ws.append(nn.Linear(layer_widths[0], layer_widths[1], bias=True, dtype=torch.float32))
         d_in = layer_widths[1]
 
