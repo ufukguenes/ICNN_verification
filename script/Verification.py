@@ -162,7 +162,13 @@ def add_sequential_constr(model, predictor: Model, input_vars, output_vars):
     const = model.addConstrs(out_vars[i] == output_vars[i] for i in range(out_fet))
 
 
-def add_relu_constr(model, input_vars, number_of_out_features, lb, ub, i):
+def add_affine_constr(model, W, b, input_vars, lb, ub, i=0):
+    out_fet = len(b)
+    out_vars = model.addMVar(out_fet, lb=lb, ub=ub, name="affine_var" + str(i))
+    const = model.addConstrs((W[i] @ input_vars + b[i] == out_vars[i] for i in range(len(W))))
+    return out_vars
+
+def add_relu_constr(model, input_vars, number_of_out_features, lb, ub, i=0):
     a = model.addMVar(number_of_out_features, vtype=GRB.BINARY, name="a" + str(i))
     relu_vars = model.addMVar(number_of_out_features, lb=lb, ub=ub, name="relu_var" + str(i))
     model.update()
