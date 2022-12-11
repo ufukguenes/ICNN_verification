@@ -1,4 +1,7 @@
+import random
 import time
+
+import torch
 
 from script.lossFunction import *
 import torch.nn as nn
@@ -16,16 +19,14 @@ def train_icnn(model, train_loader, ambient_loader, epochs=10, opt=None,
 
         print("=== Epoch: {}===".format(epoch))
 
-
         for i, (X, X_ambient) in enumerate(zip(train_loader, ambient_loader)):
-            model.double()
-            X, X_ambient = X.double(), X_ambient.double()
+            #model.double()
+            #X, X_ambient = X.double(), X_ambient.double()
             prediction_ambient = model(X_ambient)
             output = model(X)
             loss = deep_hull_simple_loss(output, prediction_ambient, hyper_lambda=hyper_lambda)
             opt.zero_grad()
             loss.backward()
-            model.float()
             opt.step()
 
             if not sequential:
@@ -61,6 +62,8 @@ def train_icnn_adversarial(model, adversarial, train_loader, adversarial_loader,
                            opt_model=None, opt_adv=None, return_history=False, hyper_lambda=1, use_max_distance=False):
     history = []
     model.train()
+    #model.double()
+    #adversarial.double()
     adversarial.train()
     if opt_model is None:
         opt_model = torch.optim.Adam(model.parameters())
@@ -81,7 +84,8 @@ def train_icnn_adversarial(model, adversarial, train_loader, adversarial_loader,
             prediction_from_adv = model(output_adv)
             output = model(X)
 
-            loss, a, b, c = deep_hull_loss(output, output_adv, prediction_from_adv, hyper_lambda=hyper_lambda, use_max_distance=use_max_distance)
+            loss, a, b, c = deep_hull_loss(output, output_adv, prediction_from_adv, hyper_lambda=hyper_lambda,
+                                           use_max_distance=use_max_distance)
 
             opt_model.zero_grad()
             opt_adv.zero_grad()
@@ -147,6 +151,44 @@ def train_sequential(model, train_data, test_data, loss_fn=nn.CrossEntropyLoss()
         print("Time: {}".format(current))
 
 
+def train_sequential_2(model, train_loader, ambient_loader, epochs=10, return_history=False):
+    history = []
+
+    opt = torch.optim.Adam(model.parameters())
+
+    for epoch in range(epochs):
+        train_loss = 0
+        train_n = 0
+
+        print("=== Epoch: {}===".format(epoch))
+
+        for i, (x_included, x_ambient) in enumerate(zip(train_loader, ambient_loader)):
+            #model.double()
+           # x_included, x_ambient = x_included.double(), x_ambient.double()
+
+            output_included = model(x_included)
+            output_ambient = model(x_ambient)
+
+            loss = identity_loss(output_included, output_ambient, x_included, x_ambient)
+            opt.zero_grad()
+            loss.backward()
+            opt.step()
+
+            train_loss += loss.item()
+            train_n += 1
+
+            if return_history:
+                history.append(train_loss / train_n)
+
+            if i % 100 == 0:
+                print("batch = {}, mean loss = {}".format(i, train_loss / train_n))
+
+        print("batch = {}, mean loss = {}".format(len(train_loader), train_loss / train_n))
+
+    if return_history:
+        return history
+
+
 def test(model, dataloader, loss_fn=nn.CrossEntropyLoss()):
     size = len(dataloader.dataset)
     num_batches = len(dataloader)
@@ -159,4 +201,4 @@ def test(model, dataloader, loss_fn=nn.CrossEntropyLoss()):
             correct += (pred.argmax(1) == y).type(torch.float).sum().item()
     test_loss /= num_batches
     correct /= size
-    print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
+    print(f"Test Error: \n Accuracy: {(100 * correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")

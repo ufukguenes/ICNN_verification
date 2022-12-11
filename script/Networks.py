@@ -12,7 +12,7 @@ class Flatten(nn.Module):
 class SequentialNN(nn.Sequential):
     def __init__(self, layer_widths):
         super(SequentialNN, self).__init__()
-
+        self.layer_widths = layer_widths
         d_in = layer_widths[0]
         for lw in layer_widths[1:len(layer_widths) - 1]:
             self.append(nn.Linear(d_in, lw, dtype=torch.float64))
@@ -38,6 +38,7 @@ class ICNN(nn.Module):
         self.us = nn.ParameterList([])  # weights tied to inputs
         self.layer_widths = layer_widths
         self.ws.append(nn.Linear(layer_widths[0], layer_widths[1], bias=True, dtype=torch.float64))
+
         d_in = layer_widths[1]
 
         for lw in layer_widths[2:]:

@@ -7,10 +7,9 @@ from abc import ABC, abstractmethod
 
 
 class Multivariate():
-    def get_samples(self, offset, number_of_included_samples, number_of_ambient_samples, x_range, y_range):
+    def get_samples(self, offset, number_of_samples, x_range, y_range):
         rng = np.random.default_rng()
         included_space = np.empty((0, 2))
-        ambient_space = np.empty((0, 2))
         subtract_space = None
 
         # Gaußverteilung mit Loch in der Seite
@@ -23,13 +22,16 @@ class Multivariate():
         # included_space = rng.multivariate_normal([0, 0], [[5, 0], [0, 10]], size=number_of_included_samples)
         # subtract_space = rng.multivariate_normal([3, 3], [[3, 0], [0, 3]], size=number_of_included_samples)
 
-        included_space = rng.multivariate_normal([offset, offset], [[5, 0], [0, 10]], size=number_of_included_samples)
-        subtract_space = rng.multivariate_normal([offset, offset], [[1, 0], [0, 1]], size=number_of_included_samples)
+        included_space = rng.multivariate_normal([offset, offset], [[5, 0], [0, 10]], size=number_of_samples)
+        subtract_space = rng.multivariate_normal([offset, offset], [[1, 0], [0, 1]], size=int(number_of_samples/10))
+
+        label_in = [[1,0]]
+        label_out = [[0,1]]
+
+        subtract_hull = ConvexHull(subtract_space)
+        A2, b2 = subtract_hull.equations[:, :-1], subtract_hull.equations[:, -1:]
 
         if subtract_space is not None:
-            subtract_hull = ConvexHull(subtract_space)
-            A2, b2 = subtract_hull.equations[:, :-1], subtract_hull.equations[:, -1:]
-
             deleted_points = []
             for i, x in enumerate(included_space):
                 if self.contained(x, A2, b2):
@@ -40,7 +42,7 @@ class Multivariate():
         A, b = hull.equations[:, :-1], hull.equations[:, -1:]
         ambient = []
         rng = np.random.default_rng()
-        while len(ambient) < number_of_ambient_samples:
+        while len(ambient) < number_of_samples:
             x_cord = rng.uniform(*x_range)
             y_cord = rng.uniform(*y_range)
             if not self.contained([[x_cord, y_cord]], A, b):

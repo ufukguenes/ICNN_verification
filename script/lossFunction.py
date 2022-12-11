@@ -58,3 +58,20 @@ def deep_hull_simple_loss(model_output, ambient_space, hyper_lambda=1):
     out = a + b
 
     return out
+
+
+def identity_loss(output_included_space, output_ambient_space, x_included_space, x_ambient_space):
+    """diff_in = output_in - X
+    sig_in = (torch.abs(diff_in))
+    sum_in = torch.sum(sig_in)
+
+    diff_am = output_in - X
+    sig_am = (torch.abs(diff_am))
+    sum_am = torch.sum(sig_am)"""
+
+    norm = torch.norm(output_included_space - x_included_space)
+    norm2 = torch.norm(output_ambient_space - x_ambient_space)
+
+    sum = torch.add(norm, norm2)
+
+    return sum / (len(output_included_space) + len(output_ambient_space))
