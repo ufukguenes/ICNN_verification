@@ -84,7 +84,7 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
         # train icnn
         train_icnn(current_icnn, train_loader, ambient_loader, epochs=icnn_epochs, hyper_lambda=1)
         plots.plt_mesh()
-        # verify and enlarge convex approxmation
+        # verify and enlarge convex approximation
 
         #todo, ich darf nicht einfach center reingeben, dann ist gar nicht mehr garantiert, dass die eps umgebung um center
         # eine überrapproximation der eingabe region ist.
@@ -201,7 +201,6 @@ def sample_uniform_from(input_flattened, eps, sample_size, icnn=None, lower_boun
                                                                  dtype=torch.float64) + lower_bound
         for i in range(sample_size):
             disp = input_flattened + displacements[i]
-            icnn.double()
             out = icnn(disp)
             if out <= 0:  # todo hier mus <= c sein und nicht kleiner 0
                 included_space = torch.cat([included_space, disp], dim=0)
@@ -221,7 +220,6 @@ def apply_affine_transform(W, b, included_space, ambient_space, center):
     for i in range(ambient_space.shape[0]):
         affine_amb2[i] = torch.matmul(W, ambient_space[i]).add(b)
 
-    center = center.double()
     center = torch.matmul(W, center).add(b)
     t = time.time() - t
     print("Time: {}".format(t))
@@ -242,14 +240,12 @@ def split_new(icnn, included_space, ambient_space, c):
 
     in_outs = []
     for elem in included_space:
-        icnn.double()
         elem = torch.unsqueeze(elem, 0)
         out = icnn(elem)
         in_outs.append(out.item())
 
     outputs = []
     for i, elem in enumerate(ambient_space):
-        icnn.double()
         elem = torch.unsqueeze(elem, 0)
         output = icnn(elem)
         outputs.append(output.item())
@@ -275,7 +271,6 @@ def plot_2d(nn, included, ambient):
     included_out_y = []
     for x in included:
         x = torch.unsqueeze(x, dim=0)
-        nn.double()
         out = nn(x)
         included_out_x.append(out[0][0].item())
         included_out_y.append(out[0][1].item())
@@ -283,7 +278,6 @@ def plot_2d(nn, included, ambient):
     ambient_out_y = []
     for x in ambient:
         x = torch.unsqueeze(x, dim=0)
-        nn.double()
         out = nn(x)
         ambient_out_x.append(out[0][0].item())
         ambient_out_y.append(out[0][1].item())
@@ -311,8 +305,8 @@ start_verification(nn, images)"""
 
 #matplotlib.use('TkAgg')
 
-batch_size = 1
-epochs = 5
+batch_size = 10
+epochs = 2
 number_of_train_samples = 10000
 hyper_lambda = 1
 x_range = [-1.5, 1.5]
@@ -337,6 +331,46 @@ nn = SequentialNN([2, 2, 2])
 train_sequential_2(nn, train_loader, ambient_loader, epochs=epochs)
 
 plot_2d(nn, included_space, ambient_space)
+
+parameter_list = list(nn.parameters())
+W = parameter_list[0]
+b = parameter_list[1]
+print(W)
+print(b)
+
+mean_inp = torch.mean(included_space, dim=0)
+mean_amp = torch.mean(ambient_space, dim=0)
+mean = (mean_amp + mean_inp) / 2
+print("mean {}, mean_inc {}, mean_amb {}".format(mean, mean_inp, mean_amp))
+
+mean = mean.detach().requires_grad_(True)
+
+std_inp = torch.std(included_space, dim=0)
+std_amp = torch.std(ambient_space, dim=0)
+std = (std_amp + std_inp) / 2
+print("std {}, std_inc {}, std_amb {}".format(std, std_inp, std_amp))
+std = std.detach().requires_grad_(True)
+
+parameter_list = list(nn.parameters())
+p0 = parameter_list[0]
+p1 = parameter_list[1]
+test = torch.div(parameter_list[0], std)
+test2 = torch.matmul(parameter_list[0], mean) + parameter_list[1]
+with torch.no_grad():
+    for i, p in enumerate(nn.parameters()):
+        if i == 0:
+            p.data = torch.div(p, std)
+            w = p
+        elif i == 1:
+            p.data = torch.matmul(w, mean) + p
+        else:
+            break
+
+parameter_list = list(nn.parameters())
+W = parameter_list[0]
+b = parameter_list[1]
+print(W)
+print(b)
 
 test_image = torch.tensor([[0,0]])
 start_verification(nn, test_image)
