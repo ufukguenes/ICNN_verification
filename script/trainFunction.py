@@ -20,8 +20,6 @@ def train_icnn(model, train_loader, ambient_loader, epochs=10, opt=None,
         print("=== Epoch: {}===".format(epoch))
 
         for i, (X, X_ambient) in enumerate(zip(train_loader, ambient_loader)):
-            #model.double()
-            #X, X_ambient = X.double(), X_ambient.double()
             prediction_ambient = model(X_ambient)
             output = model(X)
             loss = deep_hull_simple_loss(output, prediction_ambient, hyper_lambda=hyper_lambda)
@@ -62,8 +60,6 @@ def train_icnn_adversarial(model, adversarial, train_loader, adversarial_loader,
                            opt_model=None, opt_adv=None, return_history=False, hyper_lambda=1, use_max_distance=False):
     history = []
     model.train()
-    #model.double()
-    #adversarial.double()
     adversarial.train()
     if opt_model is None:
         opt_model = torch.optim.Adam(model.parameters())
@@ -163,9 +159,6 @@ def train_sequential_2(model, train_loader, ambient_loader, epochs=10, return_hi
         print("=== Epoch: {}===".format(epoch))
 
         for i, (x_included, x_ambient) in enumerate(zip(train_loader, ambient_loader)):
-            #model.double()
-           # x_included, x_ambient = x_included.double(), x_ambient.double()
-
             output_included = model(x_included)
             output_ambient = model(x_ambient)
 

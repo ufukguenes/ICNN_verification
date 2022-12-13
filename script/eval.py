@@ -57,7 +57,6 @@ class Plots_for():
 
         def test_contained(x):
             bool_val = False
-            #self.model.double()
             if torch.is_tensor(self.c):
                 bool_val = self.model(x).less_equal(self.c)
                 for val in torch.flatten(bool_val):
@@ -131,7 +130,6 @@ class Plots_for():
         y = np.linspace(*self.y_range, 500)
         xx, yy = np.meshgrid(x, y)
         x_in = torch.tensor(np.c_[xx.ravel(), yy.ravel()], dtype=torch.float64)
-        #self.model.double()
         y_pred = self.model(x_in)
         y_pred = np.round(y_pred.detach().numpy(), decimals=5).reshape(xx.shape)
 
@@ -167,7 +165,6 @@ class Plots_for():
     def plt_adversarial_dotted(self):
         if self.adversarial is None or self.adversarial_values is None:
             return
-        self.adversarial.double()
 
         pred_x_arr = []
         pred_y_arr = []

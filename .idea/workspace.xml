@@ -4,16 +4,8 @@
     <list default="true" id="90b0f737-acac-430b-a76c-cab51a684379" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/script/DHOV.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/DHOV.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/script/Experiments/CIFAR10_MILP_Verification.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/script/Experiments/CIFAR10_MILP_Verification.ipynb" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/script/Experiments/GenerativeExperiment.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/script/Experiments/GenerativeExperiment.ipynb" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/script/Experiments/GenerativeMaxDistanceLoss.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/script/Experiments/GenerativeMaxDistanceLoss.ipynb" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/script/Experiments/GenerativeWithoutICNNExperiment.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/script/Experiments/GenerativeWithoutICNNExperiment.ipynb" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/script/Experiments/NonGenerativeExperiment.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/script/Experiments/NonGenerativeExperiment.ipynb" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/script/Networks.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/Networks.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/script/Verification.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/Verification.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/script/dataInit.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/dataInit.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/script/eval.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/eval.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/script/lossFunction.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/lossFunction.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/script/trainFunction.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/trainFunction.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -24,8 +16,8 @@
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
       <list>
-        <option value="Python Script" />
         <option value="Jupyter Notebook" />
+        <option value="Python Script" />
       </list>
     </option>
   </component>
@@ -151,7 +143,11 @@
       <workItem from="1670599834771" duration="720000" />
       <workItem from="1670666681316" duration="11322000" />
       <workItem from="1670746248674" duration="5929000" />
-      <workItem from="1670756905637" duration="1427000" />
+      <workItem from="1670756905637" duration="4432000" />
+      <workItem from="1670831139927" duration="121000" />
+      <workItem from="1670840850433" duration="10000" />
+      <workItem from="1670850132225" duration="3831000" />
+      <workItem from="1670922962206" duration="13272000" />
     </task>
     <servers />
   </component>
@@ -174,18 +170,28 @@
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/script/eval.py</url>
-          <line>68</line>
+          <line>67</line>
           <option name="timeStamp" value="273" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/script/trainFunction.py</url>
-          <line>81</line>
+          <line>77</line>
           <option name="timeStamp" value="274" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/script/trainFunction.py</url>
-          <line>62</line>
+          <line>60</line>
           <option name="timeStamp" value="275" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/script/DHOV.py</url>
+          <line>85</line>
+          <option name="timeStamp" value="277" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/script/DHOV.py</url>
+          <line>374</line>
+          <option name="timeStamp" value="278" />
         </line-breakpoint>
       </breakpoints>
       <default-breakpoints>
@@ -202,7 +208,7 @@
     <SUITE FILE_PATH="coverage/ICNN_verification$dataInit.coverage" NAME="dataInit Coverage Results" MODIFIED="1670107995866" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script" />
     <SUITE FILE_PATH="coverage/DeepHull$main.coverage" NAME="main Coverage Results" MODIFIED="1669233392579" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ICNN_verification$main.coverage" NAME="main Coverage Results" MODIFIED="1670249050825" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/ICNN_verification$DHOV.coverage" NAME="DHOV Coverage Results" MODIFIED="1670747178808" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script" />
+    <SUITE FILE_PATH="coverage/ICNN_verification$DHOV.coverage" NAME="DHOV Coverage Results" MODIFIED="1670934294313" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script" />
     <SUITE FILE_PATH="coverage/DeepHull$Verification.coverage" NAME="Verification Coverage Results" MODIFIED="1669122239179" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script" />
     <SUITE FILE_PATH="coverage/DeepHull$eval.coverage" NAME="eval Coverage Results" MODIFIED="1668723858367" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
