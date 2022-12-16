@@ -24,7 +24,7 @@ from script.trainFunction import train_icnn, train_sequential, train_sequential_
 
 def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=None, solver_bound=None,
                        icnn_batch_size=10,
-                       icnn_epochs=5, sample_count=10000, sample_new=False):
+                       icnn_epochs=10, sample_count=10000, sample_new=False):
     # todo Achtung ich muss schauen, ob gurobi upper bound inklusive ist, da ich aktuell die upper bound mit eps nicht inklusive habe
     input_flattened = torch.flatten(input)
 
@@ -43,7 +43,7 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
         plt.title(caption)
         plt.show()
 
-    #plt_inc_amb("start", included_space, ambient_space)
+    # plt_inc_amb("start", included_space, ambient_space)
 
     parameter_list = list(nn.parameters())
 
@@ -57,10 +57,10 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
 
         W, b = parameter_list[i], parameter_list[i + 1]
 
-        included_space, ambient_space, center = apply_affine_transform(W, b, included_space, ambient_space, center)
-        #plt_inc_amb("affin e" + str(i), included_space.tolist(), ambient_space.tolist())
-        included_space, ambient_space, center = apply_ReLU_transform(included_space, ambient_space, center)
-        #plt_inc_amb("relu " + str(i), included_space.tolist(), ambient_space.tolist())
+        included_space, ambient_space, new_center = apply_affine_transform(W, b, included_space, ambient_space, center)
+        plt_inc_amb("affin e" + str(i), included_space.tolist(), ambient_space.tolist())
+        included_space, ambient_space, new_center = apply_ReLU_transform(included_space, ambient_space, center)
+        plt_inc_amb("relu " + str(i), included_space.tolist(), ambient_space.tolist())
 
         mean = get_mean(included_space, ambient_space)
         std = get_std(included_space, ambient_space)
@@ -71,34 +71,36 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
         dataset = ConvexDataset(data=normalized_ambient_space)
         ambient_loader = DataLoader(dataset, batch_size=icnn_batch_size, shuffle=True)
 
-        #torch.save(included_space, "../included_space_after_relu.pt")
-        #torch.save(ambient_space, "../ambient_space_after_relu.pt")
+        # torch.save(included_space, "../included_space_after_relu.pt")
+        # torch.save(ambient_space, "../ambient_space_after_relu.pt")
 
-        plots = Plots_for(0, current_icnn, normalized_included_space.detach(), normalized_ambient_space.detach(),
-                          true_extremal_points,
-                          x_range, y_range)
-        #plots.plt_initial()
+        # plots = Plots_for(0, current_icnn, normalized_included_space.detach(), normalized_ambient_space.detach(),
+        #                  true_extremal_points,
+        #                  x_range, y_range)
+        # plots.plt_initial()
         # train icnn
         train_icnn(current_icnn, train_loader, ambient_loader, epochs=icnn_epochs, hyper_lambda=1)
 
-        plots.plt_mesh()
+        #plots.plt_mesh()
 
         normalize_nn(current_icnn, mean, std, isICNN=True)
+        #matplotlib.use("TkAgg")
         plots = Plots_for(0, current_icnn, included_space.detach(), ambient_space.detach(), true_extremal_points,
-                         [1.17, 1.19], [2.36, 2.37])
-        plots.plt_initial()
-        plots.plt_mesh()
+                          [1.17, 1.19], [2.36, 2.37])
+        #plots.plt_initial()
+        plots.plt_dotted()
 
-        # todo man kann nicht center reingeben, mann muss dafür eine MILP kodierung machen wie die eingabe region
-        # sich verändert, damit man genau sagen kann welche punkte innerhalb liegen, oder muss ich nur im ersten
-        # Layer MILP machen, da ich für die nächsten layer, dann ja das ICNN verwenden kann
         # verify and enlarge convex approximation
-
-
-        """adversarial_input, c = verification(current_icnn, center.detach().numpy(), eps)
+        if i == 0:
+            adversarial_input, c = verification(current_icnn, center_eps_W_b=[center.detach().numpy(), eps, W.detach().numpy(), b.detach().numpy()], has_ReLU=True)
+        else:
+            prev_icnn = icnns[int(i/2) - 1]
+            #prev_W, prev_b = parameter_list[i-2].detach().numpy(), parameter_list[i - 1].detach().numpy()
+            prev_c = c_values[int(i/2) - 1]
+            adversarial_input, c = verification(current_icnn, icnn_W_b_c=[prev_icnn, W.detach().numpy(), b.detach().numpy(), prev_c], has_ReLU=True)
         c_values.append(c)
         plots.c = c
-        plots.plt_mesh()"""
+        plots.plt_dotted()
 
         c_values.append(0)
 
@@ -114,6 +116,8 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
         else:
             continue
             included_space, ambient_space = split_new(current_icnn, included_space, ambient_space, c)
+
+        center = new_center
 
     index = len(parameter_list) - 2
     W, b = parameter_list[index], parameter_list[index + 1]
@@ -136,8 +140,7 @@ def last_layer_identity(last_icnn: ICNN, last_c, W, b, A_out, b_out, solver_time
     output_of_penultimate_layer = m.addMVar(icnn_input_size, lb=-float('inf'))
     output_of_icnn = m.addMVar(1, lb=-float('inf'))
     add_non_sequential_constr(m, last_icnn, output_of_penultimate_layer, output_of_icnn)
-    #m.addConstr(output_of_icnn[0] <= 100000000)
-
+    # m.addConstr(output_of_icnn[0] <= 100000000)
 
     """W = W.detach().numpy()
     b = b.detach().numpy()
@@ -145,8 +148,7 @@ def last_layer_identity(last_icnn: ICNN, last_c, W, b, A_out, b_out, solver_time
 
     m.addConstrs((W[i] @ output_var >= b[i] for i in range(len(W))))"""
 
-
-    #constr = m.addMConstr(A_out, output_var.tolist(), ">", b_out)
+    # constr = m.addMConstr(A_out, output_var.tolist(), ">", b_out)
 
     """max_var = m.addVar(lb=-float('inf'), ub=1000)
 
@@ -158,7 +160,7 @@ def last_layer_identity(last_icnn: ICNN, last_c, W, b, A_out, b_out, solver_time
 
     solution = 0
     if m.Status == GRB.OPTIMAL or m.Status == GRB.TIME_LIMIT:
-        #print("optimum solution with value \n {}".format(output_var.getAttr("x")))
+        # print("optimum solution with value \n {}".format(output_var.getAttr("x")))
         print("icnn_in_var {}".format(output_of_penultimate_layer.getAttr("x")))
         print("max_var {}".format(output_of_icnn.getAttr("x")))
         sol = output_of_penultimate_layer.getAttr("x")
@@ -374,22 +376,21 @@ y_range = [-1.5, 1.5]
 included_space, ambient_space = Rhombus().get_uniform_samples(number_of_train_samples, x_range,
                                                               y_range)  # samples will be split in inside and outside the rhombus
 
-
 true_extremal_points = Rhombus().get_extremal_points()
 dataset_in = ConvexDataset(data=included_space)
 train_loader = DataLoader(dataset_in, batch_size=batch_size, shuffle=True)
 dataset = ConvexDataset(data=ambient_space)
 ambient_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
-nn = SequentialNN([2, 2, 2])
+nn = SequentialNN([2, 2, 2, 2])
 
-nn.load_state_dict(torch.load("nn.pt"), strict=False)
+nn.load_state_dict(torch.load("nn_2x2.pt"), strict=False)
 #train_sequential_2(nn, train_loader, ambient_loader, epochs=epochs)
 
 
 # matplotlib.use('TkAgg')
 plot_2d(nn, included_space, ambient_space)
-#torch.save(nn.state_dict(), "nn.pt")
+#torch.save(nn.state_dict(), "nn_2x2.pt")
 
-test_image = torch.tensor([[0, -1.2]], dtype=torch.float64)
+test_image = torch.tensor([[0, 0]], dtype=torch.float64)
 start_verification(nn, test_image)
