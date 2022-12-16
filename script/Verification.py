@@ -27,8 +27,8 @@ def verification(icnn, center=None, eps=None, A=None, b=None, sequential=False):
         max_vars = m.addVars(input_size, lb=-float('inf'))
         min_vars = m.addVars(input_size, lb=-float('inf'))
 
-        m.addConstrs(max_vars[i] == max_(0, center[i] + eps) for i in range(input_size))
-        m.addConstrs(min_vars[i] == max_(0, center[i] - eps) for i in range(input_size))
+        m.addConstrs(max_vars[i] == center[i] + eps for i in range(input_size))
+        m.addConstrs(min_vars[i] == center[i] - eps for i in range(input_size))
 
         m.addConstrs(input_var[i] <= max_vars[i] for i in range(input_size))
         m.addConstrs(input_var[i] >= min_vars[i] for i in range(input_size))
@@ -108,8 +108,8 @@ def add_non_sequential_constr(model, predictor: ICNN, input_vars, output_vars):
 
     in_var = input_vars
     # todo lower und upper bounds für variablen und relu berechnen
-    lb = -1000
-    ub = 1000
+    lb = -100000
+    ub = 100000
     for i in range(0, len(ws), 2):
         affine_W, affine_b = ws[i].detach().numpy(), ws[i + 1].detach().numpy()
 
@@ -144,8 +144,8 @@ def add_sequential_constr(model, predictor: Model, input_vars, output_vars):
 
     in_var = input_vars
     # todo lower und upper bounds für variablen und relu berechnen
-    lb = -1000
-    ub = 1000
+    lb = -100
+    ub = 100
     for i in range(0, len(parameter_list), 2):
         W, b = parameter_list[i].detach().numpy(), parameter_list[i + 1].detach().numpy()
 

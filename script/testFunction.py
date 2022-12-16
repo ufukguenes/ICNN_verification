@@ -19,13 +19,8 @@ def test_icnn(model, train_loader, ambient_loader, critic=deep_hull_simple_loss,
 
     print("test run {} iterations,  with mean loss = {}".format(test_n, test_loss / test_n))
 
-def test_sequential(model, train_loader, ambient_loader):
-    parameter_list = list(model.parameters())
-    W = parameter_list[0]
-    b = parameter_list[1]
-    print(W.detach().numpy())
-    print(b.detach().numpy())
 
+def test_sequential(model, train_loader, ambient_loader):
     test_loss = 0
     test_n = 0
     model.eval()
@@ -40,6 +35,7 @@ def test_sequential(model, train_loader, ambient_loader):
             test_n += 1
 
     print("test run {} iterations,  with mean loss = {}".format(test_n, test_loss / test_n))
+
 
 def test(model, dataloader, loss_fn=nn.CrossEntropyLoss()):
     size = len(dataloader.dataset)

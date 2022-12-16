@@ -11,23 +11,25 @@ from torchvision.transforms import Compose, ToTensor, Normalize
 
 from script import dataInit
 from script.Networks import SequentialNN, ICNN
-from gurobipy import Model, GRB, max_
+from gurobipy import Model, GRB, max_, norm
 import torch
 import numpy as np
 
+from script.Normalisation import get_std, get_mean, normalize_nn, normalize_data
 from script.Verification import verification, add_non_sequential_constr, add_affine_constr
 from script.dataInit import ConvexDataset, Rhombus
 from script.eval import Plots_for
 from script.trainFunction import train_icnn, train_sequential, train_sequential_2
 
 
-def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=None, solver_bound=None, icnn_batch_size=4,
-                       icnn_epochs=3, sample_count=10000, sample_new=False):
+def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=None, solver_bound=None,
+                       icnn_batch_size=10,
+                       icnn_epochs=5, sample_count=10000, sample_new=False):
     # todo Achtung ich muss schauen, ob gurobi upper bound inklusive ist, da ich aktuell die upper bound mit eps nicht inklusive habe
     input_flattened = torch.flatten(input)
 
-    included_space, ambient_space = sample_uniform_from(input_flattened, eps, sample_count, lower_bound=-0.003,
-                                                        upper_bound=0.003)
+    included_space, ambient_space = sample_uniform_from(input_flattened, eps, sample_count, lower_bound=-0.002,
+                                                        upper_bound=0.002)
 
     """imshow_flattened(input_flattened, (3, 32, 32))
     imshow_flattened(included_space[0], (3, 32, 32))
@@ -41,15 +43,14 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
         plt.title(caption)
         plt.show()
 
-    plt_inc_amb("start", included_space, ambient_space)
+    #plt_inc_amb("start", included_space, ambient_space)
 
     parameter_list = list(nn.parameters())
 
     icnns = []
     c_values = []
-    mean_values = []
     center = input_flattened
-    for i in range(0, len(parameter_list)-2, 2):  # -2 because last layer has no ReLu activation
+    for i in range(0, len(parameter_list) - 2, 2):  # -2 because last layer has no ReLu activation
         icnn_input_size = nn.layer_widths[int(i / 2) + 1]
         icnns.append(ICNN([icnn_input_size, 10, 10, 1]))
         current_icnn = icnns[int(i / 2)]
@@ -57,39 +58,49 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
         W, b = parameter_list[i], parameter_list[i + 1]
 
         included_space, ambient_space, center = apply_affine_transform(W, b, included_space, ambient_space, center)
-        plt_inc_amb("affin e" + str(i), included_space.tolist(), ambient_space.tolist())
+        #plt_inc_amb("affin e" + str(i), included_space.tolist(), ambient_space.tolist())
         included_space, ambient_space, center = apply_ReLU_transform(included_space, ambient_space, center)
-        plt_inc_amb("relu " + str(i), included_space.tolist(), ambient_space.tolist())
+        #plt_inc_amb("relu " + str(i), included_space.tolist(), ambient_space.tolist())
 
-        mean_inp = torch.mean(included_space, dim=0)
-        mean_amp = torch.mean(ambient_space, dim=0)
-        mean_scale_inc = len(included_space) / (len(included_space) + len(ambient_space))
-        mean_scale_amb = len(included_space) / (len(included_space) + len(ambient_space))
-        mean = mean_scale_amb * mean_amp + mean_scale_inc * mean_inp
-        mean_values.append(mean)
+        mean = get_mean(included_space, ambient_space)
+        std = get_std(included_space, ambient_space)
 
-        train_ambient_space = tv.transforms.Lambda(lambda x: 1000 * (x - mean))(ambient_space)
-        train_included_space = tv.transforms.Lambda(lambda x: 1000 * (x - mean))(included_space)
-
-        dataset = ConvexDataset(data=train_included_space.detach())
+        normalized_included_space, normalized_ambient_space = normalize_data(included_space, ambient_space, mean, std)
+        dataset = ConvexDataset(data=normalized_included_space)
         train_loader = DataLoader(dataset, batch_size=icnn_batch_size, shuffle=True)
-        dataset = ConvexDataset(data=train_ambient_space.detach())
+        dataset = ConvexDataset(data=normalized_ambient_space)
         ambient_loader = DataLoader(dataset, batch_size=icnn_batch_size, shuffle=True)
 
         #torch.save(included_space, "../included_space_after_relu.pt")
         #torch.save(ambient_space, "../ambient_space_after_relu.pt")
 
-
-        plots = Plots_for(0, current_icnn, train_included_space.detach(), train_ambient_space.detach(), true_extremal_points, x_range, y_range)
+        plots = Plots_for(0, current_icnn, normalized_included_space.detach(), normalized_ambient_space.detach(),
+                          true_extremal_points,
+                          x_range, y_range)
+        #plots.plt_initial()
         # train icnn
         train_icnn(current_icnn, train_loader, ambient_loader, epochs=icnn_epochs, hyper_lambda=1)
+
         plots.plt_mesh()
+
+        normalize_nn(current_icnn, mean, std, isICNN=True)
+        plots = Plots_for(0, current_icnn, included_space.detach(), ambient_space.detach(), true_extremal_points,
+                         [1.17, 1.19], [2.36, 2.37])
+        plots.plt_initial()
+        plots.plt_mesh()
+
+        # todo man kann nicht center reingeben, mann muss dafür eine MILP kodierung machen wie die eingabe region
+        # sich verändert, damit man genau sagen kann welche punkte innerhalb liegen, oder muss ich nur im ersten
+        # Layer MILP machen, da ich für die nächsten layer, dann ja das ICNN verwenden kann
         # verify and enlarge convex approximation
 
-        #todo, ich darf nicht einfach center reingeben, dann ist gar nicht mehr garantiert, dass die eps umgebung um center
-        # eine überrapproximation der eingabe region ist.
-        adversarial_input, c = verification(current_icnn, center.detach().numpy(), eps)
+
+        """adversarial_input, c = verification(current_icnn, center.detach().numpy(), eps)
         c_values.append(c)
+        plots.c = c
+        plots.plt_mesh()"""
+
+        c_values.append(0)
 
         # entweder oder:
         # nutze die samples weiter (dafür muss man dann das ReLU layer anwenden), und man muss schauen ob die
@@ -98,18 +109,66 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
 
         # oder sample neue punkte
 
-
         if sample_new:
             continue
         else:
+            continue
             included_space, ambient_space = split_new(current_icnn, included_space, ambient_space, c)
 
     index = len(parameter_list) - 2
     W, b = parameter_list[index], parameter_list[index + 1]
-    last_layer(icnns[-1], c_values[-1], W, b, 6, solver_time_limit, solver_bound)  # todo nicht hardcoden
+    # last_layer_picture(icnns[-1], c_values[-1], W, b, 6, solver_time_limit, solver_bound)  # todo nicht hardcoden
+    A_out, b_out = Rhombus().get_A(), Rhombus().get_b()
+
+    last_layer_identity(icnns[-1], c_values[-1], W, b, A_out, b_out, solver_time_limit, solver_bound)
 
 
-def last_layer(last_icnn: ICNN, last_c, W, b, label, solver_time_limit, solver_bound):
+def last_layer_identity(last_icnn: ICNN, last_c, W, b, A_out, b_out, solver_time_limit, solver_bound):
+    m = Model()
+
+    if solver_time_limit is not None:
+        m.setParam("TimeLimit", solver_time_limit)
+
+    if solver_bound is not None:
+        m.setParam("BestObjStop", solver_bound)
+
+    icnn_input_size = last_icnn.layer_widths[0]
+    output_of_penultimate_layer = m.addMVar(icnn_input_size, lb=-float('inf'))
+    output_of_icnn = m.addMVar(1, lb=-float('inf'))
+    add_non_sequential_constr(m, last_icnn, output_of_penultimate_layer, output_of_icnn)
+    #m.addConstr(output_of_icnn[0] <= 100000000)
+
+
+    """W = W.detach().numpy()
+    b = b.detach().numpy()
+    output_var = add_affine_constr(m, W, b, output_of_penultimate_layer, -1000, 1000)
+
+    m.addConstrs((W[i] @ output_var >= b[i] for i in range(len(W))))"""
+
+
+    #constr = m.addMConstr(A_out, output_var.tolist(), ">", b_out)
+
+    """max_var = m.addVar(lb=-float('inf'), ub=1000)
+
+    m.addConstr(max_var == norm(output_var.tolist(), 2))  # maximize distance to origin"""
+
+    m.update()
+    m.setObjective(output_of_icnn[0], GRB.MAXIMIZE)
+    m.optimize()
+
+    solution = 0
+    if m.Status == GRB.OPTIMAL or m.Status == GRB.TIME_LIMIT:
+        #print("optimum solution with value \n {}".format(output_var.getAttr("x")))
+        print("icnn_in_var {}".format(output_of_penultimate_layer.getAttr("x")))
+        print("max_var {}".format(output_of_icnn.getAttr("x")))
+        sol = output_of_penultimate_layer.getAttr("x")
+        sol = torch.tensor(sol, dtype=torch.float64)
+        sol = torch.unsqueeze(sol, 0)
+        out = last_icnn(sol)
+        print(out)
+
+
+def last_layer_picture(last_icnn: ICNN, last_c, W, b, label, solver_time_limit, solver_bound):
     m = Model()
 
     if solver_time_limit is not None:
@@ -148,10 +207,10 @@ def last_layer(last_icnn: ICNN, last_c, W, b, label, solver_time_limit, solver_b
         print("max_var {}".format(max_var.getAttr("x")))
         sol = output_of_penultimate_layer.getAttr("x")
 
-    sol = torch.tensor(sol, dtype=torch.float64)
-    sol = torch.unsqueeze(sol, 0)
-    out = last_icnn(sol)
-    print(out)
+        sol = torch.tensor(sol, dtype=torch.float64)
+        sol = torch.unsqueeze(sol, 0)
+        out = last_icnn(sol)
+        print(out)
 
 
 def sample_uniform_from(input_flattened, eps, sample_size, icnn=None, lower_bound=None, upper_bound=None, ):
@@ -169,11 +228,12 @@ def sample_uniform_from(input_flattened, eps, sample_size, icnn=None, lower_boun
 
         lower = - eps
         upper = eps
-        displacements_included_space = (upper - lower) * torch.rand((sample_size, input_size), dtype=torch.float64) + lower
+        displacements_included_space = (upper - lower) * torch.rand((sample_size, input_size),
+                                                                    dtype=torch.float64) + lower
         lower = lower_bound
         upper = upper_bound
         displacements_ambient_space = (upper - lower) * torch.rand((sample_size, input_size),
-                                                                               dtype=torch.float64) + lower
+                                                                   dtype=torch.float64) + lower
 
         # making sure that at least one value is outside the ball with radius eps
         for i, displacement in enumerate(displacements_ambient_space):
@@ -286,6 +346,7 @@ def plot_2d(nn, included, ambient):
     plt.scatter(ambient_out_x, ambient_out_y)
     plt.show()
 
+
 """transform = Compose([ToTensor(),
                      Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
                     )
@@ -303,10 +364,8 @@ nn.load_state_dict(torch.load("../cifar_fc.pth", map_location=torch.device('cpu'
 torch.set_default_dtype(torch.float64)
 start_verification(nn, images)"""
 
-#matplotlib.use('TkAgg')
-
 batch_size = 10
-epochs = 2
+epochs = 10
 number_of_train_samples = 10000
 hyper_lambda = 1
 x_range = [-1.5, 1.5]
@@ -314,9 +373,6 @@ y_range = [-1.5, 1.5]
 
 included_space, ambient_space = Rhombus().get_uniform_samples(number_of_train_samples, x_range,
                                                               y_range)  # samples will be split in inside and outside the rhombus
-"""plt.scatter(list(map(lambda x: x[0], ambient_space)), list(map(lambda x: x[1], ambient_space)))
-plt.scatter(list(map(lambda x: x[0], included_space)), list(map(lambda x: x[1], included_space)))
-plt.show()"""
 
 
 true_extremal_points = Rhombus().get_extremal_points()
@@ -327,50 +383,13 @@ ambient_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
 nn = SequentialNN([2, 2, 2])
 
+nn.load_state_dict(torch.load("nn.pt"), strict=False)
+#train_sequential_2(nn, train_loader, ambient_loader, epochs=epochs)
 
-train_sequential_2(nn, train_loader, ambient_loader, epochs=epochs)
 
+# matplotlib.use('TkAgg')
 plot_2d(nn, included_space, ambient_space)
+#torch.save(nn.state_dict(), "nn.pt")
 
-parameter_list = list(nn.parameters())
-W = parameter_list[0]
-b = parameter_list[1]
-print(W)
-print(b)
-
-mean_inp = torch.mean(included_space, dim=0)
-mean_amp = torch.mean(ambient_space, dim=0)
-mean = (mean_amp + mean_inp) / 2
-print("mean {}, mean_inc {}, mean_amb {}".format(mean, mean_inp, mean_amp))
-
-mean = mean.detach().requires_grad_(True)
-
-std_inp = torch.std(included_space, dim=0)
-std_amp = torch.std(ambient_space, dim=0)
-std = (std_amp + std_inp) / 2
-print("std {}, std_inc {}, std_amb {}".format(std, std_inp, std_amp))
-std = std.detach().requires_grad_(True)
-
-parameter_list = list(nn.parameters())
-p0 = parameter_list[0]
-p1 = parameter_list[1]
-test = torch.div(parameter_list[0], std)
-test2 = torch.matmul(parameter_list[0], mean) + parameter_list[1]
-with torch.no_grad():
-    for i, p in enumerate(nn.parameters()):
-        if i == 0:
-            p.data = torch.div(p, std)
-            w = p
-        elif i == 1:
-            p.data = torch.matmul(w, mean) + p
-        else:
-            break
-
-parameter_list = list(nn.parameters())
-W = parameter_list[0]
-b = parameter_list[1]
-print(W)
-print(b)
-
-test_image = torch.tensor([[0,0]])
+test_image = torch.tensor([[0, -1.2]], dtype=torch.float64)
 start_verification(nn, test_image)
