@@ -11,7 +11,7 @@ from torchvision.transforms import Compose, ToTensor, Normalize
 
 from script import dataInit
 from script.Networks import SequentialNN, ICNN
-from gurobipy import Model, GRB, max_, norm
+from gurobipy import Model, GRB, max_, norm, abs_
 import torch
 import numpy as np
 
@@ -24,7 +24,7 @@ from script.trainFunction import train_icnn, train_sequential, train_sequential_
 
 def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=None, solver_bound=None,
                        icnn_batch_size=10,
-                       icnn_epochs=10, sample_count=10000, sample_new=False):
+                       icnn_epochs=3, sample_count=10000, sample_new=False):
     # todo Achtung ich muss schauen, ob gurobi upper bound inklusive ist, da ich aktuell die upper bound mit eps nicht inklusive habe
     input_flattened = torch.flatten(input)
 
@@ -43,7 +43,7 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
         plt.title(caption)
         plt.show()
 
-    # plt_inc_amb("start", included_space, ambient_space)
+    plt_inc_amb("start", included_space, ambient_space)
 
     parameter_list = list(nn.parameters())
 
@@ -136,26 +136,31 @@ def last_layer_identity(last_icnn: ICNN, last_c, W, b, A_out, b_out, solver_time
     if solver_bound is not None:
         m.setParam("BestObjStop", solver_bound)
 
+    output_var = m.addMVar(2, lb=-float('inf'))
+
     icnn_input_size = last_icnn.layer_widths[0]
     output_of_penultimate_layer = m.addMVar(icnn_input_size, lb=-float('inf'))
     output_of_icnn = m.addMVar(1, lb=-float('inf'))
     add_non_sequential_constr(m, last_icnn, output_of_penultimate_layer, output_of_icnn)
-    # m.addConstr(output_of_icnn[0] <= 100000000)
+    m.addConstr(output_of_icnn[0] <= last_c)
 
-    """W = W.detach().numpy()
+    W = W.detach().numpy()
     b = b.detach().numpy()
-    output_var = add_affine_constr(m, W, b, output_of_penultimate_layer, -1000, 1000)
+    #output_var = add_affine_constr(m, W, b, output_of_penultimate_layer, -1000, 1000)
 
-    m.addConstrs((W[i] @ output_var >= b[i] for i in range(len(W))))"""
+    #m.addConstrs((W[i] @ output_var >= b[i] for i in range(len(W))))
 
-    # constr = m.addMConstr(A_out, output_var.tolist(), ">", b_out)
+    m.addConstrs(W[i] @ output_of_penultimate_layer + b[i] == output_var[i] for i in range(len(W)))
 
-    """max_var = m.addVar(lb=-float('inf'), ub=1000)
+    #constr = m.addMConstr(A_out, output_var.tolist(), ">", b_out)
 
-    m.addConstr(max_var == norm(output_var.tolist(), 2))  # maximize distance to origin"""
+    max_var = m.addMVar(2, lb=-float('inf'), ub=1000)
+
+    m.addConstr(max_var[0] == abs_(output_var[0]))  # maximize distance to origin without norm
+    m.addConstr(max_var[1] == abs_(output_var[1]))
 
     m.update()
-    m.setObjective(output_of_icnn[0], GRB.MAXIMIZE)
+    m.setObjective(max_var[0] + max_var[1], GRB.MAXIMIZE)
     m.optimize()
 
     solution = 0
@@ -163,12 +168,20 @@ def last_layer_identity(last_icnn: ICNN, last_c, W, b, A_out, b_out, solver_time
         # print("optimum solution with value \n {}".format(output_var.getAttr("x")))
         print("icnn_in_var {}".format(output_of_penultimate_layer.getAttr("x")))
         print("max_var {}".format(output_of_icnn.getAttr("x")))
+        output = output_var.getAttr("x")
+        print("output {}".format(output_var.getAttr("x")))
         sol = output_of_penultimate_layer.getAttr("x")
         sol = torch.tensor(sol, dtype=torch.float64)
         sol = torch.unsqueeze(sol, 0)
         out = last_icnn(sol)
         print(out)
 
+        print("======================= \n")
+        if Rhombus().f(output):
+            print("Verification was successful")
+        else:
+            print("Verification failed")
+        print("\n =======================")
 
 def last_layer_picture(last_icnn: ICNN, last_c, W, b, label, solver_time_limit, solver_bound):
     m = Model()
@@ -392,5 +405,5 @@ nn.load_state_dict(torch.load("nn_2x2.pt"), strict=False)
 plot_2d(nn, included_space, ambient_space)
 #torch.save(nn.state_dict(), "nn_2x2.pt")
 
-test_image = torch.tensor([[0, 0]], dtype=torch.float64)
+test_image = torch.tensor([[0, -0.8]], dtype=torch.float64)
 start_verification(nn, test_image)

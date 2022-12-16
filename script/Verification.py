@@ -61,7 +61,7 @@ def verification(icnn, center_eps_W_b=None, A_b=None, icnn_W_b_c=None, has_ReLU=
     elif icnn_W_b_c is not None:
         constraint_icnn = icnn_W_b_c[0]
         input_var = m.addMVar(input_size, lb=-float('inf'), name="in_var")
-        # W und b sind die affinen Transformationen des Layers, welches das constaint icnn approximiert. Das ist das previous layer, von dem, was ich eigentlich verifizieren will
+        # W und b bilden die affine Transformation des Layers, dass gerade verifiziert/ vergrößert werden soll
         W = icnn_W_b_c[1]
         b = icnn_W_b_c[2]
         c = icnn_W_b_c[3]
@@ -82,7 +82,10 @@ def verification(icnn, center_eps_W_b=None, A_b=None, icnn_W_b_c=None, has_ReLU=
             input_var = affine_out"""
 
         if has_ReLU:
-            m.addConstrs(W[i] @ input_to_previous_layer + b[i] == input_var[i] for i in range(len(W))) # todo relu hinzufügen
+            relu_var = m.addMVar(input_size, lb=-float('inf'), name="in_var")
+            m.addConstrs(W[i] @ input_to_previous_layer + b[i] == relu_var[i] for i in range(len(W)))
+            m.addConstrs(input_var[i] == max_(0, relu_var[i]) for i in range(input_size))
+
         else:
             m.addConstrs(W[i] @ input_to_previous_layer + b[i] == input_var[i] for i in range(len(W)))
 
