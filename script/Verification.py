@@ -12,28 +12,80 @@ def load(icnn):
     icnn.load_state_dict(torch.load("../convexHullModel.pth"), strict=False)
 
 
-def verification(icnn, center=None, eps=None, A=None, b=None, sequential=False):
+def verification(icnn, center_eps_W_b=None, A_b=None, icnn_W_b_c=None, has_ReLU=False, sequential=False):
     m = Model()
     input_size = icnn.layer_widths[0]
     output_size = icnn.layer_widths[-1]
-    input_var = m.addMVar(input_size, lb=-float('inf'), name="in_var")
     output_var = m.addMVar(output_size, lb=-float('inf'), name="output_var")
+
+    lb = -10000
+    ub = 10000
 
     # A, b = Rhombus().get_A(), Rhombus().get_b()
     # todo hier wird das <= wahrscheinlich nicht als <= sondern nur als < erkannt, Gurobi meckert nämlich auch nicht, wenn man "<k" dahin schreibt
     # m.addMConstr(A, input_var, "<=", b)
 
-    if center is not None and eps is not None:
+    if center_eps_W_b is not None:
+        center = center_eps_W_b[0]
+        eps = center_eps_W_b[1]
+        W = center_eps_W_b[2]
+        b = center_eps_W_b[3]
+
+        input_to_previous_layer_size = b.shape
+        input_to_previous_layer = m.addMVar(input_to_previous_layer_size, lb=-float('inf'))
+
         max_vars = m.addVars(input_size, lb=-float('inf'))
         min_vars = m.addVars(input_size, lb=-float('inf'))
 
         m.addConstrs(max_vars[i] == center[i] + eps for i in range(input_size))
         m.addConstrs(min_vars[i] == center[i] - eps for i in range(input_size))
 
-        m.addConstrs(input_var[i] <= max_vars[i] for i in range(input_size))
-        m.addConstrs(input_var[i] >= min_vars[i] for i in range(input_size))
-    elif A is not None and b is not None:
+        m.addConstrs(input_to_previous_layer[i] <= max_vars[i] for i in range(input_size))
+        m.addConstrs(input_to_previous_layer[i] >= min_vars[i] for i in range(input_size))
+
+        affine_out = add_affine_constr(m, W, b, input_to_previous_layer, lb, ub)
+
+        if has_ReLU:
+            relu_out = add_relu_constr(m, affine_out, input_to_previous_layer_size, lb, ub)
+            input_var = relu_out
+        else:
+            input_var = affine_out
+
+
+    elif A_b is not None:
+        input_var = m.addMVar(input_size, lb=-float('inf'), name="in_var")
+        A = A_b[0]
+        b = A_b[1]
         m.addMConstr(A, input_var, "<=", b)
+
+    elif icnn_W_b_c is not None:
+        constraint_icnn = icnn_W_b_c[0]
+        input_var = m.addMVar(input_size, lb=-float('inf'), name="in_var")
+        # W und b sind die affinen Transformationen des Layers, welches das constaint icnn approximiert. Das ist das previous layer, von dem, was ich eigentlich verifizieren will
+        W = icnn_W_b_c[1]
+        b = icnn_W_b_c[2]
+        c = icnn_W_b_c[3]
+
+        # todo wie kann ich hier wiederverwenden, dass ich das constraint_icnn schon mal verifiziert habe?
+        constraint_icnn_input_size = constraint_icnn.layer_widths[0]
+        input_to_previous_layer = m.addMVar(constraint_icnn_input_size, lb=-float('inf'))
+        output_of_constraint_icnn = m.addMVar(1, lb=-float('inf'))
+
+        add_non_sequential_constr(m, constraint_icnn, input_to_previous_layer, output_of_constraint_icnn)
+        m.addConstr(output_of_constraint_icnn[0] <= c)
+
+        """affine_out = add_affine_constr(m, W, b, input_to_previous_layer, lb, ub)
+        if has_ReLU:
+            relu_out = add_relu_constr(m, affine_out, constraint_icnn_input_size, lb, ub)
+            input_var = relu_out
+        else:
+            input_var = affine_out"""
+
+        if has_ReLU:
+            m.addConstrs(W[i] @ input_to_previous_layer + b[i] == input_var[i] for i in range(len(W))) # todo relu hinzufügen
+        else:
+            m.addConstrs(W[i] @ input_to_previous_layer + b[i] == input_var[i] for i in range(len(W)))
+
     else:
         return
 
@@ -49,8 +101,37 @@ def verification(icnn, center=None, eps=None, A=None, b=None, sequential=False):
 
     if m.Status == GRB.OPTIMAL:
         inp = input_var.getAttr("x")
-        # inp = [inp[0], inp[1]]
-        # print("optimum solution at: {}, with value {}".format(inp, output_var.getAttr("x")))
+        inp = torch.tensor([[inp[0], inp[1]]], dtype=torch.float64)
+        true_out = icnn(inp)
+        print("optimum solution at: {}, with value {}, true output: {}".format(inp, output_var.getAttr("x"), true_out))
+
+        if center_eps_W_b is not None:
+            input = input_to_previous_layer.getAttr("x")
+            affine_verification_out = affine_out.getAttr("x")
+            relu_inp = relu_out.getAttr("x")
+            print("input for constraint icnn: {}, affine transform: {}, relu transform: {}".format(input, affine_verification_out, relu_inp))
+            input = torch.tensor([[input[0], input[1]]], dtype=torch.float64)
+            center = center_eps_W_b[0]
+            eps = center_eps_W_b[1]
+            W =  torch.tensor(center_eps_W_b[2], dtype=torch.float64)
+            b =  torch.tensor(center_eps_W_b[3], dtype=torch.float64)
+            affine_out = torch.matmul(W, input[0]) + b
+            print("affine output = {}".format(affine_out))
+
+        if icnn_W_b_c is not None:
+            constraint_icnn_input = input_to_previous_layer.getAttr("x")
+            #affine_inp = affine_out.getAttr("x")
+            #relu_inp = relu_out.getAttr("x")
+            #print("input for constraint icnn: {}, affine transform: {}, relu transform: {}".format(constraint_icnn_input, affine_inp, relu_inp))
+            print("input for constraint icnn: {}".format(constraint_icnn_input))
+            constraint_icnn_input = torch.tensor([[constraint_icnn_input[0], constraint_icnn_input[1]]], dtype=torch.float64)
+            constraint_icnn = icnn_W_b_c[0]
+            W = torch.tensor(icnn_W_b_c[1], dtype=torch.float64)
+            b = torch.tensor(icnn_W_b_c[2], dtype=torch.float64)
+            c = icnn_W_b_c[3]
+            cons_out = constraint_icnn(constraint_icnn_input)
+            #affine_out = torch.matmul(W, constraint_icnn_input[0]) + b
+            print("output of constraint icnn: {}".format(cons_out))
 
         """for i in range(1, m.getAttr("SolCount")):
             m.setParam("SolutionNumber", i)
@@ -167,6 +248,7 @@ def add_affine_constr(model, W, b, input_vars, lb, ub, i=0):
     out_vars = model.addMVar(out_fet, lb=lb, ub=ub, name="affine_var" + str(i))
     const = model.addConstrs((W[i] @ input_vars + b[i] == out_vars[i] for i in range(len(W))))
     return out_vars
+
 
 def add_relu_constr(model, input_vars, number_of_out_features, lb, ub, i=0):
     a = model.addMVar(number_of_out_features, vtype=GRB.BINARY, name="a" + str(i))
