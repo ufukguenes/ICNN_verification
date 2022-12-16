@@ -139,7 +139,7 @@ class Plots_for():
 
         self._create_plot_convex_hull()
         self._create_plot_model()
-        self._create_plot_true_convex_hull()
+        #self._create_plot_true_convex_hull()
         plt.show()
 
     def plt_adversarial_initial(self):
