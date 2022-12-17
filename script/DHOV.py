@@ -157,7 +157,7 @@ def last_layer_identity(last_icnn: ICNN, last_c, W, b, A_out, b_out, solver_time
     max_var = m.addMVar(2, lb=-float('inf'), ub=1000)
 
     m.addConstr(max_var[0] == abs_(output_var[0]))  # maximize distance to origin without norm
-    m.addConstr(max_var[1] == abs_(output_var[1]))
+    m.addConstr(max_var[1] == abs_(output_var[1])) # todo diese nachbedinung garantiert nicht, dass etwas außerhalb maximal ist!
 
     m.update()
     m.setObjective(max_var[0] + max_var[1], GRB.MAXIMIZE)
