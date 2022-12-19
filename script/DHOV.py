@@ -405,5 +405,5 @@ nn.load_state_dict(torch.load("nn_2x2.pt"), strict=False)
 plot_2d(nn, included_space, ambient_space)
 #torch.save(nn.state_dict(), "nn_2x2.pt")
 
-test_image = torch.tensor([[0, -0.8]], dtype=torch.float64)
+test_image = torch.tensor([[0, 1]], dtype=torch.float64)
 start_verification(nn, test_image)
