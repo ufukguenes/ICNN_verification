@@ -40,6 +40,11 @@ def normalize_nn(nn, mean, std, isICNN=False):
 
 
 def normalize_data(included_space, ambient_space, mean, std):
+    std = std.detach()
+    for i, val in enumerate(std):
+        if val == 0:
+            std[i] = 1 # todo this cant be right
+
     ambient_space_transform = tv.transforms.Lambda(lambda x: (x - mean) / std)(ambient_space)
     included_space_transform = tv.transforms.Lambda(lambda x: (x - mean) / std)(included_space)
     return included_space_transform.detach().requires_grad_(True), ambient_space_transform.detach().requires_grad_(True)

@@ -14,6 +14,9 @@ def load(icnn):
 
 def verification(icnn, center_eps_W_b=None, A_b=None, icnn_W_b_c=None, has_ReLU=False, sequential=False):
     m = Model()
+
+    m.Params.LogToConsole = 0
+
     input_size = icnn.layer_widths[0]
     output_size = icnn.layer_widths[-1]
     output_var = m.addMVar(output_size, lb=-float('inf'), name="output_var")
@@ -31,22 +34,22 @@ def verification(icnn, center_eps_W_b=None, A_b=None, icnn_W_b_c=None, has_ReLU=
         W = center_eps_W_b[2]
         b = center_eps_W_b[3]
 
-        input_to_previous_layer_size = b.shape
+        input_to_previous_layer_size = W.shape[1]
         input_to_previous_layer = m.addMVar(input_to_previous_layer_size, lb=-float('inf'))
 
-        max_vars = m.addVars(input_size, lb=-float('inf'))
-        min_vars = m.addVars(input_size, lb=-float('inf'))
+        max_vars = m.addVars(input_to_previous_layer_size, lb=-float('inf'))
+        min_vars = m.addVars(input_to_previous_layer_size, lb=-float('inf'))
 
-        m.addConstrs(max_vars[i] == center[i] + eps for i in range(input_size))
-        m.addConstrs(min_vars[i] == center[i] - eps for i in range(input_size))
+        m.addConstrs(max_vars[i] == center[i] + eps for i in range(input_to_previous_layer_size))
+        m.addConstrs(min_vars[i] == center[i] - eps for i in range(input_to_previous_layer_size))
 
-        m.addConstrs(input_to_previous_layer[i] <= max_vars[i] for i in range(input_size))
-        m.addConstrs(input_to_previous_layer[i] >= min_vars[i] for i in range(input_size))
+        m.addConstrs(input_to_previous_layer[i] <= max_vars[i] for i in range(input_to_previous_layer_size))
+        m.addConstrs(input_to_previous_layer[i] >= min_vars[i] for i in range(input_to_previous_layer_size))
 
         affine_out = add_affine_constr(m, W, b, input_to_previous_layer, lb, ub)
 
         if has_ReLU:
-            relu_out = add_relu_constr(m, affine_out, input_to_previous_layer_size, lb, ub)
+            relu_out = add_relu_constr(m, affine_out, input_size, lb, ub)
             input_var = relu_out
         else:
             input_var = affine_out
@@ -104,11 +107,11 @@ def verification(icnn, center_eps_W_b=None, A_b=None, icnn_W_b_c=None, has_ReLU=
 
     if m.Status == GRB.OPTIMAL:
         inp = input_var.getAttr("x")
-        inp = torch.tensor([[inp[0], inp[1]]], dtype=torch.float64)
-        true_out = icnn(inp)
-        print("optimum solution at: {}, with value {}, true output: {}".format(inp, output_var.getAttr("x"), true_out))
+        #inp = torch.tensor([[inp[0], inp[1]]], dtype=torch.float64)
+        #true_out = icnn(inp)
+        print("optimum solution at: {}, with value {}, true output: {}".format(inp, output_var.getAttr("x"), 0)) #
 
-        if center_eps_W_b is not None:
+        """if center_eps_W_b is not None:
             input = input_to_previous_layer.getAttr("x")
             affine_verification_out = affine_out.getAttr("x")
             relu_inp = relu_out.getAttr("x")
@@ -134,7 +137,7 @@ def verification(icnn, center_eps_W_b=None, A_b=None, icnn_W_b_c=None, has_ReLU=
             c = icnn_W_b_c[3]
             cons_out = constraint_icnn(constraint_icnn_input)
             #affine_out = torch.matmul(W, constraint_icnn_input[0]) + b
-            print("output of constraint icnn: {}".format(cons_out))
+            print("output of constraint icnn: {}".format(cons_out))"""
 
         """for i in range(1, m.getAttr("SolCount")):
             m.setParam("SolutionNumber", i)

@@ -23,8 +23,8 @@ from script.trainFunction import train_icnn, train_sequential, train_sequential_
 
 
 def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=None, solver_bound=None,
-                       icnn_batch_size=10,
-                       icnn_epochs=3, sample_count=10000, sample_new=False):
+                       icnn_batch_size=100,
+                       icnn_epochs=100, sample_count=10000, sample_new=False):
     # todo Achtung ich muss schauen, ob gurobi upper bound inklusive ist, da ich aktuell die upper bound mit eps nicht inklusive habe
     input_flattened = torch.flatten(input)
 
@@ -43,7 +43,7 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
         plt.title(caption)
         plt.show()
 
-    plt_inc_amb("start", included_space, ambient_space)
+    #plt_inc_amb("start", included_space, ambient_space)
 
     parameter_list = list(nn.parameters())
 
@@ -57,10 +57,10 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
 
         W, b = parameter_list[i], parameter_list[i + 1]
 
-        included_space, ambient_space, new_center = apply_affine_transform(W, b, included_space, ambient_space, center)
-        plt_inc_amb("affin e" + str(i), included_space.tolist(), ambient_space.tolist())
-        included_space, ambient_space, new_center = apply_ReLU_transform(included_space, ambient_space, center)
-        plt_inc_amb("relu " + str(i), included_space.tolist(), ambient_space.tolist())
+        included_space, ambient_space = apply_affine_transform(W, b, included_space, ambient_space)
+        #plt_inc_amb("affin e" + str(i), included_space.tolist(), ambient_space.tolist())
+        included_space, ambient_space = apply_ReLU_transform(included_space, ambient_space)
+        #plt_inc_amb("relu " + str(i), included_space.tolist(), ambient_space.tolist())
 
         mean = get_mean(included_space, ambient_space)
         std = get_std(included_space, ambient_space)
@@ -85,10 +85,10 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
 
         normalize_nn(current_icnn, mean, std, isICNN=True)
         #matplotlib.use("TkAgg")
-        plots = Plots_for(0, current_icnn, included_space.detach(), ambient_space.detach(), true_extremal_points,
-                          [1.17, 1.19], [2.36, 2.37])
+        #plots = Plots_for(0, current_icnn, included_space.detach(), ambient_space.detach(), true_extremal_points,
+        #                  [1.17, 1.19], [2.36, 2.37])
         #plots.plt_initial()
-        plots.plt_dotted()
+        #plots.plt_dotted()
 
         # verify and enlarge convex approximation
         if i == 0:
@@ -99,8 +99,8 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
             prev_c = c_values[int(i/2) - 1]
             adversarial_input, c = verification(current_icnn, icnn_W_b_c=[prev_icnn, W.detach().numpy(), b.detach().numpy(), prev_c], has_ReLU=True)
         c_values.append(c)
-        plots.c = c
-        plots.plt_dotted()
+        #plots.c = c
+        #plots.plt_dotted()
 
         c_values.append(0)
 
@@ -129,7 +129,7 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
 
 def last_layer_identity(last_icnn: ICNN, last_c, W, b, A_out, b_out, solver_time_limit, solver_bound):
     m = Model()
-
+    m.Params.LogToConsole = 0
     if solver_time_limit is not None:
         m.setParam("TimeLimit", solver_time_limit)
 
@@ -285,7 +285,7 @@ def sample_uniform_from(input_flattened, eps, sample_size, icnn=None, lower_boun
     return included_space, ambient_space
 
 
-def apply_affine_transform(W, b, included_space, ambient_space, center):
+def apply_affine_transform(W, b, included_space, ambient_space):
     t = time.time()
     affine_inc2 = torch.empty((included_space.shape[0], b.shape[0]), dtype=torch.float64)
     affine_amb2 = torch.empty((ambient_space.shape[0], b.shape[0]), dtype=torch.float64)
@@ -294,20 +294,17 @@ def apply_affine_transform(W, b, included_space, ambient_space, center):
         affine_inc2[i] = torch.matmul(W, included_space[i]).add(b)
     for i in range(ambient_space.shape[0]):
         affine_amb2[i] = torch.matmul(W, ambient_space[i]).add(b)
-
-    center = torch.matmul(W, center).add(b)
     t = time.time() - t
     print("Time: {}".format(t))
 
-    return affine_inc2, affine_amb2, center
+    return affine_inc2, affine_amb2
 
 
-def apply_ReLU_transform(included_space, ambient_space, center):
+def apply_ReLU_transform(included_space, ambient_space):
     relu = torch.nn.ReLU()
     included_space = relu(included_space)
     ambient_space = relu(ambient_space)
-    center = relu(center)
-    return included_space, ambient_space, center
+    return included_space, ambient_space
 
 
 def split_new(icnn, included_space, ambient_space, c):
@@ -395,15 +392,15 @@ train_loader = DataLoader(dataset_in, batch_size=batch_size, shuffle=True)
 dataset = ConvexDataset(data=ambient_space)
 ambient_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
-nn = SequentialNN([2, 2, 2, 2])
+nn = SequentialNN([2, 4, 3, 2])
 
-nn.load_state_dict(torch.load("nn_2x2.pt"), strict=False)
-#train_sequential_2(nn, train_loader, ambient_loader, epochs=epochs)
+#nn.load_state_dict(torch.load("nn_2x2.pt"), strict=False)
+train_sequential_2(nn, train_loader, ambient_loader, epochs=epochs)
 
 
 # matplotlib.use('TkAgg')
 plot_2d(nn, included_space, ambient_space)
 #torch.save(nn.state_dict(), "nn_2x2.pt")
 
-test_image = torch.tensor([[0, 1]], dtype=torch.float64)
+test_image = torch.tensor([[0, 0]], dtype=torch.float64)
 start_verification(nn, test_image)
