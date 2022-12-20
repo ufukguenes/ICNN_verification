@@ -246,8 +246,8 @@ def sample_uniform_from(input_flattened, eps, sample_size, icnn_c=None, lower_bo
         displacements = displacements.detach()
         for i, disp in enumerate(displacements):
             for k, val in enumerate(disp):
-                upper_bound = min(eps[k] * 1.3, eps[k] + 0.01)
-                lower_bound = max(- eps[k] * 1.3, - eps[k] - 0.01)
+                upper_bound = min(eps[k] * 1.3, eps[k] + 0.004)
+                lower_bound = max(- eps[k] * 1.3, - eps[k] - 0.004)
                 val = (upper_bound - lower_bound) * val + lower_bound
                 displacements[i][k] = val
 
