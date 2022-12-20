@@ -6,6 +6,8 @@ import torch
 from script.lossFunction import *
 import torch.nn as nn
 
+from script.testFunction import test
+
 
 def train_icnn(model, train_loader, ambient_loader, epochs=10, opt=None,
                return_history=False, sequential=False, hyper_lambda=1):
@@ -151,7 +153,7 @@ def train_sequential_2(model, train_loader, ambient_loader, epochs=10, return_hi
     history = []
 
     opt = torch.optim.Adam(model.parameters())
-
+    criterion = torch.nn.MSELoss()
     for epoch in range(epochs):
         train_loss = 0
         train_n = 0
@@ -162,7 +164,10 @@ def train_sequential_2(model, train_loader, ambient_loader, epochs=10, return_hi
             output_included = model(x_included)
             output_ambient = model(x_ambient)
 
-            loss = identity_loss(output_included, output_ambient, x_included, x_ambient)
+            #loss = identity_loss(output_included, output_ambient, x_included, x_ambient)
+            pred = torch.cat([output_included, output_ambient])
+            label = torch.cat([x_included, x_ambient])
+            loss = criterion(pred, label)
             opt.zero_grad()
             loss.backward()
             opt.step()
