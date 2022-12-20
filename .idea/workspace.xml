@@ -4,8 +4,6 @@
     <list default="true" id="90b0f737-acac-430b-a76c-cab51a684379" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/script/DHOV.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/DHOV.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/script/Normalisation.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/Normalisation.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/script/Verification.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/Verification.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -199,6 +197,8 @@
       <workItem from="1671012044811" duration="62000" />
       <workItem from="1671188199755" duration="27900000" />
       <workItem from="1671387093153" duration="1003000" />
+      <workItem from="1671497076028" duration="5264000" />
+      <workItem from="1671533055727" duration="7041000" />
     </task>
     <servers />
   </component>
@@ -234,6 +234,31 @@
           <line>19</line>
           <option name="timeStamp" value="278" />
         </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/script/DHOV.py</url>
+          <line>264</line>
+          <option name="timeStamp" value="371" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/script/DHOV.py</url>
+          <line>240</line>
+          <option name="timeStamp" value="373" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/script/DHOV.py</url>
+          <line>404</line>
+          <option name="timeStamp" value="374" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/script/DHOV.py</url>
+          <line>117</line>
+          <option name="timeStamp" value="375" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/script/DHOV.py</url>
+          <line>113</line>
+          <option name="timeStamp" value="376" />
+        </line-breakpoint>
       </breakpoints>
       <default-breakpoints>
         <breakpoint type="python-exception">
@@ -250,7 +275,7 @@
     <SUITE FILE_PATH="coverage/ICNN_verification$Normalisation.coverage" NAME="Normalisation Coverage Results" MODIFIED="1671204683259" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script" />
     <SUITE FILE_PATH="coverage/DeepHull$main.coverage" NAME="main Coverage Results" MODIFIED="1669233392579" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ICNN_verification$main.coverage" NAME="main Coverage Results" MODIFIED="1670249050825" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/ICNN_verification$DHOV.coverage" NAME="DHOV Coverage Results" MODIFIED="1671454447065" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script" />
+    <SUITE FILE_PATH="coverage/ICNN_verification$DHOV.coverage" NAME="DHOV Coverage Results" MODIFIED="1671564799316" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script" />
     <SUITE FILE_PATH="coverage/DeepHull$Verification.coverage" NAME="Verification Coverage Results" MODIFIED="1669122239179" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script" />
     <SUITE FILE_PATH="coverage/DeepHull$eval.coverage" NAME="eval Coverage Results" MODIFIED="1668723858367" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
