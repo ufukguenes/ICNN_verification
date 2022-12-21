@@ -41,8 +41,8 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
 
     def plt_inc_amb(caption, inc, amb):
         plt.figure(figsize=(20, 10))
-        plt.scatter(list(map(lambda x: x[0], amb)), list(map(lambda x: x[1], amb)))
         plt.scatter(list(map(lambda x: x[0], inc)), list(map(lambda x: x[1], inc)))
+        plt.scatter(list(map(lambda x: x[0], amb)), list(map(lambda x: x[1], amb)))
         plt.title(caption)
         plt.show()
 
@@ -374,7 +374,7 @@ def sample_max_radius(icnn, c, sample_size, box_bounds=None):
         choice_for_lower_bound = [center_values[k] - eps_values[k], center_values[k] - eps_values[k] - 0.004]
 
         if box_bounds is not None:
-            choice_for_upper_bound.append(box_bounds[1][k].item() + 0.002)
+            choice_for_upper_bound.append(box_bounds[1][k].item()+0.002)
             choice_for_lower_bound.append(box_bounds[0][k].item()-0.002)
 
         distance_to_center_upper = [abs(center_values[k] - choice_for_upper_bound[i]) for i in range(len(choice_for_upper_bound))]
@@ -571,11 +571,11 @@ train_loader = DataLoader(dataset_in, batch_size=batch_size, shuffle=True)
 dataset = ConvexDataset(data=ambient_space)
 ambient_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
-nn = SequentialNN([2, 2, 2, 2])
-should_plot = True
+nn = SequentialNN([2, 5, 2, 2])
+should_plot = False
 
-nn.load_state_dict(torch.load("nn_2x2.pt"), strict=False)
-#train_sequential_2(nn, train_loader, ambient_loader, epochs=epochs)
+#nn.load_state_dict(torch.load("nn_2x2.pt"), strict=False)
+train_sequential_2(nn, train_loader, ambient_loader, epochs=epochs)
 
 
 #matplotlib.use('TkAgg')
