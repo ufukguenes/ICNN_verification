@@ -30,7 +30,7 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
     eps_bounds = [input_flattened.add(-eps), input_flattened.add(eps)]
     box_bounds = calculate_box_bounds(nn, eps_bounds)  # todo abbrechen, wenn die box bounds schon die eigenschaft erfüllen
 
-    included_space, ambient_space = sample_uniform_from(input_flattened, eps, sample_count, lower_bound=-0.002,
+    included_space, ambient_space = sample_uniform_from(input_flattened, eps, sample_count, lower_bound=0.002,
                                                         upper_bound=0.002) #todo test for when lower/upper bound is smaller then eps
 
     """imshow_flattened(input_flattened, (3, 32, 32))
@@ -69,7 +69,10 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
         if should_plot:
             plt_inc_amb("relu " + str(i), included_space.tolist(), ambient_space.tolist())
 
+        ambient_space = add_to_ambient_space(ambient_space, int(sample_count / 2), box_bounds[current_layer_index])
 
+        if should_plot:
+            plt_inc_amb("enhanced ambient space " + str(i), included_space.tolist(), ambient_space.tolist())
 
         mean = get_mean(included_space, ambient_space)
         std = get_std(included_space, ambient_space)
@@ -84,14 +87,15 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
         # torch.save(ambient_space, "../ambient_space_after_relu.pt")
 
         # train icnn
-        train_icnn(current_icnn, train_loader, ambient_loader, epochs=icnn_epochs, hyper_lambda=1)
+        train_icnn(current_icnn, train_loader, ambient_loader, epochs=icnn_epochs, hyper_lambda=0.8)
 
         normalize_nn(current_icnn, mean, std, isICNN=True)
         #matplotlib.use("TkAgg")
         if should_plot:
             plots = Plots_for(0, current_icnn, included_space.detach(), ambient_space.detach(), true_extremal_points,
-                              [1.17, 1.19], [2.36, 2.37])
+                              [-0.1, 4], [-0.1, 3])
             plots.plt_dotted()
+            plots.plt_mesh()
 
         # verify and enlarge convex approximation
         if i == 0:
@@ -119,6 +123,7 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
             included_space, ambient_space = sample_max_radius(current_icnn, c, sample_count, box_bounds=box_bounds[current_layer_index])
             if should_plot:
                 plt_inc_amb("sampled new", included_space, ambient_space)
+
         else:
             included_space, ambient_space = split_new(current_icnn, included_space, ambient_space, c)
 
@@ -239,6 +244,16 @@ def last_layer_picture(last_icnn: ICNN, last_c, W, b, label, solver_time_limit, 
 def sample_uniform_from(input_flattened, eps, sample_size, icnn_c=None, lower_bound=None, upper_bound=None, ):
     input_size = input_flattened.size(dim=0)
 
+    lb = - eps - 0.001
+    ub = eps + 0.001
+
+    if lower_bound is not None:
+        lb = - eps - lower_bound
+    if upper_bound is not None:
+        ub = eps + upper_bound
+
+    lower_bound = lb
+    upper_bound = ub
 
 
     if type(eps) == list and icnn_c is not None and len(eps) == input_size:
@@ -268,12 +283,6 @@ def sample_uniform_from(input_flattened, eps, sample_size, icnn_c=None, lower_bo
 
         print("included space num samples {}, ambient space num samples {}".format(len(included_space), len(ambient_space)))
         return included_space, ambient_space
-
-
-    if lower_bound is None:
-        lower_bound = eps - 0.001
-    if upper_bound is None:
-        upper_bound = eps + 0.001
 
     if icnn_c is None:
         sample_size = int(sample_size / 2)
@@ -370,12 +379,12 @@ def sample_max_radius(icnn, c, sample_size, box_bounds=None):
     best_lower_bound = []
 
     for k, val in enumerate(eps_values):
-        choice_for_upper_bound = [center_values[k] + eps_values[k], center_values[k] + eps_values[k] + 0.004]
-        choice_for_lower_bound = [center_values[k] - eps_values[k], center_values[k] - eps_values[k] - 0.004]
+        choice_for_upper_bound = [center_values[k] + eps_values[k], center_values[k] + eps_values[k]]
+        choice_for_lower_bound = [center_values[k] - eps_values[k], center_values[k] - eps_values[k]]
 
         if box_bounds is not None:
-            choice_for_upper_bound.append(box_bounds[1][k].item()+0.002)
-            choice_for_lower_bound.append(box_bounds[0][k].item()-0.002)
+            choice_for_upper_bound.append(box_bounds[1][k].item())
+            choice_for_lower_bound.append(box_bounds[0][k].item())
 
         distance_to_center_upper = [abs(center_values[k] - choice_for_upper_bound[i]) for i in range(len(choice_for_upper_bound))]
         distance_to_center_lower = [abs(center_values[k] - choice_for_lower_bound[i]) for i in range(len(choice_for_lower_bound))]
@@ -421,6 +430,14 @@ def sample_max_radius(icnn, c, sample_size, box_bounds=None):
         return sample_uniform_from(torch.tensor(center_point, dtype=torch.float64), eps, sample_size, icnn_c=[icnn, c])
 
 """
+
+def add_to_ambient_space(ambient_space, count, box_bounds):
+    lb = box_bounds[0]
+    ub = box_bounds[1]
+    shape = ambient_space.size()[1]
+    samples = (ub - lb) * torch.rand((count, shape), dtype=torch.float64) + lb
+    ambient_space = torch.cat([ambient_space, samples], dim=0)
+    return ambient_space
 
 def calculate_box_bounds(nn, input_bounds):
     # todo for now this only works for sequential nets
@@ -505,9 +522,6 @@ def apply_ReLU_transform(included_space, ambient_space):
     return included_space, ambient_space
 
 
-
-
-
 def imshow_flattened(img_flattened, shape):
     img = np.reshape(img_flattened, shape)
     img = img / 2 + .05  # revert normalization for viewing
@@ -571,18 +585,36 @@ train_loader = DataLoader(dataset_in, batch_size=batch_size, shuffle=True)
 dataset = ConvexDataset(data=ambient_space)
 ambient_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
-nn = SequentialNN([2, 5, 2, 2])
-should_plot = False
+
+
+"""W1 = [1. 1.; 1. -1.]
+b1 = [0., 0.]
+W2 = [1. 1.; 1. -1.]
+b2 = [-0.5, 0.]
+W3 = [-1. 1.; 1. 1.]
+b3 = [3., 0.] """
+
+nn = SequentialNN([2, 2, 2, 2])
+should_plot = True
+
+with torch.no_grad():
+    parameter_list = list(nn.parameters())
+    parameter_list[0].data = torch.tensor([[1, 1], [1, -1]], dtype=torch.float64)
+    parameter_list[1].data = torch.tensor([0, 0], dtype=torch.float64)
+    parameter_list[2].data = torch.tensor([[1, 1], [1, -1]], dtype=torch.float64)
+    parameter_list[3].data = torch.tensor([-0.5, 0], dtype=torch.float64)
+    parameter_list[4].data = torch.tensor([[-1, 1], [1, 1]], dtype=torch.float64)
+    parameter_list[5].data = torch.tensor([3, 0], dtype=torch.float64)
 
 #nn.load_state_dict(torch.load("nn_2x2.pt"), strict=False)
-train_sequential_2(nn, train_loader, ambient_loader, epochs=epochs)
+#train_sequential_2(nn, train_loader, ambient_loader, epochs=epochs)
 
 
 #matplotlib.use('TkAgg')
 
-plot_2d(nn, included_space, ambient_space)
+#plot_2d(nn, included_space, ambient_space)
 #torch.save(nn.state_dict(), "nn_2x2.pt")
 
 
 test_image = torch.tensor([[0, 0]], dtype=torch.float64)
-start_verification(nn, test_image, sample_new=True)
+start_verification(nn, test_image, eps=1, sample_new=True)
