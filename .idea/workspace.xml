@@ -4,13 +4,6 @@
     <list default="true" id="90b0f737-acac-430b-a76c-cab51a684379" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/script/DHOV.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/DHOV.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/script/Experiments/DHOV Experiment.ipynb" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/script/Experiments/GenerativeExperiment.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/script/Experiments/GenerativeExperiment.ipynb" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/script/Experiments/GenerativeMaxDistanceLoss.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/script/Experiments/GenerativeMaxDistanceLoss.ipynb" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/script/Experiments/GenerativeWithoutICNNExperiment.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/script/Experiments/GenerativeWithoutICNNExperiment.ipynb" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/script/Experiments/NonGenerativeExperiment.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/script/Experiments/NonGenerativeExperiment.ipynb" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/script/Experiments/NormalizationExperiment.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/script/Experiments/NormalizationExperiment.ipynb" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/script/Experiments/NormalizationICNN.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/script/Experiments/NormalizationICNN.ipynb" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -184,7 +177,10 @@
       <workItem from="1671387093153" duration="1003000" />
       <workItem from="1671497076028" duration="5264000" />
       <workItem from="1671533055727" duration="22633000" />
-      <workItem from="1671611929610" duration="1389000" />
+      <workItem from="1671611929610" duration="1927000" />
+      <workItem from="1671617053253" duration="80000" />
+      <workItem from="1671636670671" duration="2277000" />
+      <workItem from="1671665711262" duration="13914000" />
     </task>
     <servers />
   </component>
@@ -222,13 +218,8 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/script/DHOV.py</url>
-          <line>482</line>
-          <option name="timeStamp" value="374" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/script/DHOV.py</url>
-          <line>120</line>
-          <option name="timeStamp" value="391" />
+          <line>361</line>
+          <option name="timeStamp" value="407" />
         </line-breakpoint>
       </breakpoints>
       <default-breakpoints>
@@ -246,7 +237,7 @@
     <SUITE FILE_PATH="coverage/ICNN_verification$Normalisation.coverage" NAME="Normalisation Coverage Results" MODIFIED="1671204683259" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script" />
     <SUITE FILE_PATH="coverage/DeepHull$main.coverage" NAME="main Coverage Results" MODIFIED="1669233392579" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ICNN_verification$main.coverage" NAME="main Coverage Results" MODIFIED="1670249050825" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/ICNN_verification$DHOV.coverage" NAME="DHOV Coverage Results" MODIFIED="1671581394668" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script" />
+    <SUITE FILE_PATH="coverage/ICNN_verification$DHOV.coverage" NAME="DHOV Coverage Results" MODIFIED="1671759823223" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script" />
     <SUITE FILE_PATH="coverage/DeepHull$Verification.coverage" NAME="Verification Coverage Results" MODIFIED="1669122239179" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script" />
     <SUITE FILE_PATH="coverage/DeepHull$eval.coverage" NAME="eval Coverage Results" MODIFIED="1668723858367" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
