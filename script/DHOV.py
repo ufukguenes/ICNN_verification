@@ -24,7 +24,7 @@ from script.trainFunction import train_icnn, train_sequential, train_sequential_
 
 def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=None, solver_bound=None,
                        icnn_batch_size=10,
-                       icnn_epochs=10, sample_count=10000, sample_new=True):
+                       icnn_epochs=0, sample_count=10000, sample_new=True):
     # todo Achtung ich muss schauen, ob gurobi upper bound inklusive ist, da ich aktuell die upper bound mit eps nicht inklusive habe
     input_flattened = torch.flatten(input)
     eps_bounds = [input_flattened.add(-eps), input_flattened.add(eps)]
@@ -57,7 +57,7 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
     for i in range(0, len(parameter_list) - 2, 2):  # -2 because last layer has no ReLu activation
         current_layer_index = int(i / 2)
         icnn_input_size = nn.layer_widths[current_layer_index + 1]
-        icnns.append(ICNN([icnn_input_size, 10, 10, 1]))
+        icnns.append(ICNN([icnn_input_size, 10, 10, icnn_input_size, 2*icnn_input_size, 1]))
         current_icnn = icnns[current_layer_index]
 
         W, b = parameter_list[i], parameter_list[i + 1]
@@ -86,8 +86,9 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
         # torch.save(included_space, "../included_space_after_relu.pt")
         # torch.save(ambient_space, "../ambient_space_after_relu.pt")
 
-        # train icnn
-        train_icnn(current_icnn, train_loader, ambient_loader, epochs=icnn_epochs, hyper_lambda=0.8)
+        init_icnn(current_icnn, box_bounds[current_layer_index])
+        # train icnn1
+        train_icnn(current_icnn, train_loader, ambient_loader, epochs=icnn_epochs, hyper_lambda=1)
 
         normalize_nn(current_icnn, mean, std, isICNN=True)
         #matplotlib.use("TkAgg")
@@ -195,6 +196,37 @@ def last_layer_identity(last_icnn: ICNN, last_c, W, b, A_out, b_out, solver_time
         else:
             print("Verification failed")
         print("\n =======================")
+
+def init_icnn(icnn: ICNN, box_bounds):
+    # todo check for the layer to have the right dimensions
+    with torch.no_grad():
+        k = len(icnn.ws)
+        for i in range(0, len(icnn.ws)):
+            ws = list(icnn.ws[i].parameters())
+            ws[0].data = torch.zeros_like(ws[0], dtype=torch.float64)
+            ws[1].data = torch.zeros_like(ws[1], dtype=torch.float64)
+
+        for elem in icnn.us:
+            w = list(elem.parameters())
+            w[0].data = torch.zeros_like(w[0], dtype=torch.float64)
+
+        ws = list(icnn.ws[3].parameters()) # bias for first relu activation with weights from us (in second layer)
+        us = list(icnn.us[2].parameters()) # us is used because values in ws are set to 0 when negative
+        b = torch.zeros_like(ws[1], dtype=torch.float64)
+        w = torch.zeros_like(us[0], dtype=torch.float64)
+        for i in range(len(box_bounds)):
+            w[2*i][i] = 1
+            w[2*i+1][i] = -1
+            b[2*i] = - box_bounds[1][i] # upper bound
+            b[2*i+1] = box_bounds[0][i] # lower bound
+        ws[0].data = torch.zeros_like(ws[0], dtype=torch.float64)
+        ws[1].data = b
+        us[0].data = w
+
+        last = list(icnn.ws[4].parameters())
+        last[0].data = torch.ones_like(last[0], dtype=torch.float64)
+        last[1].data = torch.zeros_like(last[1], dtype=torch.float64)
+
 
 def last_layer_picture(last_icnn: ICNN, last_c, W, b, label, solver_time_limit, solver_bound):
     m = Model()
@@ -432,8 +464,8 @@ def sample_max_radius(icnn, c, sample_size, box_bounds=None):
 """
 
 def add_to_ambient_space(ambient_space, count, box_bounds):
-    lb = box_bounds[0]
-    ub = box_bounds[1]
+    lb = box_bounds[0] - 0.2
+    ub = box_bounds[1] + 0.2
     shape = ambient_space.size()[1]
     samples = (ub - lb) * torch.rand((count, shape), dtype=torch.float64) + lb
     ambient_space = torch.cat([ambient_space, samples], dim=0)
