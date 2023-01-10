@@ -24,14 +24,14 @@ from script.trainFunction import train_icnn, train_sequential, train_sequential_
 
 def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=None, solver_bound=None,
                        icnn_batch_size=10,
-                       icnn_epochs=0, sample_count=10000, sample_new=True):
+                       icnn_epochs=10, sample_count=10000, sample_new=True):
     # todo Achtung ich muss schauen, ob gurobi upper bound inklusive ist, da ich aktuell die upper bound mit eps nicht inklusive habe
     input_flattened = torch.flatten(input)
     eps_bounds = [input_flattened.add(-eps), input_flattened.add(eps)]
     box_bounds = calculate_box_bounds(nn, eps_bounds)  # todo abbrechen, wenn die box bounds schon die eigenschaft erfüllen
 
-    included_space, ambient_space = sample_uniform_from(input_flattened, eps, sample_count, lower_bound=0.002,
-                                                        upper_bound=0.002) #todo test for when lower/upper bound is smaller then eps
+    included_space, ambient_space = sample_uniform_from(input_flattened, eps, sample_count, lower_bound=0.5,
+                                                        upper_bound=0.5) #todo test for when lower/upper bound is smaller then eps
 
     """imshow_flattened(input_flattened, (3, 32, 32))
     imshow_flattened(included_space[0], (3, 32, 32))
@@ -86,15 +86,27 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
         # torch.save(included_space, "../included_space_after_relu.pt")
         # torch.save(ambient_space, "../ambient_space_after_relu.pt")
 
-        init_icnn(current_icnn, box_bounds[current_layer_index])
+        ws = list(current_icnn.ws.parameters())
+        us = list(current_icnn.us.parameters())
+        low = box_bounds[current_layer_index][0]
+        up = box_bounds[current_layer_index][1]
+        low = torch.div(torch.add(low, -mean), std)
+        up = torch.div(torch.add(up, -mean), std)
+        init_icnn(current_icnn, [low, up])
         # train icnn1
         train_icnn(current_icnn, train_loader, ambient_loader, epochs=icnn_epochs, hyper_lambda=1)
 
         normalize_nn(current_icnn, mean, std, isICNN=True)
+        """        with torch.no_grad():
+            ws = list(current_icnn.ws[3].parameters())
+            #us = list(current_icnn.us[2].parameters())
+            m2 = - torch.tensor([mean[0], mean[0], mean[1], mean[1]])
+            std2 = torch.tensor([std[0], std[0], std[1], std[1]])
+            #ws[1].data = torch.div(torch.add(ws[1], m2), std2)"""
         #matplotlib.use("TkAgg")
         if should_plot:
             plots = Plots_for(0, current_icnn, included_space.detach(), ambient_space.detach(), true_extremal_points,
-                              [-0.1, 4], [-0.1, 3])
+                              [-1, 3], [-1, 3])
             plots.plt_dotted()
             plots.plt_mesh()
 
@@ -464,8 +476,8 @@ def sample_max_radius(icnn, c, sample_size, box_bounds=None):
 """
 
 def add_to_ambient_space(ambient_space, count, box_bounds):
-    lb = box_bounds[0] - 0.2
-    ub = box_bounds[1] + 0.2
+    lb = box_bounds[0] - 0.5
+    ub = box_bounds[1] + 0.5
     shape = ambient_space.size()[1]
     samples = (ub - lb) * torch.rand((count, shape), dtype=torch.float64) + lb
     ambient_space = torch.cat([ambient_space, samples], dim=0)
