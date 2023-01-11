@@ -23,8 +23,8 @@ from script.trainFunction import train_icnn, train_sequential, train_sequential_
 
 
 def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=None, solver_bound=None,
-                       icnn_batch_size=10,
-                       icnn_epochs=10, sample_count=10000, sample_new=True):
+                       icnn_batch_size=10000,
+                       icnn_epochs=500, sample_count=10000, sample_new=True):
     # todo Achtung ich muss schauen, ob gurobi upper bound inklusive ist, da ich aktuell die upper bound mit eps nicht inklusive habe
     input_flattened = torch.flatten(input)
     eps_bounds = [input_flattened.add(-eps), input_flattened.add(eps)]
@@ -93,16 +93,19 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
         low = torch.div(torch.add(low, -mean), std)
         up = torch.div(torch.add(up, -mean), std)
         init_icnn(current_icnn, [low, up])
+
+
+        if should_plot:
+            plots = Plots_for(0, current_icnn, normalized_included_space.detach(), normalized_ambient_space.detach(), true_extremal_points,
+                              [-1, 3], [-1, 3])
+            plots.plt_dotted()
+            plots.plt_mesh()
+
         # train icnn1
         train_icnn(current_icnn, train_loader, ambient_loader, epochs=icnn_epochs, hyper_lambda=1)
 
         normalize_nn(current_icnn, mean, std, isICNN=True)
-        """        with torch.no_grad():
-            ws = list(current_icnn.ws[3].parameters())
-            #us = list(current_icnn.us[2].parameters())
-            m2 = - torch.tensor([mean[0], mean[0], mean[1], mean[1]])
-            std2 = torch.tensor([std[0], std[0], std[1], std[1]])
-            #ws[1].data = torch.div(torch.add(ws[1], m2), std2)"""
+
         #matplotlib.use("TkAgg")
         if should_plot:
             plots = Plots_for(0, current_icnn, included_space.detach(), ambient_space.detach(), true_extremal_points,
@@ -215,12 +218,28 @@ def init_icnn(icnn: ICNN, box_bounds):
         k = len(icnn.ws)
         for i in range(0, len(icnn.ws)):
             ws = list(icnn.ws[i].parameters())
-            ws[0].data = torch.zeros_like(ws[0], dtype=torch.float64)
+            # ws[0].data = torch.zeros_like(ws[0], dtype=torch.float64)
+            
+            """ For using box bounds constraints in second layer
+            if i == 0:
+                ws[0].data = torch.zeros_like(ws[0], dtype=torch.float64)
+            else:
+                num_rows = ws[0].size(0)
+                num_cols = ws[0].size(1)
+                max_num = max(num_cols, num_rows)
+                t = torch.diag(torch.ones(max_num, dtype=torch.float64))
+                t = t.split(num_cols, dim=1)
+                t = t[0].split(num_rows, dim=0)
+                ws[0].data = torch.diag(torch.ones(max_num, dtype=torch.float64)).split(num_cols, dim=1)[0].split(num_rows, dim=0)"""
             ws[1].data = torch.zeros_like(ws[1], dtype=torch.float64)
 
         for elem in icnn.us:
             w = list(elem.parameters())
             w[0].data = torch.zeros_like(w[0], dtype=torch.float64)
+
+        """ For using box bounds constraints in second layer
+        ws = list(icnn.ws[1].parameters()) 
+        us = list(icnn.us[0].parameters())"""
 
         ws = list(icnn.ws[3].parameters()) # bias for first relu activation with weights from us (in second layer)
         us = list(icnn.us[2].parameters()) # us is used because values in ws are set to 0 when negative
@@ -236,7 +255,7 @@ def init_icnn(icnn: ICNN, box_bounds):
         us[0].data = w
 
         last = list(icnn.ws[4].parameters())
-        last[0].data = torch.ones_like(last[0], dtype=torch.float64)
+        last[0].data = torch.mul(torch.ones_like(last[0], dtype=torch.float64), 10)
         last[1].data = torch.zeros_like(last[1], dtype=torch.float64)
 
 
@@ -481,7 +500,7 @@ def add_to_ambient_space(ambient_space, count, box_bounds):
     shape = ambient_space.size()[1]
     samples = (ub - lb) * torch.rand((count, shape), dtype=torch.float64) + lb
     ambient_space = torch.cat([ambient_space, samples], dim=0)
-    return ambient_space
+    return samples
 
 def calculate_box_bounds(nn, input_bounds):
     # todo for now this only works for sequential nets
