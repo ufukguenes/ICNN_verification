@@ -20,7 +20,7 @@ def train_icnn(model, train_loader, ambient_loader, epochs=10, opt=None,
         train_n = 0
 
         print("=== Epoch: {}===".format(epoch))
-
+        epoch_start_time = time.time()
         for i, (X, X_ambient) in enumerate(zip(train_loader, ambient_loader)):
             prediction_ambient = model(X_ambient)
             output = model(X)
@@ -53,6 +53,7 @@ def train_icnn(model, train_loader, ambient_loader, epochs=10, opt=None,
                 print("batch = {}, mean loss = {}".format(i, train_loss / train_n))
 
         print("batch = {}, mean loss = {}".format(len(train_loader), train_loss / train_n))
+        print("time per epoch: {}".format(time.time()-epoch_start_time))
 
     if return_history:
         return history
