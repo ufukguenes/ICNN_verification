@@ -1,13 +1,12 @@
 import numpy as np
 import torch
 
-from script.Networks import ICNN
-from script.Networks import SequentialNN
+from script.NeuralNets.Networks import ICNN
+from script.NeuralNets.Networks import SequentialNN
 from torch.utils.data import DataLoader
 from script.dataInit import ConvexDataset, Rhombus
-from script.trainFunction import train_icnn_adversarial, train_icnn
+from script.NeuralNets.trainFunction import train_icnn_adversarial, train_icnn
 from script.eval import Plots_for
-from script.Verification import verification
 
 icnn = ICNN([2, 10, 10, 1])
 adversarial = SequentialNN([2, 10, 10, 2])

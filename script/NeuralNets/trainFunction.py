@@ -1,12 +1,9 @@
-import random
 import time
 
-import torch
-
-from script.lossFunction import *
+from script.NeuralNets.lossFunction import *
 import torch.nn as nn
 
-from script.testFunction import test
+from script.NeuralNets.testFunction import test
 
 
 def train_icnn(model, train_loader, ambient_loader, epochs=10, opt=None,
