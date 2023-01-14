@@ -1,0 +1,144 @@
+import math
+
+import torch
+import gurobipy as grp
+
+
+def add_relu_constr(model, input_vars, number_of_out_features, lb, ub, i=0):
+    a = model.addMVar(number_of_out_features, vtype=grp.GRB.BINARY, name="a" + str(i))
+    relu_vars = model.addMVar(number_of_out_features, lb=lb, ub=ub, name="relu_var" + str(i))
+    model.update()
+    relu_const_0 = model.addConstrs((var >= 0) for var in relu_vars.tolist())
+    relu_const_1 = model.addConstrs((var >= x) for var, x in zip(relu_vars.tolist(), input_vars.tolist()))
+    relu_const_if1 = model.addConstrs((var <= a_i * ub) for var, a_i in zip(relu_vars.tolist(), a.tolist()))
+    relu_const_if0 = model.addConstrs(
+        (var <= x - lb * (1 - a_i)) for var, x, a_i in zip(relu_vars.tolist(), input_vars.tolist(), a.tolist()))
+
+    """
+    # Variante 2: Füge Constraints für jede Komponente im Vektor einzeln hinzu
+    mvars = []
+    for k, relu_in in enumerate(in_var.tolist()):
+        a = model.addVar(vtype=GRB.BINARY, name="a" + str(i) + str(k))
+        relu_var = model.addVar(lb=lb, ub=ub, name="relu_var" + str(i) + str(k))
+        r1 = model.addConstr(relu_var >= 0)
+        r2 = model.addConstr(relu_var >= relu_in)
+        r3 = model.addConstr(relu_var <= relu_in - lb * (1 - a))
+        r4 = model.addConstr(relu_var <= ub * a)
+        mvars.append(relu_var)
+    in_var = MVar(mvars)
+    out_vars = MVar(mvars)    
+    """
+
+    """
+    # Variante 3: Nutze Gurobi max Constraints
+    relu_vars = model.addMVar(out_fet, lb=lb, ub=ub, name="relu_var"+str(i))
+    for var, x in zip(relu_vars.tolist(), in_var.tolist()):
+        const = model.addConstr(var == max_(0, x))
+    """
+
+    return relu_vars
+
+
+def add_affine_constr(model, W, b, input_vars, lb, ub, i=0):
+    out_fet = len(b)
+    out_vars = model.addMVar(out_fet, lb=lb, ub=ub, name="affine_var" + str(i))
+    const = model.addConstrs((W[i] @ input_vars + b[i] == out_vars[i] for i in range(len(W))))
+    return out_vars
+
+
+def calculate_box_bounds(nn, input_bounds, is_sequential=True):
+    parameter_list = list(nn.parameters())
+    # todo for now this only works for sequential nets
+    if not is_sequential:
+        bounds_per_layer = [(-10000, 10000) for i in range(0, len(parameter_list), 2)]
+    else:
+        next_lower_bounds = input_bounds[0]
+        next_upper_bounds = input_bounds[1]
+
+        bounds_per_layer = []
+        for i in range(0, len(parameter_list), 2):
+            W, b = parameter_list[i], parameter_list[i + 1]
+
+            new_upper_bound = []
+            new_lower_bound = []
+            for k, row in enumerate(W):
+                upper_multiply_value = []
+                lower_multiply_value = []
+                for l in range(row.size(dim=0)):
+                    if row[l] < 0:
+                        upper_multiply_value.append(next_lower_bounds[l])
+                        lower_multiply_value.append(next_upper_bounds[l])
+                    else:
+                        upper_multiply_value.append(next_upper_bounds[l])
+                        lower_multiply_value.append(next_lower_bounds[l])
+
+                upper_multiply_value = torch.tensor(upper_multiply_value, dtype=torch.float64)
+                lower_multiply_value = torch.tensor(lower_multiply_value, dtype=torch.float64)
+                affine_bound_upper = torch.sum(torch.mul(W[k], upper_multiply_value)).add(b[k]).item()
+                affine_bound_lower = torch.sum(torch.mul(W[k], lower_multiply_value)).add(b[k]).item()
+                new_upper_bound.append(max(0, affine_bound_upper))  # ReLU bound
+                new_lower_bound.append(max(0, affine_bound_lower))
+
+            next_lower_bounds = torch.tensor(new_lower_bound, dtype=torch.float64)
+            next_upper_bounds = torch.tensor(new_upper_bound, dtype=torch.float64)
+            bounds_per_layer.append([next_lower_bounds, next_upper_bounds])
+
+    return bounds_per_layer
+
+
+def add_constr_for_non_sequential_icnn(model, predictor, input_vars, output_vars, bounds):
+    ws = list(predictor.ws.parameters())
+    us = list(predictor.us.parameters())
+
+    in_var = input_vars
+    for i in range(0, len(ws), 2):
+        lb = bounds[int(i / 2)][0]
+        ub = bounds[int(i / 2)][1]
+        affine_W, affine_b = ws[i].detach().numpy(), ws[i + 1].detach().numpy()
+
+        out_fet = len(affine_b)
+        affine_var = model.addMVar(out_fet, lb=lb, ub=ub, name="affine_var" + str(i))
+        out_vars = model.addMVar(out_fet, lb=lb, ub=ub, name="affine_skip_var" + str(i))
+
+        affine_const = model.addConstrs(
+            affine_W[i] @ in_var + affine_b[i] == affine_var[i] for i in range(len(affine_W)))
+        if i != 0:
+            k = math.floor(i / 2) - 1
+            skip_W = torch.clone(us[k]).detach().numpy()  # has no bias
+            skip_var = model.addMVar(out_fet, lb=lb, ub=ub, name="skip_var" + str(k))
+            skip_const = model.addConstrs(skip_W[i] @ input_vars == skip_var[i] for i in range(len(affine_W)))
+            affine_skip_cons = model.addConstrs(
+                affine_var[i] + skip_var[i] == out_vars[i] for i in range(len(affine_W)))
+        else:
+            affine_no_skip_cons = model.addConstrs(affine_var[i] == out_vars[i] for i in range(len(affine_W)))
+
+        in_var = out_vars
+
+        if i < len(ws) - 2:
+            relu_vars = add_relu_constr(model, in_var, out_fet, lb, ub, i)
+            in_var = relu_vars
+            out_vars = relu_vars
+
+    const = model.addConstrs(out_vars[i] == output_vars[i] for i in range(out_fet))
+
+
+def add_constr_for_sequential_icnn(model, predictor, input_vars, output_vars, bounds):
+    parameter_list = list(predictor.parameters())
+
+    in_var = input_vars
+    for i in range(0, len(parameter_list), 2):
+        lb = bounds[int(i / 2)][0]
+        ub = bounds[int(i / 2)][1]
+        W, b = parameter_list[i].detach().numpy(), parameter_list[i + 1].detach().numpy()
+
+        out_fet = len(b)
+        out_vars = model.addMVar(out_fet, lb=lb, ub=ub, name="affine_var" + str(i))
+        const = model.addConstrs((W[i] @ in_var + b[i] == out_vars[i] for i in range(len(W))))
+        in_var = out_vars
+
+        if i < len(parameter_list) - 2:
+            relu_vars = add_relu_constr(model, in_var, out_fet, lb, ub, i)
+            in_var = relu_vars
+            out_vars = relu_vars
+
+    const = model.addConstrs(out_vars[i] == output_vars[i] for i in range(out_fet))

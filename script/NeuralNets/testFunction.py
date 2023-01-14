@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 
-from script.lossFunction import deep_hull_simple_loss, identity_loss
+from script.NeuralNets.lossFunction import deep_hull_simple_loss, identity_loss
 
 
 def test_icnn(model, train_loader, ambient_loader, critic=deep_hull_simple_loss, hyper_lambda=1):
