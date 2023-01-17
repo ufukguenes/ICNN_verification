@@ -19,7 +19,7 @@ from script.NeuralNets.trainFunction import train_icnn
 
 def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=None, solver_bound=None,
                        icnn_batch_size=3000,
-                       icnn_epochs=100, sample_count=1000, sample_new=True):
+                       icnn_epochs=100, sample_count=3000, sample_new=True):
 
     def plt_inc_amb(caption, inc, amb):
         plt.figure(figsize=(20, 10))
@@ -132,6 +132,7 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
         if should_plot:
             plots.c = c
             plots.plt_dotted()
+            plots.plt_mesh()
 
         c_values.append(0)
 

@@ -14,14 +14,12 @@ def load(icnn):
 def verification(icnn, center_eps_W_b=None, A_b=None, icnn_W_b_c=None, has_ReLU=False, sequential=False):
     m = Model()
 
-    m.Params.LogToConsole = 0
+    #m.Params.LogToConsole = 0
 
     input_size = icnn.layer_widths[0]
     output_size = icnn.layer_widths[-1]
     output_var = m.addMVar(output_size, lb=-float('inf'), name="output_var")
 
-    lb = -10000
-    ub = 10000
 
     # A, b = Rhombus().get_A(), Rhombus().get_b()
     # todo hier wird das <= wahrscheinlich nicht als <= sondern nur als < erkannt, Gurobi meckert nämlich auch nicht, wenn man "<k" dahin schreibt
@@ -35,6 +33,9 @@ def verification(icnn, center_eps_W_b=None, A_b=None, icnn_W_b_c=None, has_ReLU=
 
         input_to_previous_layer_size = W.shape[1]
         input_to_previous_layer = m.addMVar(input_to_previous_layer_size, lb=-float('inf'))
+
+        lb = [-10000 for i in range(input_to_previous_layer_size)]
+        ub = [10000 for i in range(input_to_previous_layer_size)]
 
         max_vars = m.addVars(input_to_previous_layer_size, lb=-float('inf'))
         min_vars = m.addVars(input_to_previous_layer_size, lb=-float('inf'))

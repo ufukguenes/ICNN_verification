@@ -7,7 +7,9 @@ def sequential(predictor, input, output_size, label, eps=0.01, time_limit=None, 
     m = grp.Model()
     input_flattened = torch.flatten(input)
     input_size = input_flattened.size(0)
-    bounds = verbas.calculate_box_bounds(predictor, [input_flattened.add(-eps), input_flattened.add(eps)])
+    bounds = verbas.calculate_box_bounds(predictor, [input_flattened.add(-eps), input_flattened.add(eps)], with_ReLU=False)
+
+    bounds = [[elem[0].detach().tolist(), elem[1].detach().tolist()] for elem in bounds]
 
     input_flattened = input_flattened.numpy()
 
@@ -17,7 +19,7 @@ def sequential(predictor, input, output_size, label, eps=0.01, time_limit=None, 
     if bound is not None:
         m.setParam("BestObjStop", bound)
 
-    input_var = m.addMVar(input_size, name="in_var")
+    input_var = m.addMVar(input_size, lb=[elem - eps for elem in input_flattened], ub=[elem + eps for elem in input_flattened], name="in_var")
     output_var = m.addMVar(output_size, lb=bounds[-1][0], ub=bounds[-1][1], name="output_var")
 
     m.addConstrs(input_var[i] <= input_flattened[i] + eps for i in range(input_size))
@@ -25,12 +27,20 @@ def sequential(predictor, input, output_size, label, eps=0.01, time_limit=None, 
 
     verbas.add_constr_for_sequential_icnn(m, predictor, input_var, output_var, bounds)
 
-    difference = m.addVars(output_size - 1, lb=bounds[-1][1] - bounds[-1][0])
+    lower_diff_bound = [lb - bounds[-1][1][label] for lb in bounds[-1][0]]
+    upper_diff_bound = [ub - bounds[-1][0][label] for ub in bounds[-1][1]]
+
+    lower_diff_bound.pop(label)
+    upper_diff_bound.pop(label)
+
+    difference = m.addVars(output_size - 1, lb=lower_diff_bound, ub=upper_diff_bound)
     m.addConstrs(difference[i] == output_var.tolist()[i] - output_var.tolist()[label] for i in range(0, label))
     m.addConstrs(
         difference[i - 1] == output_var.tolist()[i] - output_var.tolist()[label] for i in range(label + 1, output_size))
 
-    max_var = m.addVar(lb=-float('inf'), ub=bounds[-1][1] - bounds[-1][0])
+    min_diff_bound = min(lower_diff_bound)
+    max_diff_bound = min(upper_diff_bound)
+    max_var = m.addVar(lb=min_diff_bound, ub=bound)
     m.addConstr(max_var == grp.max_(difference))
 
     m.update()
