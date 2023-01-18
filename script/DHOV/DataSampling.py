@@ -1,3 +1,5 @@
+import random
+
 import numpy as np
 import torch
 import gurobipy as grp
@@ -81,19 +83,6 @@ def sample_max_radius(icnn, c, sample_size, box_bounds=None):
     return included_space, ambient_space
 
 
-def add_samples_uniform_over(data_samples, amount, bounds, keep_samples=True, padding=0):
-    lb = bounds[0] - padding
-    ub = bounds[1] + padding
-    shape = data_samples.size(1)
-    random_samples = (ub - lb) * torch.rand((amount, shape), dtype=torch.float64) + lb
-    if keep_samples:
-        data_samples = torch.cat([data_samples, random_samples], dim=0)
-    else:
-        data_samples = random_samples
-
-
-    return data_samples
-
 
 def regroup_samples(icnn, c, included_space, ambient_space):
     moved = 0
@@ -109,99 +98,66 @@ def regroup_samples(icnn, c, included_space, ambient_space):
     return included_space, ambient_space
 
 
-def sample_uniform_from(input_flattened, eps, sample_size, icnn_c=None, lower_bound=None, upper_bound=None, ):
-    input_size = input_flattened.size(dim=0)
-
-    lb = - eps - 0.001
-    ub = eps + 0.001
-
-    if lower_bound is not None:
-        lb = - eps - lower_bound
-    if upper_bound is not None:
-        ub = eps + upper_bound
-
-    lower_bound = lb
-    upper_bound = ub
-
-
-    if type(eps) == list and icnn_c is not None and len(eps) == input_size:
-
-        icnn = icnn_c[0]
-        c = icnn_c[1]
-        included_space = torch.empty(0, dtype=torch.float64)
-        ambient_space = torch.empty(0, dtype=torch.float64)
-        displacements = torch.rand((sample_size, input_size), dtype=torch.float64)
-        displacements = displacements.detach()
-        for i, disp in enumerate(displacements):
-            for k, val in enumerate(disp):
-                upper_bound = min(eps[k] * 1.3, eps[k] + 0.004)
-                lower_bound = max(- eps[k] * 1.3, - eps[k] - 0.004)
-                val = (upper_bound - lower_bound) * val + lower_bound
-                displacements[i][k] = val
-
-
-        for i in range(sample_size):
-            disp = input_flattened + displacements[i]
-            disp = torch.unsqueeze(disp, 0)
-            out = icnn(disp)
-            if out <= c:
-                included_space = torch.cat([included_space, disp], dim=0)
-            else:
-                ambient_space = torch.cat([ambient_space, disp], dim=0)
-
-        print("included space num samples {}, ambient space num samples {}".format(len(included_space), len(ambient_space)))
-        return included_space, ambient_space
-
-    if icnn_c is None:
-        sample_size = int(sample_size / 2)
-        included_space = torch.empty((sample_size, input_size), dtype=torch.float64)
-        ambient_space = torch.empty((sample_size, input_size), dtype=torch.float64)
-
-        lower = - eps
-        upper = eps
-        displacements_included_space = (upper - lower) * torch.rand((sample_size, input_size),
-                                                                    dtype=torch.float64) + lower
-        lower = lower_bound
-        upper = upper_bound
-        displacements_ambient_space = (upper - lower) * torch.rand((sample_size, input_size),
-                                                                   dtype=torch.float64) + lower
-
-        # making sure that at least one value is outside the ball with radius eps
-        for i, displacement in enumerate(displacements_ambient_space):
-            argmax_displacement = torch.argmax(displacement)
-            argmin_displacement = torch.argmin(displacement)
-            max_displacement = displacement[argmax_displacement]
-            min_displacement = displacement[argmin_displacement]
-
-            if max_displacement >= eps or min_displacement < -eps:
-                continue
-            if max_displacement < eps:
-                displacement[argmax_displacement] = upper
-                continue
-            if min_displacement >= -eps:
-                displacement[argmin_displacement] = lower
-
-        for i in range(sample_size):
-            included_space[i] = input_flattened + displacements_included_space[i]
-            ambient_space[i] = input_flattened + displacements_ambient_space[i]
-
+def samples_uniform_over(data_samples, amount, bounds, keep_samples=True, padding=0):
+    lb = bounds[0] - padding
+    ub = bounds[1] + padding
+    shape = data_samples.size(1)
+    random_samples = (ub - lb) * torch.rand((amount, shape), dtype=torch.float64) + lb
+    if keep_samples:
+        data_samples = torch.cat([data_samples, random_samples], dim=0)
     else:
+        data_samples = random_samples
+
+
+    return data_samples
+
+
+def sample_uniform_excluding(data_samples, amount, including_bound, excluding_bound=None, icnn_c=None, keep_samples=True, padding=0):
+    input_size = data_samples.size(dim=1)
+
+    lower = including_bound[0] - padding
+    upper = including_bound[1] + padding
+    new_samples = (upper - lower) * torch.rand((amount, input_size), dtype=torch.float64) + lower
+
+    if excluding_bound is not None:
+        lower_excluding_bound = excluding_bound[0]
+        upper_excluding_bound = excluding_bound[1]
+
+        for i, samp in enumerate(new_samples):
+            max_samp = torch.max(samp)
+            min_samp = torch.min(samp)
+
+            max_greater_then = max_samp.gt(upper_excluding_bound)
+            min_less_then = min_samp.lt(lower_excluding_bound)
+            if True not in max_greater_then and True not in min_less_then:
+                rand_index = random.randint(0, samp.size(0) - 1)
+                rand = random.random()
+                if rand < 0.5:
+                    samp[rand_index] = upper[rand_index]
+                else:
+                    samp[rand_index] = lower[rand_index]
+
+    elif icnn_c is not None:
         icnn = icnn_c[0]
         c = icnn_c[1]
-        included_space = torch.empty(0, dtype=torch.float64)
-        ambient_space = torch.empty(0, dtype=torch.float64)
-        displacements = (upper_bound - lower_bound) * torch.rand((sample_size, input_size),
-                                                                 dtype=torch.float64) + lower_bound
-        for i in range(sample_size):
-            disp = input_flattened + displacements[i]
-            disp = torch.unsqueeze(disp, 0)
-            out = icnn(disp)
-            if out <= c:
-                included_space = torch.cat([included_space, disp], dim=0)
-            else:
-                ambient_space = torch.cat([ambient_space, disp], dim=0)
 
-    return included_space, ambient_space
+        for samp in new_samples:
+            inp = torch.unsqueeze(samp, 0)
+            out = icnn(inp)
+            if out <= c:
+                rand_index = random.randint(0, samp.size(0) - 1)
+                rand = random.random()
+                if rand < 0.5:
+                    samp[rand_index] = upper[rand_index]
+                else:
+                    samp[rand_index] = lower[rand_index] # todo wenn ich hier samp überschreibe, überschreibt es dass dann auch in new_samples?
+
+    if keep_samples:
+        data_samples = torch.cat([data_samples, new_samples], dim=0)
+    else:
+        data_samples = new_samples
+
+    return data_samples
 
 
 def apply_affine_transform(W, b, data_samples):
