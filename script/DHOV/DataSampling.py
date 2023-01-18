@@ -119,38 +119,35 @@ def sample_uniform_excluding(data_samples, amount, including_bound, excluding_bo
     upper = including_bound[1] + padding
     new_samples = (upper - lower) * torch.rand((amount, input_size), dtype=torch.float64) + lower
 
-    if excluding_bound is not None:
-        lower_excluding_bound = excluding_bound[0]
-        upper_excluding_bound = excluding_bound[1]
+    for i, samp in enumerate(new_samples):
+        max_samp = torch.max(samp)
+        min_samp = torch.min(samp)
+        shift = False
 
-        for i, samp in enumerate(new_samples):
-            max_samp = torch.max(samp)
-            min_samp = torch.min(samp)
+        if excluding_bound is not None:
+            lower_excluding_bound = excluding_bound[0]
+            upper_excluding_bound = excluding_bound[1]
 
             max_greater_then = max_samp.gt(upper_excluding_bound)
             min_less_then = min_samp.lt(lower_excluding_bound)
             if True not in max_greater_then and True not in min_less_then:
-                rand_index = random.randint(0, samp.size(0) - 1)
-                rand = random.random()
-                if rand < 0.5:
-                    samp[rand_index] = upper[rand_index]
-                else:
-                    samp[rand_index] = lower[rand_index]
+                shift = True
 
-    elif icnn_c is not None:
-        icnn = icnn_c[0]
-        c = icnn_c[1]
-
-        for samp in new_samples:
+        elif icnn_c is not None and not shift:
+            icnn = icnn_c[0]
+            c = icnn_c[1]
             inp = torch.unsqueeze(samp, 0)
             out = icnn(inp)
             if out <= c:
-                rand_index = random.randint(0, samp.size(0) - 1)
-                rand = random.random()
-                if rand < 0.5:
-                    samp[rand_index] = upper[rand_index]
-                else:
-                    samp[rand_index] = lower[rand_index] # todo wenn ich hier samp überschreibe, überschreibt es dass dann auch in new_samples?
+                shift = True
+
+        if shift:
+            rand_index = random.randint(0, samp.size(0) - 1)
+            rand = random.random()
+            if rand < 0.5:
+                samp[rand_index] = upper[rand_index]
+            else:
+                samp[rand_index] = lower[rand_index]
 
     if keep_samples:
         data_samples = torch.cat([data_samples, new_samples], dim=0)
