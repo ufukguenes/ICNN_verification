@@ -19,7 +19,7 @@ from script.NeuralNets.trainFunction import train_icnn
 
 def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=None, solver_bound=None,
                        icnn_batch_size=3000,
-                       icnn_epochs=100, sample_count=3000, keep_ambient_space=False, sample_new=True,
+                       icnn_epochs=500, sample_count=2000, keep_ambient_space=False, sample_new=True,
                        sample_over_input_space=False,
                        sample_over_output_space=True):
     def plt_inc_amb(caption, inc, amb):
@@ -183,6 +183,10 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
         if sample_new:
             included_space, ambient_space = ds.sample_max_radius(current_icnn, c, sample_count,
                                                                  box_bounds=box_bounds[current_layer_index])
+            #todo wenn die box bounds besser als das icnn ist, beschreibt das icnn nicht mehr den included space,
+            # man müsste dann noch mal nach dem Training das icnn mit boxbounds zusammenfügen, damit es das gleiche ist
+            # dann muss man auch nicht mehr max_radius verwenden zum samplen
+
             if should_plot:
                 plt_inc_amb("sampled new", included_space.tolist(), ambient_space.tolist())
                 plt_inc_amb("original end of layer", original_included_space.tolist(), original_ambient_space.tolist())
@@ -193,15 +197,16 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
     W, b = parameter_list[index], parameter_list[index + 1]
     # last_layer_picture(icnns[-1], c_values[-1], W, b, 6, solver_time_limit, solver_bound)  # todo nicht hardcoden
 
-    included_space = ds.apply_affine_transform(W, b, included_space)
-    ambient_space = ds.apply_affine_transform(W, b, ambient_space)
-    ambient_space = ds.add_samples_uniform_over(ambient_space, int(sample_count / 2), box_bounds[-1], padding=0.5)
-    plt_inc_amb("output" + str(i), included_space.tolist(), ambient_space.tolist())
+    if should_plot:
+        included_space = ds.apply_affine_transform(W, b, included_space)
+        ambient_space = ds.apply_affine_transform(W, b, ambient_space)
+        ambient_space = ds.samples_uniform_over(ambient_space, int(sample_count / 2), box_bounds[-1], padding=0.5)
+        plt_inc_amb("output" + str(i), included_space.tolist(), ambient_space.tolist())
 
-    original_included_space = ds.apply_affine_transform(W, b, original_included_space)
-    original_ambient_space = ds.apply_affine_transform(W, b, original_ambient_space)
-    original_ambient_space = ds.add_samples_uniform_over(original_ambient_space, int(sample_count / 2), box_bounds[-1])
-    plt_inc_amb("original output" + str(i), original_included_space.tolist(), original_ambient_space.tolist())
+        original_included_space = ds.apply_affine_transform(W, b, original_included_space)
+        original_ambient_space = ds.apply_affine_transform(W, b, original_ambient_space)
+        original_ambient_space = ds.samples_uniform_over(original_ambient_space, int(sample_count / 2), box_bounds[-1])
+        plt_inc_amb("original output" + str(i), original_included_space.tolist(), original_ambient_space.tolist())
 
     A_out, b_out = Rhombus().get_A(), Rhombus().get_b()
     last_layer_identity(icnns[-1], c_values[-1], W, b, A_out, b_out, box_bounds, solver_time_limit, solver_bound)
