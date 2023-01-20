@@ -43,7 +43,6 @@
     "last_opened_file_path": "C:/Users/Ufuk/Desktop",
     "node.js.detected.package.eslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
-    "python.debugger.dataview.coloredbydefault": "false",
     "settings.editor.selected.configurable": "editor.preferences.fonts.default"
   }
 }]]></component>
@@ -219,7 +218,9 @@
       <workItem from="1673512718161" duration="21007000" />
       <workItem from="1673667348107" duration="2899000" />
       <workItem from="1673900048566" duration="19404000" />
-      <workItem from="1674032319345" duration="10382000" />
+      <workItem from="1674032319345" duration="14271000" />
+      <workItem from="1674056903311" duration="2539000" />
+      <workItem from="1674218405934" duration="11995000" />
     </task>
     <servers />
   </component>
@@ -256,11 +257,6 @@
           <option name="timeStamp" value="278" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/script/DHOV/DHOV.py</url>
-          <line>228</line>
-          <option name="timeStamp" value="285" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/script/Verification/MilpVerification.py</url>
           <line>13</line>
           <option name="timeStamp" value="317" />
@@ -272,8 +268,13 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/script/DHOV/DHOV.py</url>
-          <line>74</line>
-          <option name="timeStamp" value="328" />
+          <line>193</line>
+          <option name="timeStamp" value="357" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/script/DHOV/DHOV.py</url>
+          <line>173</line>
+          <option name="timeStamp" value="362" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="jupyter-line">
           <url>notebook://C:/Users/Ufuk/Documents/Programming/ICNN_verification/script/Experiments/NonGenerativeExperiment.ipynb</url>
@@ -293,6 +294,14 @@
       <configuration name="CIFAR10_MILP_Verification">
         <watch expression="lb" />
       </configuration>
+      <configuration name="PythonConfigurationType">
+        <watch expression="new_ambient" />
+        <watch expression="ambient_gd" />
+        <watch expression="grad" />
+        <watch expression="new_elem" />
+        <watch expression="output" />
+        <watch expression="new" />
+      </configuration>
     </watches-manager>
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
@@ -301,7 +310,7 @@
     <SUITE FILE_PATH="coverage/ICNN_verification$Normalisation.coverage" NAME="Normalisation Coverage Results" MODIFIED="1671204683259" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script" />
     <SUITE FILE_PATH="coverage/DeepHull$main.coverage" NAME="main Coverage Results" MODIFIED="1669233392579" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ICNN_verification$main.coverage" NAME="main Coverage Results" MODIFIED="1670249050825" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/ICNN_verification$DHOV.coverage" NAME="DHOV Coverage Results" MODIFIED="1674042699848" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script" />
+    <SUITE FILE_PATH="coverage/ICNN_verification$DHOV.coverage" NAME="DHOV Coverage Results" MODIFIED="1674233157214" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script" />
     <SUITE FILE_PATH="coverage/DeepHull$Verification.coverage" NAME="Verification Coverage Results" MODIFIED="1669122239179" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script" />
     <SUITE FILE_PATH="coverage/ICNN_verification$test.coverage" NAME="test Coverage Results" MODIFIED="1673302337900" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script" />
     <SUITE FILE_PATH="coverage/DeepHull$eval.coverage" NAME="eval Coverage Results" MODIFIED="1668723858367" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />

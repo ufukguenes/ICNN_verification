@@ -19,9 +19,9 @@ from script.NeuralNets.trainFunction import train_icnn
 
 def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=None, solver_bound=None,
                        icnn_batch_size=3000,
-                       icnn_epochs=500, sample_count=2000, keep_ambient_space=False, sample_new=True,
+                       icnn_epochs=200, sample_count=1000, keep_ambient_space=False, sample_new=True,
                        sample_over_input_space=False,
-                       sample_over_output_space=True):
+                       sample_over_output_space=True, use_grad_descent=False):
     def plt_inc_amb(caption, inc, amb):
         plt.figure(figsize=(20, 10))
         plt.scatter(list(map(lambda x: x[0], amb)), list(map(lambda x: x[1], amb)), c="#ff7f0e")
@@ -32,7 +32,8 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
     # todo Achtung ich muss schauen, ob gurobi upper bound inklusive ist, da ich aktuell die upper bound mit eps nicht inklusive habe
     input_flattened = torch.flatten(input)
     eps_bounds = [input_flattened.add(-eps), input_flattened.add(eps)]
-    box_bounds = verbas.calculate_box_bounds(nn, eps_bounds)  # todo abbrechen, wenn die box bounds schon die eigenschaft erfüllen
+    box_bounds = verbas.calculate_box_bounds(nn,
+                                             eps_bounds)  # todo abbrechen, wenn die box bounds schon die eigenschaft erfüllen
 
     included_space = torch.empty((0, input_flattened.size(0)), dtype=torch.float64)
     included_space = ds.samples_uniform_over(included_space, int(sample_count / 2), eps_bounds)
@@ -67,9 +68,14 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
 
         if sample_over_input_space:
             if i == 0:
-                ambient_space = ds.sample_uniform_excluding(ambient_space, int(sample_count / 2), eps_bounds, excluding_bound=eps_bounds, padding=0.5)
+                ambient_space = ds.sample_uniform_excluding(ambient_space, int(sample_count / 2), eps_bounds,
+                                                            excluding_bound=eps_bounds, padding=0.5)
             else:
-                ambient_space = ds.sample_uniform_excluding(ambient_space, int(sample_count / 2), box_bounds[current_layer_index-1], icnn_c=[icnns[current_layer_index-1], c_values[current_layer_index-1]], padding=0.5)  # todo test for when lower/upper bound is smaller then eps
+                ambient_space = ds.sample_uniform_excluding(ambient_space, int(sample_count / 2),
+                                                            box_bounds[current_layer_index - 1],
+                                                            icnn_c=[icnns[current_layer_index - 1],
+                                                                    c_values[current_layer_index - 1]],
+                                                            padding=0.5)  # todo test for when lower/upper bound is smaller then eps
 
         if should_plot:
             plt_inc_amb("affin e" + str(i), included_space.tolist(), ambient_space.tolist())
@@ -78,14 +84,12 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
         if sample_over_input_space or keep_ambient_space:
             ambient_space = ds.apply_affine_transform(W, b, ambient_space)
 
-
         if should_plot:
             original_included_space = ds.apply_affine_transform(W, b, original_included_space)
             original_ambient_space = ds.apply_affine_transform(W, b, original_ambient_space)
 
             plt_inc_amb("affin e" + str(i), included_space.tolist(), ambient_space.tolist())
             plt_inc_amb("original affin e" + str(i), original_included_space.tolist(), original_ambient_space.tolist())
-
 
         included_space = ds.apply_ReLU_transform(included_space)
         if sample_over_input_space or keep_ambient_space:
@@ -98,21 +102,16 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
             plt_inc_amb("relu " + str(i), included_space.tolist(), ambient_space.tolist())
             plt_inc_amb("original relu e" + str(i), original_included_space.tolist(), original_ambient_space.tolist())
 
-
         if sample_over_output_space:
             ambient_space = ds.samples_uniform_over(ambient_space, int(sample_count / 2),
                                                     box_bounds[current_layer_index], padding=0.5)
             original_ambient_space = ds.samples_uniform_over(original_ambient_space, int(sample_count / 2),
                                                              box_bounds[current_layer_index], padding=0.5)
 
-        if should_plot:
+        if should_plot or True:
             plt_inc_amb("enhanced ambient space " + str(i), included_space.tolist(), ambient_space.tolist())
-            plt_inc_amb("original enhanced ambient space " + str(i), original_included_space.tolist(),
-                        original_ambient_space.tolist())
-
-
-
-
+            # plt_inc_amb("original enhanced ambient space " + str(i), original_included_space.tolist(),
+            #            original_ambient_space.tolist())
 
         mean = get_mean(included_space, ambient_space)
         std = get_std(included_space, ambient_space)
@@ -132,17 +131,59 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
         up = box_bounds[current_layer_index][1]
         low = torch.div(torch.add(low, -mean), std)
         up = torch.div(torch.add(up, -mean), std)
-        init_icnn(current_icnn, [low, up])
 
-        if should_plot:
+        init_icnn_box_bounds(current_icnn, [low, up])
+
+        if should_plot or True:
             plots = Plots_for(0, current_icnn, normalized_included_space.detach(), normalized_ambient_space.detach(),
                               true_extremal_points,
                               [-1, 3], [-1, 3])
             plots.plt_dotted()
-            plots.plt_mesh()
+            # plots.plt_mesh()
 
         # train icnn
-        train_icnn(current_icnn, train_loader, ambient_loader, epochs=icnn_epochs, hyper_lambda=1)
+
+        if use_grad_descent:
+            if should_plot or True:
+                plt_inc_amb("without gradient descent ", normalized_included_space.tolist(), normalized_ambient_space.tolist())
+            ambient_gd = normalized_ambient_space.clone().detach()
+            for k in range(5):
+                new_ambient = torch.empty_like(normalized_ambient_space, dtype=torch.float64)
+                for h, elem in enumerate(ambient_gd):
+                    new_elem = torch.tensor(elem, dtype=torch.float64, requires_grad=True)
+                    inp = torch.unsqueeze(new_elem, dim=0)
+                    output = current_icnn(inp)
+                    target = torch.tensor([[0]], dtype=torch.float64)
+                    loss = torch.nn.MSELoss()(output, target)
+                    grad = torch.autograd.grad(loss, inp)
+                    lr = 0.001
+                    grad = torch.mul(grad[0], lr)
+                    new = torch.sub(inp, grad[0])
+                    new_ambient[h] = new[0]
+
+                ambient_gd = new_ambient.clone().detach()
+
+                if should_plot or True:
+                    plt_inc_amb("with gradient descent " + str(k), normalized_included_space.tolist(), ambient_gd.tolist())
+                    """plots = Plots_for(0, current_icnn, normalized_included_space.detach(),
+                                      ambient_gd.detach(),
+                                      true_extremal_points,
+                                      [-1, 3], [-1, 3])
+                    plots.plt_dotted()"""
+
+            dataset = ConvexDataset(data=ambient_gd.detach())
+            ambient_loader = DataLoader(dataset, batch_size=icnn_batch_size, shuffle=True)
+            train_icnn(current_icnn, train_loader, ambient_loader, epochs=icnn_epochs, hyper_lambda=1)
+
+            if should_plot or True:
+                plots = Plots_for(0, current_icnn, normalized_included_space.detach(),
+                                  ambient_gd.detach(),
+                                  true_extremal_points,
+                                  [-1, 3], [-1, 3])
+                plots.plt_dotted()
+
+        else:
+            train_icnn(current_icnn, train_loader, ambient_loader, epochs=icnn_epochs, hyper_lambda=1)
 
         normalize_nn(current_icnn, mean, std, isICNN=True)
 
@@ -183,7 +224,7 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
         if sample_new:
             included_space, ambient_space = ds.sample_max_radius(current_icnn, c, sample_count,
                                                                  box_bounds=box_bounds[current_layer_index])
-            #todo wenn die box bounds besser als das icnn ist, beschreibt das icnn nicht mehr den included space,
+            # todo wenn die box bounds besser als das icnn ist, beschreibt das icnn nicht mehr den included space,
             # man müsste dann noch mal nach dem Training das icnn mit boxbounds zusammenfügen, damit es das gleiche ist
             # dann muss man auch nicht mehr max_radius verwenden zum samplen
 
@@ -271,7 +312,7 @@ def last_layer_identity(last_icnn: ICNN, last_c, W, b, A_out, b_out, nn_bounds, 
         print("\n =======================")
 
 
-def init_icnn(icnn: ICNN, box_bounds):
+def init_icnn_box_bounds(icnn: ICNN, box_bounds):
     # todo check for the layer to have the right dimensions
     with torch.no_grad():
         k = len(icnn.ws)
@@ -316,6 +357,16 @@ def init_icnn(icnn: ICNN, box_bounds):
         last = list(icnn.ws[4].parameters())
         last[0].data = torch.mul(torch.ones_like(last[0], dtype=torch.float64), 10)
         last[1].data = torch.zeros_like(last[1], dtype=torch.float64)
+
+
+def init_icnn_prev_icnn(current_icnn, prev_icnn, A, c):
+    current_icnn.load_state_dict(prev_icnn.state_dict())
+    with torch.no_grad():
+        """first_layer = list(current_icnn.ws[0].parameters())
+        W = first_layer[0]
+        b = first_layer[1]
+        W.data = torch.matmul(A, W)
+        b.data = torch.matmul(A, b).add(c)"""
 
 
 def last_layer_picture(last_icnn: ICNN, last_c, W, b, label, nn_bounds, solver_time_limit, solver_bound):
@@ -434,7 +485,7 @@ W3 = [-1. 1.; 1. 1.]
 b3 = [3., 0.] """
 
 nn = SequentialNN([2, 2, 2, 2])
-should_plot = True
+should_plot = False
 
 with torch.no_grad():
     parameter_list = list(nn.parameters())
@@ -457,4 +508,5 @@ with torch.no_grad():
 
 test_image = torch.tensor([[0, 0]], dtype=torch.float64)
 start_verification(nn, test_image, eps=1, sample_new=True,
-                   sample_over_input_space=False, sample_over_output_space=True, keep_ambient_space=False)
+                   sample_over_input_space=False, sample_over_output_space=True,
+                   keep_ambient_space=False, use_grad_descent=True)
