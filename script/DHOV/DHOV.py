@@ -146,17 +146,17 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
             epochs_per_optimization = icnn_epochs // num_optimizations
             modulo_epochs = icnn_epochs % num_optimizations
             for h in range(num_optimizations + 1):
-                for k in range(100):
-                    #normalized_ambient_space = dop.gradient_descent_data_optim(current_icnn, normalized_ambient_space.detach())
-                    normalized_ambient_space = dop.adam_data_optim(current_icnn, normalized_ambient_space.detach())
-
+                if h < num_optimizations:
+                    epochs_in_run = epochs_per_optimization
+                    for k in range(50):
+                        # normalized_ambient_space = dop.gradient_descent_data_optim(current_icnn, normalized_ambient_space.detach())
+                        normalized_ambient_space = dop.adam_data_optim(current_icnn, normalized_ambient_space.detach())
                     dataset = ConvexDataset(data=normalized_ambient_space.detach())
                     ambient_loader = DataLoader(dataset, batch_size=icnn_batch_size, shuffle=True)
-
-                if h < num_optimizations:
-                    train_icnn(current_icnn, train_loader, ambient_loader, epochs=epochs_per_optimization, hyper_lambda=1)
                 elif h == num_optimizations and modulo_epochs != 0:
-                    train_icnn(current_icnn, train_loader, ambient_loader, epochs=modulo_epochs, hyper_lambda=1)
+                    epochs_in_run = modulo_epochs
+                train_icnn(current_icnn, train_loader, ambient_loader, epochs=epochs_in_run, hyper_lambda=1)
+
             if should_plot:
                 plt_inc_amb("with gradient descent", normalized_included_space.tolist(),
                             normalized_ambient_space.tolist())

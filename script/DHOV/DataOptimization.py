@@ -15,6 +15,20 @@ def gradient_descent_data_optim(icnn, samples):
         new_samples[h] = new[0]
     return new_samples
 
+
+def sgd_data_optim(icnn, samples):
+    samples = [torch.tensor(samples.detach(), dtype=torch.float64, requires_grad=True)]
+    optimizer = torch.optim.SGD(samples, lr=0.001)
+    for h, elem in enumerate(samples):
+        output = icnn(elem)
+        target = torch.zeros_like(output, dtype=torch.float64)
+        loss = torch.nn.MSELoss()(output, target)
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+    return samples[0]
+
+
 def adam_data_optim(icnn, samples):
 
     samples = [torch.tensor(samples.detach(), dtype=torch.float64, requires_grad=True)]
