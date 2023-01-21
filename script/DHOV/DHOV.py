@@ -21,7 +21,7 @@ from script.NeuralNets.trainFunction import train_icnn
 
 def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=None, solver_bound=None,
                        icnn_batch_size=3000,
-                       icnn_epochs=100, sample_count=1000, keep_ambient_space=False, sample_new=True,
+                       icnn_epochs=500, sample_count=1000, keep_ambient_space=False, sample_new=True,
                        sample_over_input_space=False,
                        sample_over_output_space=True, use_grad_descent=False):
     def plt_inc_amb(caption, inc, amb):
@@ -49,7 +49,7 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
     imshow_flattened(ambient_space[0], (3, 32, 32))
     imshow_flattened(ambient_space[100], (3, 32, 32))"""
 
-    if should_plot:
+    if should_plot_detailed:
         plt_inc_amb("start", included_space, ambient_space)
 
     parameter_list = list(nn.parameters())
@@ -79,30 +79,30 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
                                                                     c_values[current_layer_index - 1]],
                                                             padding=0.5)  # todo test for when lower/upper bound is smaller then eps
 
-        if should_plot:
+        if should_plot_detailed:
             plt_inc_amb("affin e" + str(i), included_space.tolist(), ambient_space.tolist())
 
         included_space = ds.apply_affine_transform(W, b, included_space)
         if sample_over_input_space or keep_ambient_space:
             ambient_space = ds.apply_affine_transform(W, b, ambient_space)
 
-        if should_plot:
+        if should_plot_detailed or should_plot:
             original_included_space = ds.apply_affine_transform(W, b, original_included_space)
             original_ambient_space = ds.apply_affine_transform(W, b, original_ambient_space)
-
-            plt_inc_amb("affin e" + str(i), included_space.tolist(), ambient_space.tolist())
-            plt_inc_amb("original affin e" + str(i), original_included_space.tolist(), original_ambient_space.tolist())
+            if should_plot_detailed:
+                plt_inc_amb("affin e" + str(i), included_space.tolist(), ambient_space.tolist())
+                plt_inc_amb("original affin e" + str(i), original_included_space.tolist(), original_ambient_space.tolist())
 
         included_space = ds.apply_ReLU_transform(included_space)
         if sample_over_input_space or keep_ambient_space:
             ambient_space = ds.apply_ReLU_transform(ambient_space)
 
-        if should_plot:
+        if should_plot_detailed or should_plot:
             original_included_space = ds.apply_ReLU_transform(original_included_space)
             original_ambient_space = ds.apply_ReLU_transform(original_ambient_space)
-
-            plt_inc_amb("relu " + str(i), included_space.tolist(), ambient_space.tolist())
-            plt_inc_amb("original relu e" + str(i), original_included_space.tolist(), original_ambient_space.tolist())
+            if should_plot_detailed:
+                plt_inc_amb("relu " + str(i), included_space.tolist(), ambient_space.tolist())
+                plt_inc_amb("original relu e" + str(i), original_included_space.tolist(), original_ambient_space.tolist())
 
         if sample_over_output_space:
             ambient_space = ds.samples_uniform_over(ambient_space, int(sample_count / 2),
@@ -110,10 +110,10 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
             original_ambient_space = ds.samples_uniform_over(original_ambient_space, int(sample_count / 2),
                                                              box_bounds[current_layer_index], padding=0.5)
 
-        if should_plot or True:
+        if should_plot_detailed:
             plt_inc_amb("enhanced ambient space " + str(i), included_space.tolist(), ambient_space.tolist())
-            # plt_inc_amb("original enhanced ambient space " + str(i), original_included_space.tolist(),
-            #            original_ambient_space.tolist())
+            plt_inc_amb("original enhanced ambient space " + str(i), original_included_space.tolist(),
+                        original_ambient_space.tolist())
 
         mean = get_mean(included_space, ambient_space)
         std = get_std(included_space, ambient_space)
@@ -136,58 +136,46 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
 
         init_icnn_box_bounds(current_icnn, [low, up])
 
-        if should_plot or True:
-            plots = Plots_for(0, current_icnn, normalized_included_space.detach(), normalized_ambient_space.detach(),
-                              true_extremal_points,
-                              [-1, 3], [-1, 3])
-            plots.plt_dotted()
-            # plots.plt_mesh()
-
         # train icnn
 
         if use_grad_descent:
-            for l in range(3):
-                if should_plot or True:
-                    plt_inc_amb("without gradient descent ", normalized_included_space.tolist(), normalized_ambient_space.tolist())
-
-                for k in range(10):
+            if should_plot:
+                plt_inc_amb("without gradient descent", normalized_included_space.tolist(),
+                            normalized_ambient_space.tolist())
+            num_optimizations = 3
+            epochs_per_optimization = icnn_epochs // num_optimizations
+            modulo_epochs = icnn_epochs % num_optimizations
+            for h in range(num_optimizations + 1):
+                for k in range(100):
                     #normalized_ambient_space = dop.gradient_descent_data_optim(current_icnn, normalized_ambient_space.detach())
                     normalized_ambient_space = dop.adam_data_optim(current_icnn, normalized_ambient_space.detach())
-                    if k % 10 == 0:
-                        print("optim step {}".format(k))
 
+                    dataset = ConvexDataset(data=normalized_ambient_space.detach())
+                    ambient_loader = DataLoader(dataset, batch_size=icnn_batch_size, shuffle=True)
 
-                if should_plot or True:
-                    plt_inc_amb("with gradient descent " + str(k), normalized_included_space.tolist(), normalized_ambient_space.tolist())
-                    """plots = Plots_for(0, current_icnn, normalized_included_space.detach(),
-                                      ambient_gd.detach(),
-                                      true_extremal_points,
-                                      [-1, 3], [-1, 3])
-                    plots.plt_dotted()"""
-
-                dataset = ConvexDataset(data=normalized_ambient_space.detach())
-                ambient_loader = DataLoader(dataset, batch_size=icnn_batch_size, shuffle=True)
-                train_icnn(current_icnn, train_loader, ambient_loader, epochs=icnn_epochs, hyper_lambda=1)
-
-                if should_plot or True:
-                    plots = Plots_for(0, current_icnn, normalized_included_space.detach(),
-                                      normalized_ambient_space.detach(),
-                                      true_extremal_points,
-                                      [-1, 3], [-1, 3])
-                    plots.plt_dotted()
-                    plots.plt_mesh()
-
+                if h < num_optimizations:
+                    train_icnn(current_icnn, train_loader, ambient_loader, epochs=epochs_per_optimization, hyper_lambda=1)
+                elif h == num_optimizations and modulo_epochs != 0:
+                    train_icnn(current_icnn, train_loader, ambient_loader, epochs=modulo_epochs, hyper_lambda=1)
+            if should_plot:
+                plt_inc_amb("with gradient descent", normalized_included_space.tolist(),
+                            normalized_ambient_space.tolist())
         else:
             train_icnn(current_icnn, train_loader, ambient_loader, epochs=icnn_epochs, hyper_lambda=1)
 
         normalize_nn(current_icnn, mean, std, isICNN=True)
 
         # matplotlib.use("TkAgg")
-        if should_plot:
+        if should_plot_detailed:
             plots = Plots_for(0, current_icnn, included_space.detach(), ambient_space.detach(), true_extremal_points,
                               [-1, 3], [-1, 3])
             plots.plt_dotted()
             plots.plt_mesh()
+
+        if should_plot:
+            plots = Plots_for(0, current_icnn, included_space.detach(), ambient_space.detach(), true_extremal_points,
+                              [-1, 3], [-1, 3])
+            plots.plt_dotted()
 
         # verify and enlarge convex approximation
         if i == 0:
@@ -203,6 +191,9 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
                                                                 prev_c], has_ReLU=True)
         c_values.append(c)
         if should_plot:
+            plots.c = c
+            plots.plt_dotted()
+        if should_plot_detailed:
             plots.c = c
             plots.plt_dotted()
             plots.plt_mesh()
@@ -223,7 +214,7 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
             # man müsste dann noch mal nach dem Training das icnn mit boxbounds zusammenfügen, damit es das gleiche ist
             # dann muss man auch nicht mehr max_radius verwenden zum samplen
 
-            if should_plot:
+            if should_plot_detailed:
                 plt_inc_amb("sampled new", included_space.tolist(), ambient_space.tolist())
                 plt_inc_amb("original end of layer", original_included_space.tolist(), original_ambient_space.tolist())
         else:
@@ -235,14 +226,8 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
 
     if should_plot:
         included_space = ds.apply_affine_transform(W, b, included_space)
-        ambient_space = ds.apply_affine_transform(W, b, ambient_space)
-        ambient_space = ds.samples_uniform_over(ambient_space, int(sample_count / 2), box_bounds[-1], padding=0.5)
-        plt_inc_amb("output" + str(i), included_space.tolist(), ambient_space.tolist())
-
         original_included_space = ds.apply_affine_transform(W, b, original_included_space)
-        original_ambient_space = ds.apply_affine_transform(W, b, original_ambient_space)
-        original_ambient_space = ds.samples_uniform_over(original_ambient_space, int(sample_count / 2), box_bounds[-1])
-        plt_inc_amb("original output" + str(i), original_included_space.tolist(), original_ambient_space.tolist())
+        plt_inc_amb("output comparison" + str(i), included_space.tolist(), original_included_space.tolist())
 
     A_out, b_out = Rhombus().get_A(), Rhombus().get_b()
     last_layer_identity(icnns[-1], c_values[-1], W, b, A_out, b_out, box_bounds, solver_time_limit, solver_bound)
@@ -479,7 +464,8 @@ W3 = [-1. 1.; 1. 1.]
 b3 = [3., 0.] """
 
 nn = SequentialNN([2, 2, 2, 2])
-should_plot = False
+should_plot = True
+should_plot_detailed = False
 
 with torch.no_grad():
     parameter_list = list(nn.parameters())
