@@ -12,9 +12,11 @@ from script.DHOV.Normalisation import get_std, get_mean, normalize_nn, normalize
 import script.Verification.Verification as ver
 import script.Verification.VerificationBasics as verbas
 import script.DHOV.DataSampling as ds
+import script.DHOV.DataOptimization as dop
 from script.dataInit import ConvexDataset, Rhombus
 from script.eval import Plots_for
 from script.NeuralNets.trainFunction import train_icnn
+
 
 
 def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=None, solver_bound=None,
@@ -147,30 +149,21 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
             for l in range(3):
                 if should_plot or True:
                     plt_inc_amb("without gradient descent ", normalized_included_space.tolist(), normalized_ambient_space.tolist())
-                normalized_ambient_space.detach()
-                for k in range(5):
-                    new_ambient = torch.empty_like(normalized_ambient_space, dtype=torch.float64)
-                    for h, elem in enumerate(normalized_ambient_space):
-                        new_elem = torch.tensor(elem, dtype=torch.float64, requires_grad=True)
-                        inp = torch.unsqueeze(new_elem, dim=0)
-                        output = current_icnn(inp)
-                        target = torch.tensor([[0]], dtype=torch.float64)
-                        loss = torch.nn.MSELoss()(output, target)
-                        grad = torch.autograd.grad(loss, inp)
-                        lr = 0.001
-                        grad = torch.mul(grad[0], lr)
-                        new = torch.sub(inp, grad[0])
-                        new_ambient[h] = new[0]
 
-                    normalized_ambient_space = new_ambient.clone().detach()
+                for k in range(10):
+                    #normalized_ambient_space = dop.gradient_descent_data_optim(current_icnn, normalized_ambient_space.detach())
+                    normalized_ambient_space = dop.adam_data_optim(current_icnn, normalized_ambient_space.detach())
+                    if k % 10 == 0:
+                        print("optim step {}".format(k))
 
-                    if should_plot or True:
-                        plt_inc_amb("with gradient descent " + str(k), normalized_included_space.tolist(), normalized_ambient_space.tolist())
-                        """plots = Plots_for(0, current_icnn, normalized_included_space.detach(),
-                                          ambient_gd.detach(),
-                                          true_extremal_points,
-                                          [-1, 3], [-1, 3])
-                        plots.plt_dotted()"""
+
+                if should_plot or True:
+                    plt_inc_amb("with gradient descent " + str(k), normalized_included_space.tolist(), normalized_ambient_space.tolist())
+                    """plots = Plots_for(0, current_icnn, normalized_included_space.detach(),
+                                      ambient_gd.detach(),
+                                      true_extremal_points,
+                                      [-1, 3], [-1, 3])
+                    plots.plt_dotted()"""
 
                 dataset = ConvexDataset(data=normalized_ambient_space.detach())
                 ambient_loader = DataLoader(dataset, batch_size=icnn_batch_size, shuffle=True)
@@ -253,7 +246,6 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
 
     A_out, b_out = Rhombus().get_A(), Rhombus().get_b()
     last_layer_identity(icnns[-1], c_values[-1], W, b, A_out, b_out, box_bounds, solver_time_limit, solver_bound)
-
 
 def last_layer_identity(last_icnn: ICNN, last_c, W, b, A_out, b_out, nn_bounds, solver_time_limit, solver_bound):
     m = Model()
