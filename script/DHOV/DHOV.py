@@ -19,7 +19,7 @@ from script.NeuralNets.trainFunction import train_icnn
 
 def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=None, solver_bound=None,
                        icnn_batch_size=3000,
-                       icnn_epochs=200, sample_count=1000, keep_ambient_space=False, sample_new=True,
+                       icnn_epochs=100, sample_count=1000, keep_ambient_space=False, sample_new=True,
                        sample_over_input_space=False,
                        sample_over_output_space=True, use_grad_descent=False):
     def plt_inc_amb(caption, inc, amb):
@@ -144,43 +144,45 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
         # train icnn
 
         if use_grad_descent:
-            if should_plot or True:
-                plt_inc_amb("without gradient descent ", normalized_included_space.tolist(), normalized_ambient_space.tolist())
-            ambient_gd = normalized_ambient_space.clone().detach()
-            for k in range(5):
-                new_ambient = torch.empty_like(normalized_ambient_space, dtype=torch.float64)
-                for h, elem in enumerate(ambient_gd):
-                    new_elem = torch.tensor(elem, dtype=torch.float64, requires_grad=True)
-                    inp = torch.unsqueeze(new_elem, dim=0)
-                    output = current_icnn(inp)
-                    target = torch.tensor([[0]], dtype=torch.float64)
-                    loss = torch.nn.MSELoss()(output, target)
-                    grad = torch.autograd.grad(loss, inp)
-                    lr = 0.001
-                    grad = torch.mul(grad[0], lr)
-                    new = torch.sub(inp, grad[0])
-                    new_ambient[h] = new[0]
+            for l in range(3):
+                if should_plot or True:
+                    plt_inc_amb("without gradient descent ", normalized_included_space.tolist(), normalized_ambient_space.tolist())
+                normalized_ambient_space.detach()
+                for k in range(5):
+                    new_ambient = torch.empty_like(normalized_ambient_space, dtype=torch.float64)
+                    for h, elem in enumerate(normalized_ambient_space):
+                        new_elem = torch.tensor(elem, dtype=torch.float64, requires_grad=True)
+                        inp = torch.unsqueeze(new_elem, dim=0)
+                        output = current_icnn(inp)
+                        target = torch.tensor([[0]], dtype=torch.float64)
+                        loss = torch.nn.MSELoss()(output, target)
+                        grad = torch.autograd.grad(loss, inp)
+                        lr = 0.001
+                        grad = torch.mul(grad[0], lr)
+                        new = torch.sub(inp, grad[0])
+                        new_ambient[h] = new[0]
 
-                ambient_gd = new_ambient.clone().detach()
+                    normalized_ambient_space = new_ambient.clone().detach()
+
+                    if should_plot or True:
+                        plt_inc_amb("with gradient descent " + str(k), normalized_included_space.tolist(), normalized_ambient_space.tolist())
+                        """plots = Plots_for(0, current_icnn, normalized_included_space.detach(),
+                                          ambient_gd.detach(),
+                                          true_extremal_points,
+                                          [-1, 3], [-1, 3])
+                        plots.plt_dotted()"""
+
+                dataset = ConvexDataset(data=normalized_ambient_space.detach())
+                ambient_loader = DataLoader(dataset, batch_size=icnn_batch_size, shuffle=True)
+                train_icnn(current_icnn, train_loader, ambient_loader, epochs=icnn_epochs, hyper_lambda=1)
 
                 if should_plot or True:
-                    plt_inc_amb("with gradient descent " + str(k), normalized_included_space.tolist(), ambient_gd.tolist())
-                    """plots = Plots_for(0, current_icnn, normalized_included_space.detach(),
-                                      ambient_gd.detach(),
+                    plots = Plots_for(0, current_icnn, normalized_included_space.detach(),
+                                      normalized_ambient_space.detach(),
                                       true_extremal_points,
                                       [-1, 3], [-1, 3])
-                    plots.plt_dotted()"""
-
-            dataset = ConvexDataset(data=ambient_gd.detach())
-            ambient_loader = DataLoader(dataset, batch_size=icnn_batch_size, shuffle=True)
-            train_icnn(current_icnn, train_loader, ambient_loader, epochs=icnn_epochs, hyper_lambda=1)
-
-            if should_plot or True:
-                plots = Plots_for(0, current_icnn, normalized_included_space.detach(),
-                                  ambient_gd.detach(),
-                                  true_extremal_points,
-                                  [-1, 3], [-1, 3])
-                plots.plt_dotted()
+                    plots.plt_dotted()
+                    plots.plt_mesh()
 
         else:
             train_icnn(current_icnn, train_loader, ambient_loader, epochs=icnn_epochs, hyper_lambda=1)
