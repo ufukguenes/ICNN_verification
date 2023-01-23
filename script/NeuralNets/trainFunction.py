@@ -56,6 +56,55 @@ def train_icnn(model, train_loader, ambient_loader, epochs=10, opt=None,
         return history
 
 
+def train_icnn_outer(model, ambient_loader, x_argmin, x_min, epochs=10, opt=None, return_history=False, sequential=False):
+    history = []
+    if opt is None:
+        opt = torch.optim.Adam(model.parameters())
+    torch.autograd.set_detect_anomaly(True)
+
+    for epoch in range(epochs):
+        train_loss = 0
+        train_n = 0
+
+        print("=== Epoch: {}===".format(epoch))
+        epoch_start_time = time.time()
+        for i, X_ambient in enumerate(ambient_loader):
+            output = model(X_ambient)
+            loss = deep_hull_outer_loss(output, X_ambient, x_argmin, x_min)
+            opt.zero_grad()
+            loss.backward()
+            opt.step()
+
+            if not sequential:
+                with torch.no_grad():
+                    for w in model.ws:
+                        for p in w.parameters():
+                            if len(p.size()) > 1:  # we have a matrix
+                                # only want positive entries
+                                p[:] = torch.maximum(torch.Tensor([0]), p)
+            else:
+                with torch.no_grad():
+                    for p in model.parameters():
+                        if len(p.size()) > 1:  # we have a matrix
+                            # only want positive entries
+                            p[:] = torch.maximum(torch.Tensor([0]), p)
+
+            train_loss += loss.item()
+            train_n += 1
+
+            if return_history:
+                history.append(train_loss / train_n)
+
+            if i % 100 == 0:
+                print("batch = {}, mean loss = {}".format(i, train_loss / train_n))
+
+        print("batch = {}, mean loss = {}".format(len(ambient_loader), train_loss / train_n))
+        print("time per epoch: {}".format(time.time()-epoch_start_time))
+
+    if return_history:
+        return history
+
+
 def train_icnn_adversarial(model, adversarial, train_loader, adversarial_loader, epochs=10, train_ICNN=True,
                            opt_model=None, opt_adv=None, return_history=False, hyper_lambda=1, use_max_distance=False):
     history = []

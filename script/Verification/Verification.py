@@ -150,7 +150,28 @@ def verification(icnn, center_eps_W_b=None, A_b=None, icnn_W_b_c=None, has_ReLU=
         return inp, output_var.X[0]
 
 
+def find_minima(icnn, sequential=False):
+    m = Model()
 
+    # m.Params.LogToConsole = 0
 
+    input_size = icnn.layer_widths[0]
+    output_size = icnn.layer_widths[-1]
+    input_var = m.addMVar(input_size, lb=-float('inf'), name="in_var")
+    output_var = m.addMVar(output_size, lb=-float('inf'), name="output_var")
 
+    if sequential:
+        bounds = verbas.calculate_box_bounds(icnn, None)
+        verbas.add_constr_for_sequential_icnn(m, icnn, input_var, output_var, bounds)
+    else:
+        bounds = verbas.calculate_box_bounds(icnn, None, is_sequential=False)
+        verbas.add_constr_for_non_sequential_icnn(m, icnn, input_var, output_var, bounds)
 
+    m.update()
+    m.setObjective(output_var[0], GRB.MINIMIZE)
+    m.optimize()
+
+    if m.Status == GRB.OPTIMAL:
+        inp = input_var.getAttr("x")
+        print("optimum solution at: {}, with value {}, true output: {}".format(inp, output_var.getAttr("x"), 0))  #
+        return inp, output_var.X[0]
