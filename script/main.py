@@ -55,7 +55,7 @@ else:
     adversarial_set = ConvexDataset(data=value)
     adversarial_loader = DataLoader(adversarial_set, batch_size=batch_size, shuffle=True)
 
-plots = Plots_for(0, icnn, included_space, ambient_space, true_extremal_points, x_range, y_range, adversarial=adversarial, adversarial_values=value)
+plots = Plots_for(0, icnn, included_space, ambient_space, x_range, y_range, extr=true_extremal_points, adversarial=adversarial, adversarial_values=value)
 plots.plt_initial()
 
 plots.plt_adversarial_initial()

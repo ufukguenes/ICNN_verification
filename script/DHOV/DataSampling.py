@@ -86,8 +86,7 @@ def sample_max_radius(icnn, c, sample_size, box_bounds=None):
 
 def regroup_samples(icnn, c, included_space, ambient_space):
     moved = 0
-    size_ambient_space = ambient_space.size(0)
-    for i, elem in enumerate(size_ambient_space):
+    for i, elem in enumerate(ambient_space):
         elem = torch.unsqueeze(elem, 0)
         output = icnn(elem)
         if output <= c:

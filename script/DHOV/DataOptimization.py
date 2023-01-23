@@ -6,7 +6,7 @@ def gradient_descent_data_optim(icnn, samples):
         new_elem = torch.tensor(elem, dtype=torch.float64, requires_grad=True)
         inp = torch.unsqueeze(new_elem, dim=0)
         output = icnn(inp)
-        target = torch.tensor([[0]], dtype=torch.float64)
+        target = torch.tensor([[0.2]], dtype=torch.float64)
         loss = torch.nn.MSELoss()(output, target)
         grad = torch.autograd.grad(loss, inp)
         lr = 0.001

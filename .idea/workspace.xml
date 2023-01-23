@@ -4,9 +4,15 @@
     <list default="true" id="90b0f737-acac-430b-a76c-cab51a684379" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/script/DHOV/DHOV.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/DHOV/DHOV.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/script/NeuralNets/lossFunction.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/NeuralNets/lossFunction.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/script/NeuralNets/trainFunction.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/NeuralNets/trainFunction.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/script/Verification/Verification.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/Verification/Verification.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/script/DHOV/DataOptimization.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/DHOV/DataOptimization.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/script/DHOV/DataSampling.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/DHOV/DataSampling.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/script/Experiments/GenerativeExperiment.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/script/Experiments/GenerativeExperiment.ipynb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/script/Experiments/GenerativeWithoutICNNExperiment.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/script/Experiments/GenerativeWithoutICNNExperiment.ipynb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/script/Experiments/NonGenerativeExperiment.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/script/Experiments/NonGenerativeExperiment.ipynb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/script/Experiments/NormalizationExperiment.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/script/Experiments/NormalizationExperiment.ipynb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/script/Experiments/NormalizationICNN.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/script/Experiments/NormalizationICNN.ipynb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/script/eval.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/eval.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/script/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/main.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -38,17 +44,17 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
-    &quot;last_opened_file_path&quot;: &quot;C:/Users/Ufuk/Desktop&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;editor.preferences.fonts.default&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "RunOnceActivity.OpenProjectViewOnStart": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "WebServerToolWindowFactoryState": "false",
+    "last_opened_file_path": "C:/Users/Ufuk/Documents/Programming/ICNN_verification/script/DHOV/MainDHOV.py",
+    "node.js.detected.package.eslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "settings.editor.selected.configurable": "editor.preferences.fonts.default"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="C:\Users\Ufuk\Documents\Programming\ICNN_verification\script\Experiments" />
@@ -62,7 +68,7 @@
       <recent name="C:\Users\Ufuk\Documents\Programming\DeepHull\script\Experiments" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.DHOV">
+  <component name="RunManager" selected="Python.MainDHOV">
     <configuration name="DHOV" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
       <module name="DeepHull" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -76,7 +82,29 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="C:\Users\Ufuk\Documents\Programming\ICNN_verification\script\DHOV\DHOV.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/script/DHOV/DHOV.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="MainDHOV" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
+      <module name="DeepHull" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="C:\Users\Ufuk\miniconda3\envs\torchCPU\python.exe" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/script/DHOV" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/script/DHOV/MainDHOV.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -154,6 +182,7 @@
     <list>
       <item itemvalue="Python.main" />
       <item itemvalue="Python.DHOV" />
+      <item itemvalue="Python.MainDHOV" />
       <item itemvalue="Python.test" />
       <item itemvalue="Python.Normalisation" />
     </list>
@@ -225,7 +254,8 @@
       <workItem from="1674056903311" duration="2539000" />
       <workItem from="1674218405934" duration="29145000" />
       <workItem from="1674384292274" duration="18248000" />
-      <workItem from="1674463988862" duration="3019000" />
+      <workItem from="1674463988862" duration="3452000" />
+      <workItem from="1674480304243" duration="11888000" />
     </task>
     <servers />
   </component>
@@ -271,16 +301,6 @@
           <line>61</line>
           <option name="timeStamp" value="432" />
         </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/script/DHOV/DHOV.py</url>
-          <line>233</line>
-          <option name="timeStamp" value="460" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/script/DHOV/DHOV.py</url>
-          <line>253</line>
-          <option name="timeStamp" value="461" />
-        </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="jupyter-line">
           <url>notebook://C:/Users/Ufuk/Documents/Programming/ICNN_verification/script/Experiments/NonGenerativeExperiment.ipynb</url>
           <line>3</line>
@@ -308,6 +328,7 @@
     <SUITE FILE_PATH="coverage/DeepHull$main.coverage" NAME="main Coverage Results" MODIFIED="1669233392579" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ICNN_verification$main.coverage" NAME="main Coverage Results" MODIFIED="1670249050825" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ICNN_verification$DHOV.coverage" NAME="DHOV Coverage Results" MODIFIED="1674467903275" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script" />
+    <SUITE FILE_PATH="coverage/ICNN_verification$MainDHOV.coverage" NAME="MainDHOV Coverage Results" MODIFIED="1674500191194" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script/DHOV" />
     <SUITE FILE_PATH="coverage/DeepHull$Verification.coverage" NAME="Verification Coverage Results" MODIFIED="1669122239179" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script" />
     <SUITE FILE_PATH="coverage/ICNN_verification$test.coverage" NAME="test Coverage Results" MODIFIED="1673302337900" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script" />
     <SUITE FILE_PATH="coverage/DeepHull$eval.coverage" NAME="eval Coverage Results" MODIFIED="1668723858367" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
