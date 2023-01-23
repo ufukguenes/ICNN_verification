@@ -15,15 +15,14 @@ import script.DHOV.DataSampling as ds
 import script.DHOV.DataOptimization as dop
 from script.dataInit import ConvexDataset, Rhombus
 from script.eval import Plots_for
-from script.NeuralNets.trainFunction import train_icnn
-
+from script.NeuralNets.trainFunction import train_icnn, train_icnn_outer
 
 
 def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=None, solver_bound=None,
                        icnn_batch_size=3000,
                        icnn_epochs=500, sample_count=1000, keep_ambient_space=False, sample_new=True,
                        sample_over_input_space=False,
-                       sample_over_output_space=True, use_grad_descent=False):
+                       sample_over_output_space=True, use_grad_descent=False, train_outer=False):
     def plt_inc_amb(caption, inc, amb):
         plt.figure(figsize=(20, 10))
         plt.scatter(list(map(lambda x: x[0], amb)), list(map(lambda x: x[1], amb)), c="#ff7f0e")
@@ -137,7 +136,7 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
         init_icnn_box_bounds(current_icnn, [low, up])
 
         # train icnn
-
+        untouched_normalized_ambient_space = normalized_ambient_space.detach().clone()
         if use_grad_descent:
             if should_plot:
                 plt_inc_amb("without gradient descent", normalized_included_space.tolist(),
@@ -145,23 +144,77 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
             num_optimizations = 3
             epochs_per_optimization = icnn_epochs // num_optimizations
             modulo_epochs = icnn_epochs % num_optimizations
+            num_optimizations = 20
             for h in range(num_optimizations + 1):
                 if h < num_optimizations:
                     epochs_in_run = epochs_per_optimization
-                    for k in range(50):
+                    for k in range(100):
                         # normalized_ambient_space = dop.gradient_descent_data_optim(current_icnn, normalized_ambient_space.detach())
                         normalized_ambient_space = dop.adam_data_optim(current_icnn, normalized_ambient_space.detach())
                     dataset = ConvexDataset(data=normalized_ambient_space.detach())
                     ambient_loader = DataLoader(dataset, batch_size=icnn_batch_size, shuffle=True)
                 elif h == num_optimizations and modulo_epochs != 0:
                     epochs_in_run = modulo_epochs
-                train_icnn(current_icnn, train_loader, ambient_loader, epochs=epochs_in_run, hyper_lambda=1)
+
+                epochs_in_run = 1
+                train_icnn(current_icnn, train_loader, ambient_loader, epochs=epochs_in_run, hyper_lambda=0.001)
 
             if should_plot:
                 plt_inc_amb("with gradient descent", normalized_included_space.tolist(),
                             normalized_ambient_space.tolist())
+                plots = Plots_for(0, current_icnn, normalized_included_space.detach(), normalized_ambient_space.detach(),
+                                  true_extremal_points,
+                                  [-1, 3], [-1, 3])
+                plots.plt_mesh()
         else:
             train_icnn(current_icnn, train_loader, ambient_loader, epochs=icnn_epochs, hyper_lambda=1)
+
+        if train_outer:
+            lam = 10
+
+            with torch.no_grad():
+                for i in range(0, len(current_icnn.ws)):
+                    ws = list(current_icnn.ws[i].parameters())
+                    ws[1].data = torch.mul(ws[1], lam)
+
+                ws = list(current_icnn.ws[-1].parameters())
+                ws[0].data = torch.div(ws[0].data, lam)
+                ws[1].data = torch.div(ws[1].data, lam)
+                us = list(current_icnn.us[-1].parameters())
+                us[0].data = torch.div(us[0].data, lam)
+
+            plots = Plots_for(0, current_icnn, normalized_included_space.detach(),
+                              untouched_normalized_ambient_space.detach(),
+                              true_extremal_points,
+                              [-1*lam, 3*lam], [-1*lam, 3*lam])
+            plots.plt_dotted()
+            plots.plt_mesh()
+
+            """            with torch.no_grad():
+                k = len(current_icnn.ws)
+                w_0 = list(current_icnn.ws[0].parameters())[0]
+                w_0.data = torch.mul(w_0, lam)
+                for i in range(0, len(current_icnn.ws)):
+                    ws = list(current_icnn.ws[i].parameters())
+                    ws[1].data = torch.mul(ws[1], lam)
+
+                for i in range(0, len(current_icnn.us)):
+                    us = list(current_icnn.us[i].parameters())
+                    us[0].data = torch.mul(us[0], lam)"""
+
+            """ver_result = ver.find_minima(current_icnn, sequential=False)
+            x_argmin = ver_result[0]
+            x_min = ver_result[1]
+            for h in range(10):
+                dataset = ConvexDataset(data=untouched_normalized_ambient_space.detach())
+                ambient_loader = DataLoader(dataset, batch_size=icnn_batch_size, shuffle=True)
+                train_icnn_outer(current_icnn, ambient_loader, x_argmin, x_min, epochs=10)
+                plots = Plots_for(0, current_icnn, normalized_included_space.detach(), untouched_normalized_ambient_space.detach(),
+                                  true_extremal_points,
+                                  [-1, 3], [-1, 3])
+                plots.plt_mesh()
+                t=1"""
+
 
         normalize_nn(current_icnn, mean, std, isICNN=True)
 
@@ -297,7 +350,7 @@ def init_icnn_box_bounds(icnn: ICNN, box_bounds):
         k = len(icnn.ws)
         for i in range(0, len(icnn.ws)):
             ws = list(icnn.ws[i].parameters())
-            # ws[0].data = torch.zeros_like(ws[0], dtype=torch.float64)
+            #ws[0].data = torch.zeros_like(ws[0], dtype=torch.float64)
 
             """ For using box bounds constraints in second layer
             if i == 0:
@@ -489,4 +542,4 @@ with torch.no_grad():
 test_image = torch.tensor([[0, 0]], dtype=torch.float64)
 start_verification(nn, test_image, eps=1, sample_new=True,
                    sample_over_input_space=False, sample_over_output_space=True,
-                   keep_ambient_space=False, use_grad_descent=True)
+                   keep_ambient_space=False, use_grad_descent=False, train_outer=False)
