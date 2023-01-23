@@ -18,13 +18,13 @@ class Plots_for():
     included_space = []
     model: torch.nn.Module
     advers_model: torch.nn.Module
-    true_extremal = 0
+    true_extremal = None
     x_range = []
     y_range = []
     adversarial = None
     adversarial_values = None
 
-    def __init__(self, c_val, model_local, inc_space, amb_space, extr, range_x, range_y, adversarial=None, adversarial_values=None):
+    def __init__(self, c_val, model_local, inc_space, amb_space, range_x, range_y, extr=None, adversarial=None, adversarial_values=None):
 
         self.x_range = range_x
         self.y_range = range_y
@@ -94,14 +94,21 @@ class Plots_for():
             plt.scatter(self.not_in_convex[:, 0, 0], self.not_in_convex[:, 0, 1])
 
     def _create_plot_true_convex_hull(self):
-        x = []
-        y = []
-        for vertex in self.true_extremal:
-            x.append(vertex[0])
-            y.append(vertex[1])
-        x.append(self.true_extremal[0][0])
-        y.append(self.true_extremal[0][1])
-        plt.plot(x, y, 'ro-')
+        if torch.is_tensor(self.true_extremal):
+            true_hull = ConvexHull(self.true_extremal)
+            for simplex in true_hull.simplices:
+                plt.plot(self.true_extremal[simplex, 0], self.true_extremal[simplex, 1], 'ro-')
+        else:
+            x = []
+            y = []
+            if self.true_extremal is None:
+                return
+            for vertex in self.true_extremal:
+                x.append(vertex[0])
+                y.append(vertex[1])
+            x.append(self.true_extremal[0][0])
+            y.append(self.true_extremal[0][1])
+            plt.plot(x, y, 'ro-')
 
     def plt_initial(self):
         fig = plt.figure(figsize=(20, 10))
