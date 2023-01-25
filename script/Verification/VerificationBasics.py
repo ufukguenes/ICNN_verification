@@ -57,40 +57,22 @@ def calculate_box_bounds(nn, input_bounds, is_sequential=True, with_ReLU=True):
         next_lower_bounds = input_bounds[0]
         next_upper_bounds = input_bounds[1]
 
+
         bounds_per_layer = []
         for i in range(0, len(parameter_list), 2):
             W, b = parameter_list[i], parameter_list[i + 1]
+            W_plus = torch.maximum(W, torch.tensor(0, dtype=torch.float64))
+            W_minus = torch.minimum(W, torch.tensor(0, dtype=torch.float64))
+            lb = torch.matmul(W_plus, next_lower_bounds).add(torch.matmul(W_minus, next_upper_bounds)).add(b)
+            ub = torch.matmul(W_plus, next_upper_bounds).add(torch.matmul(W_minus, next_lower_bounds)).add(b)
+            if with_ReLU:
+                next_upper_bounds = torch.maximum(torch.tensor(0, dtype=torch.float64), ub)
+                next_lower_bounds = torch.maximum(torch.tensor(0, dtype=torch.float64), lb)
+            else:
+                next_upper_bounds = ub
+                next_lower_bounds = lb
 
-            new_upper_bound = []
-            new_lower_bound = []
-            for k, row in enumerate(W):
-                upper_multiply_value = []
-                lower_multiply_value = []
-                for l in range(row.size(dim=0)):
-                    if row[l] < 0:
-                        upper_multiply_value.append(next_lower_bounds[l])
-                        lower_multiply_value.append(next_upper_bounds[l])
-                    else:
-                        upper_multiply_value.append(next_upper_bounds[l])
-                        lower_multiply_value.append(next_lower_bounds[l])
-
-                upper_multiply_value = torch.tensor(upper_multiply_value, dtype=torch.float64)
-                lower_multiply_value = torch.tensor(lower_multiply_value, dtype=torch.float64)
-                affine_bound_upper = torch.sum(torch.mul(W[k], upper_multiply_value)).add(b[k]).item()
-                affine_bound_lower = torch.sum(torch.mul(W[k], lower_multiply_value)).add(b[k]).item()
-
-                if i < len(parameter_list) - 2 and with_ReLU:
-                    new_upper_bound.append(max(0, affine_bound_upper))  # ReLU bound
-                    new_lower_bound.append(max(0, affine_bound_lower))
-                else:
-                    new_upper_bound.append(affine_bound_upper)  # no ReLU bound
-                    new_lower_bound.append(affine_bound_lower)
-
-            next_lower_bounds = torch.tensor(new_lower_bound, dtype=torch.float64)
-            next_upper_bounds = torch.tensor(new_upper_bound, dtype=torch.float64)
             bounds_per_layer.append([next_lower_bounds, next_upper_bounds])
-
-
 
     return bounds_per_layer
 
