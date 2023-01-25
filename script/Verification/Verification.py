@@ -35,7 +35,7 @@ def verification(icnn, center_eps_W_b=None, A_b=None, icnn_W_b_c=None, has_ReLU=
         input_to_previous_layer = m.addMVar(input_to_previous_layer_size, lb=-float('inf'))
 
         lb = [-10000 for i in range(input_to_previous_layer_size)]
-        ub = [10000 for i in range(input_to_previous_layer_size)]
+        ub = [10000 for i in range(input_to_previous_layer_size)] #todo mit boxbounds anpassen
 
         max_vars = m.addVars(input_to_previous_layer_size, lb=-float('inf'))
         min_vars = m.addVars(input_to_previous_layer_size, lb=-float('inf'))
@@ -150,7 +150,7 @@ def verification(icnn, center_eps_W_b=None, A_b=None, icnn_W_b_c=None, has_ReLU=
         return inp, output_var.X[0]
 
 
-def find_minima(icnn, sequential=False):
+def find_minima(icnn, sequential=False, input_bounds=None):
     m = Model()
 
     # m.Params.LogToConsole = 0
@@ -161,10 +161,10 @@ def find_minima(icnn, sequential=False):
     output_var = m.addMVar(output_size, lb=-float('inf'), name="output_var")
 
     if sequential:
-        bounds = verbas.calculate_box_bounds(icnn, None)
+        bounds = verbas.calculate_box_bounds(icnn, input_bounds)
         verbas.add_constr_for_sequential_icnn(m, icnn, input_var, output_var, bounds)
     else:
-        bounds = verbas.calculate_box_bounds(icnn, None, is_sequential=False)
+        bounds = verbas.calculate_box_bounds(icnn, input_bounds, is_sequential=False)
         verbas.add_constr_for_non_sequential_icnn(m, icnn, input_var, output_var, bounds)
 
     m.update()
