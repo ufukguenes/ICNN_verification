@@ -157,9 +157,10 @@ def sample_uniform_excluding(data_samples, amount, including_bound, excluding_bo
 
 
 def apply_affine_transform(W, b, data_samples):
-    transformed_samples = torch.empty_like(data_samples, dtype=torch.float64)
+    transformed_samples = torch.empty((data_samples.size(0), b.size(0)), dtype=torch.float64)
     for i in range(data_samples.shape[0]):
         transformed_samples[i] = torch.matmul(W, data_samples[i]).add(b)
+
 
     return transformed_samples
 
