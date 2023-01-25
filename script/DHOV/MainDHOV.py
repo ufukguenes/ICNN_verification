@@ -183,7 +183,7 @@ def cifar_net():
                             download=True,
                             transform=transform)
     images, labels = training_data.__getitem__(0)
-    testimage, testlabel = torch.unsqueeze(images, 0), torch.unsqueeze(torch.tensor(labels), 0)
+    testimage, testlabel = torch.unsqueeze(images, 0).to(dtype=torch.float64), torch.unsqueeze(torch.tensor(labels), 0).to(dtype=torch.float64)
 
     nn = SequentialNN([32 * 32 * 3, 1024, 512, 10])
     nn.load_state_dict(torch.load("../../cifar_fc.pth", map_location=torch.device('cpu')), strict=False)
@@ -195,7 +195,7 @@ def cifar_net():
         dhov.start_verification(nn, testimage, eps=1, icnn_epochs=500, sample_new=True, use_over_approximation=True,
                                 sample_over_input_space=False, sample_over_output_space=True,
                                 keep_ambient_space=False, use_grad_descent=False, train_outer=False,
-                                should_plot="simple")
+                                should_plot="detailed")
 
-#cifar_net()
-net_2d()
+cifar_net()
+#net_2d()
