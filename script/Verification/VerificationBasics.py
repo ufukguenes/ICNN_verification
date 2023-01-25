@@ -50,29 +50,36 @@ def add_affine_constr(model, W, b, input_vars, lb, ub, i=0):
 def calculate_box_bounds(nn, input_bounds, is_sequential=True, with_ReLU=True):
     parameter_list = list(nn.parameters())
     # todo for now this only works for sequential nets
-    if not is_sequential:
-        bounds_per_layer = [([torch.tensor([-5000 for k in range(len(parameter_list[i]))]), torch.tensor([5000 for k in range(len(parameter_list[i]))])]) for i in range(0, len(parameter_list), 2)]
+    next_lower_bounds = input_bounds[0]
+    next_upper_bounds = input_bounds[1]
 
-    else:
-        next_lower_bounds = input_bounds[0]
-        next_upper_bounds = input_bounds[1]
+    if input_bounds is None:
+        bounds_per_layer = [([torch.tensor([-5000 for k in range(len(parameter_list[i]))]),
+                              torch.tensor([5000 for k in range(len(parameter_list[i]))])]) for i in
+                            range(0, len(parameter_list), 2)]
+        return bounds_per_layer #todo None entfernen aus aufrufen und durch sinnvolle eingabe ersetzen
 
+    bounds_per_layer = []
+    for i in range(0, len(parameter_list), 2):
+        W, b = parameter_list[i], parameter_list[i + 1]
+        W_plus = torch.maximum(W, torch.tensor(0, dtype=torch.float64))
+        W_minus = torch.minimum(W, torch.tensor(0, dtype=torch.float64))
+        lb = torch.matmul(W_plus, next_lower_bounds).add(torch.matmul(W_minus, next_upper_bounds)).add(b)
+        ub = torch.matmul(W_plus, next_upper_bounds).add(torch.matmul(W_minus, next_lower_bounds)).add(b)
+        if not is_sequential and i != 0:
+            U = nn.us[i / 2 - 1]
+            U_plus = torch.maximum(U, torch.tensor(0, dtype=torch.float64))
+            U_minus = torch.minimum(U, torch.tensor(0, dtype=torch.float64))
+            lb = lb.add(torch.matmul(U_plus, next_lower_bounds).add(torch.matmul(U_minus, next_upper_bounds)))
+            ub = ub.add(torch.matmul(U_plus, next_upper_bounds).add(torch.matmul(U_minus, next_lower_bounds)))
+        if with_ReLU:
+            next_upper_bounds = torch.maximum(torch.tensor(0, dtype=torch.float64), ub)
+            next_lower_bounds = torch.maximum(torch.tensor(0, dtype=torch.float64), lb)
+        else:
+            next_upper_bounds = ub
+            next_lower_bounds = lb
 
-        bounds_per_layer = []
-        for i in range(0, len(parameter_list), 2):
-            W, b = parameter_list[i], parameter_list[i + 1]
-            W_plus = torch.maximum(W, torch.tensor(0, dtype=torch.float64))
-            W_minus = torch.minimum(W, torch.tensor(0, dtype=torch.float64))
-            lb = torch.matmul(W_plus, next_lower_bounds).add(torch.matmul(W_minus, next_upper_bounds)).add(b)
-            ub = torch.matmul(W_plus, next_upper_bounds).add(torch.matmul(W_minus, next_lower_bounds)).add(b)
-            if with_ReLU:
-                next_upper_bounds = torch.maximum(torch.tensor(0, dtype=torch.float64), ub)
-                next_lower_bounds = torch.maximum(torch.tensor(0, dtype=torch.float64), lb)
-            else:
-                next_upper_bounds = ub
-                next_lower_bounds = lb
-
-            bounds_per_layer.append([next_lower_bounds, next_upper_bounds])
+        bounds_per_layer.append([next_lower_bounds, next_upper_bounds])
 
     return bounds_per_layer
 
