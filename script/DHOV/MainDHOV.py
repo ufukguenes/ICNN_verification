@@ -160,10 +160,10 @@ def net_2d():
 
     test_image = torch.tensor([[0, 0]], dtype=torch.float64)
     icnns, c_values = \
-        dhov.start_verification(nn, test_image, eps=1, icnn_epochs=500, sample_new=True, use_over_approximation=False,
+        dhov.start_verification(nn, test_image, eps=1, icnn_epochs=2, sample_new=True, use_over_approximation=True,
                                 sample_over_input_space=False, sample_over_output_space=True,
                                 keep_ambient_space=False, use_grad_descent=False, train_outer=False,
-                                should_plot="simple")
+                                should_plot="detailed", optimizer="LBFGS")
 
 
 def cifar_net():
@@ -197,5 +197,5 @@ def cifar_net():
                                 keep_ambient_space=False, use_grad_descent=False, train_outer=False,
                                 should_plot="detailed")
 
-cifar_net()
-#net_2d()
+#cifar_net()
+net_2d()
