@@ -50,8 +50,6 @@ def add_affine_constr(model, W, b, input_vars, lb, ub, i=0):
 def calculate_box_bounds(nn, input_bounds, is_sequential=True, with_ReLU=True):
     parameter_list = list(nn.parameters())
     # todo for now this only works for sequential nets
-    next_lower_bounds = input_bounds[0]
-    next_upper_bounds = input_bounds[1]
 
     if input_bounds is None:
         bounds_per_layer = [([torch.tensor([-5000 for k in range(len(parameter_list[i]))]),
@@ -59,6 +57,8 @@ def calculate_box_bounds(nn, input_bounds, is_sequential=True, with_ReLU=True):
                             range(0, len(parameter_list), 2)]
         return bounds_per_layer #todo None entfernen aus aufrufen und durch sinnvolle eingabe ersetzen
 
+    next_lower_bounds = input_bounds[0]
+    next_upper_bounds = input_bounds[1]
     bounds_per_layer = []
     for i in range(0, len(parameter_list), 2):
         W, b = parameter_list[i], parameter_list[i + 1]

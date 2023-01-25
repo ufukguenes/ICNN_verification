@@ -18,12 +18,13 @@ from script.NeuralNets.trainFunction import train_icnn, train_icnn_outer
 
 """
 should_plot has values: none, simple, detailed
+optimizer has values: adam, LBFGS, None. If None, adam will be used
 """
 def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=None, solver_bound=None,
                        icnn_batch_size=1000,
                        icnn_epochs=100, sample_count=1000, keep_ambient_space=False, sample_new=True,
                        use_over_approximation=True, sample_over_input_space=False,
-                       sample_over_output_space=True, use_grad_descent=False, train_outer=False, should_plot='none'):
+                       sample_over_output_space=True, use_grad_descent=False, train_outer=False, should_plot='none', optimizer="adam"):
 
     # todo Achtung ich muss schauen, ob gurobi upper bound inklusive ist, da ich aktuell die upper bound mit eps nicht inklusive habe
     input_flattened = torch.flatten(input)
@@ -101,6 +102,9 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
         mean = get_mean(included_space, ambient_space)
         std = get_std(included_space, ambient_space)
         normalized_included_space, normalized_ambient_space = normalize_data(included_space, ambient_space, mean, std)
+
+        if optimizer == "LBFGS": #todo does LBFGS support minibatch? I dont think so!
+            icnn_batch_size = len(normalized_ambient_space) + len(normalized_included_space)
         dataset = ConvexDataset(data=normalized_included_space)
         train_loader = DataLoader(dataset, batch_size=icnn_batch_size, shuffle=True)
         dataset = ConvexDataset(data=normalized_ambient_space)
@@ -133,7 +137,7 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
                 else:
                     epochs_in_run = epochs_per_optimization + modulo_epochs
 
-                train_icnn(current_icnn, train_loader, ambient_loader, epochs=epochs_in_run, hyper_lambda=0.5)
+                train_icnn(current_icnn, train_loader, ambient_loader, epochs=epochs_in_run, hyper_lambda=0.5, optimizer=optimizer)
 
                 if h < num_optimizations:
                     for k in range(optimization_steps):
@@ -141,6 +145,8 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
                         normalized_ambient_space = dop.adam_data_optim(current_icnn, normalized_ambient_space.detach())
                     dataset = ConvexDataset(data=torch.cat([normalized_ambient_space.detach(), untouched_normalized_ambient_space.detach()]))
                     #todo hier muss ich noch verwalten was passiert wenn ambient space in die nächste runde übernommen wird
+                    if optimizer == "LBFGS":
+                        icnn_batch_size = len(torch.cat([normalized_ambient_space.detach(), untouched_normalized_ambient_space.detach()])) + len(normalized_included_space)
                     ambient_loader = DataLoader(dataset, batch_size=icnn_batch_size, shuffle=True)
 
             if should_plot == "simple" or should_plot == "detailed":
@@ -150,7 +156,7 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
                                   [-2, 3], [-2, 3])
                 plots.plt_mesh()
         else:
-            train_icnn(current_icnn, train_loader, ambient_loader, epochs=icnn_epochs, hyper_lambda=1)
+            train_icnn(current_icnn, train_loader, ambient_loader, epochs=icnn_epochs, hyper_lambda=1, optimizer=optimizer)
 
         if train_outer:
             lam = 10
