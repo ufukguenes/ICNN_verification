@@ -1,4 +1,7 @@
 import torch
+from torchvision.datasets import CIFAR10
+from torchvision.transforms import Compose, ToTensor, Normalize
+
 import DataSampling as ds
 import DHOV as dhov
 from torch.utils.data import DataLoader
@@ -111,72 +114,88 @@ def last_layer_picture(last_icnn: ICNN, last_c, W, b, label, nn_bounds, solver_t
         print(out)
 
 
-"""transform = Compose([ToTensor(),
-                     Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
-                    )
+def net_2d():
+    batch_size = 10
+    epochs = 30
+    number_of_train_samples = 10000
+    hyper_lambda = 1
+    x_range = [-1.5, 1.5]
+    y_range = [-1.5, 1.5]
 
-training_data = CIFAR10(root="../cifar",
-                        train=True,
-                        download=True,
-                        transform=transform)
-images, labels = training_data.__getitem__(0)
-testimage, testlabel = torch.unsqueeze(images, 0), torch.unsqueeze(torch.tensor(labels), 0)
+    included_space, ambient_space = Rhombus().get_uniform_samples(number_of_train_samples, x_range,
+                                                                  y_range)  # samples will be split in inside and outside the rhombus
 
-nn = SequentialNN([32 * 32 * 3, 1024, 512, 10])
-nn.load_state_dict(torch.load("../cifar_fc.pth", map_location=torch.device('cpu')), strict=False)
+    dataset_in = ConvexDataset(data=included_space)
+    train_loader = DataLoader(dataset_in, batch_size=batch_size, shuffle=True)
+    dataset = ConvexDataset(data=ambient_space)
+    ambient_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
-torch.set_default_dtype(torch.float64)
-start_verification(nn, images)"""
+    """W1 = [1. 1.; 1. -1.]
+    b1 = [0., 0.]
+    W2 = [1. 1.; 1. -1.]
+    b2 = [-0.5, 0.]
+    W3 = [-1. 1.; 1. 1.]
+    b3 = [3., 0.] """
 
-batch_size = 10
-epochs = 30
-number_of_train_samples = 10000
-hyper_lambda = 1
-x_range = [-1.5, 1.5]
-y_range = [-1.5, 1.5]
-
-included_space, ambient_space = Rhombus().get_uniform_samples(number_of_train_samples, x_range,
-                                                              y_range)  # samples will be split in inside and outside the rhombus
-
-dataset_in = ConvexDataset(data=included_space)
-train_loader = DataLoader(dataset_in, batch_size=batch_size, shuffle=True)
-dataset = ConvexDataset(data=ambient_space)
-ambient_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
-
-"""W1 = [1. 1.; 1. -1.]
-b1 = [0., 0.]
-W2 = [1. 1.; 1. -1.]
-b2 = [-0.5, 0.]
-W3 = [-1. 1.; 1. 1.]
-b3 = [3., 0.] """
-
-nn = SequentialNN([2, 2, 2, 2])
-should_plot = True
-should_plot_detailed = False
-
-with torch.no_grad():
-    parameter_list = list(nn.parameters())
-    parameter_list[0].data = torch.tensor([[1, 1], [1, -1]], dtype=torch.float64)
-    parameter_list[1].data = torch.tensor([0, 0], dtype=torch.float64)
-    parameter_list[2].data = torch.tensor([[1, 1], [1, -1]], dtype=torch.float64)
-    parameter_list[3].data = torch.tensor([-0.5, 0], dtype=torch.float64)
-    parameter_list[4].data = torch.tensor([[-1, 1], [1, 1]], dtype=torch.float64)
-    parameter_list[5].data = torch.tensor([3, 0], dtype=torch.float64)
-
-# nn.load_state_dict(torch.load("nn_2x2.pt"), strict=False)
-# train_sequential_2(nn, train_loader, ambient_loader, epochs=epochs)
+    nn = SequentialNN([2, 2, 2, 2])
 
 
-# matplotlib.use('TkAgg')
+    with torch.no_grad():
+        parameter_list = list(nn.parameters())
+        parameter_list[0].data = torch.tensor([[1, 1], [1, -1]], dtype=torch.float64)
+        parameter_list[1].data = torch.tensor([0, 0], dtype=torch.float64)
+        parameter_list[2].data = torch.tensor([[1, 1], [1, -1]], dtype=torch.float64)
+        parameter_list[3].data = torch.tensor([-0.5, 0], dtype=torch.float64)
+        parameter_list[4].data = torch.tensor([[-1, 1], [1, 1]], dtype=torch.float64)
+        parameter_list[5].data = torch.tensor([3, 0], dtype=torch.float64)
 
-# torch.save(nn.state_dict(), "nn_2x2.pt")
+    # nn.load_state_dict(torch.load("nn_2x2.pt"), strict=False)
+    # train_sequential_2(nn, train_loader, ambient_loader, epochs=epochs)
 
 
-test_image = torch.tensor([[0, 0]], dtype=torch.float64)
-icnns, c_values = \
-    dhov.start_verification(nn, test_image, eps=1, icnn_epochs=500, sample_new=True, use_over_approximation=True,
-                            sample_over_input_space=False, sample_over_output_space=True,
-                            keep_ambient_space=False, use_grad_descent=True, train_outer=False,
-                            should_plot="simple")
+    # matplotlib.use('TkAgg')
+
+    # torch.save(nn.state_dict(), "nn_2x2.pt")
 
 
+    test_image = torch.tensor([[0, 0]], dtype=torch.float64)
+    icnns, c_values = \
+        dhov.start_verification(nn, test_image, eps=1, icnn_epochs=500, sample_new=True, use_over_approximation=False,
+                                sample_over_input_space=False, sample_over_output_space=True,
+                                keep_ambient_space=False, use_grad_descent=False, train_outer=False,
+                                should_plot="simple")
+
+
+def cifar_net():
+    batch_size = 10
+    epochs = 30
+    number_of_train_samples = 10000
+    hyper_lambda = 1
+    x_range = [-1.5, 1.5]
+    y_range = [-1.5, 1.5]
+
+    transform = Compose([ToTensor(),
+                         Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
+                        )
+
+    training_data = CIFAR10(root="../../cifar",
+                            train=True,
+                            download=True,
+                            transform=transform)
+    images, labels = training_data.__getitem__(0)
+    testimage, testlabel = torch.unsqueeze(images, 0), torch.unsqueeze(torch.tensor(labels), 0)
+
+    nn = SequentialNN([32 * 32 * 3, 1024, 512, 10])
+    nn.load_state_dict(torch.load("../../cifar_fc.pth", map_location=torch.device('cpu')), strict=False)
+
+
+    # matplotlib.use('TkAgg')
+
+    icnns, c_values = \
+        dhov.start_verification(nn, testimage, eps=1, icnn_epochs=500, sample_new=True, use_over_approximation=True,
+                                sample_over_input_space=False, sample_over_output_space=True,
+                                keep_ambient_space=False, use_grad_descent=False, train_outer=False,
+                                should_plot="simple")
+
+#cifar_net()
+net_2d()

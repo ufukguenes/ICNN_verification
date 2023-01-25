@@ -28,7 +28,7 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
     # todo Achtung ich muss schauen, ob gurobi upper bound inklusive ist, da ich aktuell die upper bound mit eps nicht inklusive habe
     input_flattened = torch.flatten(input)
     eps_bounds = [input_flattened.add(-eps), input_flattened.add(eps)]
-    box_bounds = verbas.calculate_box_bounds(nn, eps_bounds)  # todo abbrechen, wenn die box bounds schon die eigenschaft erfüllen
+    box_bounds = verbas.calculate_box_bounds(nn, eps_bounds, is_sequential=True)  # todo abbrechen, wenn die box bounds schon die eigenschaft erfüllen
 
     included_space = torch.empty((0, input_flattened.size(0)), dtype=torch.float64)
     included_space = ds.samples_uniform_over(included_space, int(sample_count / 2), eps_bounds)
@@ -44,7 +44,7 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
     for i in range(0, len(parameter_list) - 2, 2):  # -2 because last layer has no ReLu activation
         current_layer_index = int(i / 2)
         icnn_input_size = nn.layer_widths[current_layer_index + 1]
-        icnns.append(ICNN([icnn_input_size, 10, 10, icnn_input_size, 2 * icnn_input_size, 1]))
+        icnns.append(ICNN([icnn_input_size, 10, 10, 10, 2 * icnn_input_size, 1]))
         current_icnn = icnns[current_layer_index]
 
         W, b = parameter_list[i], parameter_list[i + 1]
@@ -67,8 +67,7 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
             plt_inc_amb("start " + str(i), included_space.tolist(), ambient_space.tolist())
 
         included_space = ds.apply_affine_transform(W, b, included_space)
-        if sample_over_input_space or keep_ambient_space:
-            ambient_space = ds.apply_affine_transform(W, b, ambient_space)
+        ambient_space = ds.apply_affine_transform(W, b, ambient_space)
 
         if should_plot == "simple" or should_plot == "detailed":
             original_included_space = ds.apply_affine_transform(W, b, original_included_space)
@@ -78,8 +77,7 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
                 plt_inc_amb("original affin e" + str(i), original_included_space.tolist(), original_ambient_space.tolist())
 
         included_space = ds.apply_ReLU_transform(included_space)
-        if sample_over_input_space or keep_ambient_space:
-            ambient_space = ds.apply_ReLU_transform(ambient_space)
+        ambient_space = ds.apply_ReLU_transform(ambient_space)
 
         if should_plot == "simple" or should_plot == "detailed":
             original_included_space = ds.apply_ReLU_transform(original_included_space)
@@ -102,7 +100,6 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
 
         mean = get_mean(included_space, ambient_space)
         std = get_std(included_space, ambient_space)
-
         normalized_included_space, normalized_ambient_space = normalize_data(included_space, ambient_space, mean, std)
         dataset = ConvexDataset(data=normalized_included_space)
         train_loader = DataLoader(dataset, batch_size=icnn_batch_size, shuffle=True)
