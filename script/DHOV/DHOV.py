@@ -106,9 +106,9 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
         if optimizer == "LBFGS": #todo does LBFGS support minibatch? I dont think so!
             icnn_batch_size = len(normalized_ambient_space) + len(normalized_included_space)
         dataset = ConvexDataset(data=normalized_included_space)
-        train_loader = DataLoader(dataset, batch_size=icnn_batch_size, shuffle=True)
+        train_loader = DataLoader(dataset, batch_size=icnn_batch_size, shuffle=False)
         dataset = ConvexDataset(data=normalized_ambient_space)
-        ambient_loader = DataLoader(dataset, batch_size=icnn_batch_size, shuffle=True)
+        ambient_loader = DataLoader(dataset, batch_size=icnn_batch_size, shuffle=False) # todo shuffel alle wieder auf true setzen
 
         low = box_bounds[current_layer_index][0]
         up = box_bounds[current_layer_index][1]
@@ -147,7 +147,7 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
                     #todo hier muss ich noch verwalten was passiert wenn ambient space in die nächste runde übernommen wird
                     if optimizer == "LBFGS":
                         icnn_batch_size = len(torch.cat([normalized_ambient_space.detach(), untouched_normalized_ambient_space.detach()])) + len(normalized_included_space)
-                    ambient_loader = DataLoader(dataset, batch_size=icnn_batch_size, shuffle=True)
+                    ambient_loader = DataLoader(dataset, batch_size=icnn_batch_size, shuffle=False)
 
             if should_plot == "simple" or should_plot == "detailed":
                 plt_inc_amb("with gradient descent", normalized_included_space.tolist(),

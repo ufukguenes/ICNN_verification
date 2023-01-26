@@ -2,10 +2,11 @@ import time
 
 import torch
 
-from script.NeuralNets.lossFunction import *
 import torch.nn as nn
 
+from script.NeuralNets.lossFunction import deep_hull_simple_loss
 from script.NeuralNets.testFunction import test
+from script.Optimizer.sdlbfgs import SdLBFGS
 
 
 def train_icnn(model, train_loader, ambient_loader, epochs=10, optimizer=None,
@@ -14,7 +15,8 @@ def train_icnn(model, train_loader, ambient_loader, epochs=10, optimizer=None,
     if optimizer is None or optimizer == "adam":
         opt = torch.optim.Adam(model.parameters())
     elif optimizer == "LBFGS":
-        opt = torch.optim.LBFGS(model.parameters(), lr=1)
+        opt = SdLBFGS(model.parameters())
+        #opt = torch.optim.LBFGS(model.parameters(), lr=0.1)
 
     stop_training = False
 

@@ -1,5 +1,6 @@
 import math
 
+import numpy as np
 import torch
 import gurobipy as grp
 
@@ -14,6 +15,7 @@ def add_relu_constr(model, input_vars, number_of_out_features, lb, ub, i=0):
     relu_const_if1 = model.addConstrs((relu_vars.tolist()[k] <= a.tolist()[k] * ub[k]) for k in range(number_of_out_features))
     #relu_const_if0 = model.addConstrs((var <= x - lb * (1 - a_i)) for var, x, a_i in zip(relu_vars.tolist(), input_vars.tolist(), a.tolist()))
     relu_const_if0 = model.addConstrs((relu_vars.tolist()[k] <= input_vars.tolist()[k] - lb[k] * (1 - a.tolist()[k])) for k in range(number_of_out_features))
+
 
     """
     # Variante 2: Füge Constraints für jede Komponente im Vektor einzeln hinzu
@@ -38,7 +40,6 @@ def add_relu_constr(model, input_vars, number_of_out_features, lb, ub, i=0):
     """
 
     return relu_vars
-
 
 def add_affine_constr(model, W, b, input_vars, lb, ub, i=0):
     out_fet = len(b)

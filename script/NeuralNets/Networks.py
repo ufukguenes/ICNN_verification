@@ -59,10 +59,14 @@ class ICNN(nn.Module):
     def forward(self, x):
         x = Flatten()(x)
         x1 = nn.ReLU()(self.ws[0](x))  # first layer is only W
+        # x1 = nn.Softplus()(self.ws[0](x))  # first layer is only W
+        # x1 = nn.Tanh()(self.ws[0](x))  # first layer is only W
         for w, u in zip(self.ws[1:-1], self.us[:-1]):
             a = w(x1)
             b = u(x)
             x1 = nn.ReLU()(a + b)
+            # x1 = nn.Softplus()(a + b)
+            # x1 = nn.Tanh()(a + b)
 
         x1 = self.ws[-1](x1) + self.us[-1](x)  # no ReLU in last layer"""
 
