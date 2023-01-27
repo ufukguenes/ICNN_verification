@@ -165,7 +165,6 @@ def net_2d():
                                 keep_ambient_space=False, use_grad_descent=False, train_outer=False,
                                 should_plot="detailed", optimizer="LBFGS")
 
-
 def cifar_net():
     batch_size = 10
     epochs = 30
