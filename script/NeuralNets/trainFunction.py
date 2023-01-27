@@ -16,7 +16,7 @@ def train_icnn(model, train_loader, ambient_loader, epochs=10, optimizer=None,
         opt = torch.optim.Adam(model.parameters())
     elif optimizer == "LBFGS":
         opt = SdLBFGS(model.parameters())
-        #opt = torch.optim.LBFGS(model.parameters(), lr=0.1)
+        # = torch.optim.LBFGS(model.parameters(), lr=0.1)
 
     stop_training = False
 
