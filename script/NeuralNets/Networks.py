@@ -105,25 +105,37 @@ class ICNN_Softmax(nn.Module):
             self.ws.append(w)
             self.us.append(u)
 
+        self.ws.append(nn.Linear(d_in, 1, bias=True, dtype=torch.float64))
+
     def forward(self, x):
         x = Flatten()(x)
         x1 = nn.ReLU()(self.ws[0](x))  # first layer is only W
-        for w, u in zip(self.ws[1:-1], self.us[:-1]):
+        len_ws = len(self.ws)
+        for w, u in zip(self.ws[1: len_ws - 2], self.us[:-1]):
             a = w(x1)
             b = u(x)
             x1 = nn.ReLU()(a + b)
 
-        x1 = self.ws[-1](x1)
+        # torch.softmax
+        """x1 = self.ws[len_ws - 2](x1)
         x1 = torch.nn.Softmax()(x1)
-        x1 = x1.sum()
+        x2 = self.us[-1](x)
+        x2 = torch.nn.Softmax()(x2)
+        x_in = x1 + x2
+        out = self.ws[-1](x_in)"""
 
-        x = self.us[-1](x)
-        x = torch.nn.Softmax()(x)
-        x = x.sum()
+        # torch.max
+        x1 = self.ws[len_ws - 2](x1)
+        x1 = torch.max(x1, dim=1)[0]
+        x2 = self.us[-1](x)
+        x2 = torch.max(x2, dim=1)[0]
+        out = torch.maximum(x1, x2)
 
 
-        x_in = torch.tensor([x1, x], dtype=torch.float64)
-        out = torch.nn.Softmax()(x_in)
-        out = out.sum()
+        # torch.maximum
+        """x1 = self.ws[len_ws - 2](x1)
+        x2 = self.us[-1](x)
+        x_in = torch.maximum(x1, x2)
+        out = self.ws[-1](x_in)"""
 
         return out

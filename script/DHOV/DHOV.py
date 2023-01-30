@@ -45,7 +45,7 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
     for i in range(0, len(parameter_list) - 2, 2):  # -2 because last layer has no ReLu activation
         current_layer_index = int(i / 2)
         icnn_input_size = nn.layer_widths[current_layer_index + 1]
-        icnns.append(ICNN_Softmax([icnn_input_size, 10, 10, 10, 2 * icnn_input_size, 1]))
+        icnns.append(ICNN_Softmax([icnn_input_size, 10, 10, 10, 2 * icnn_input_size, 1], force_positive_init=True))
         current_icnn = icnns[current_layer_index]
 
         W, b = parameter_list[i], parameter_list[i + 1]
@@ -163,6 +163,9 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
                 plots.plt_mesh()
         else:
             train_icnn(current_icnn, train_loader, ambient_loader, epochs=icnn_epochs, hyper_lambda=1, optimizer=optimizer)
+
+        plots = Plots_for(0, current_icnn, included_space.detach(), ambient_space.detach(), [-1, 3], [-1, 3])
+        plots.plt_mesh()
 
         if train_outer:
             lam = 10
@@ -291,6 +294,19 @@ def init_icnn_box_bounds(icnn: ICNN, box_bounds):
 def init_icnn_box_bounds_with_softmax(icnn: ICNN_Softmax, box_bounds):
     # todo check for the layer to have the right dimensions
     with torch.no_grad():
+        for i in range(len(icnn.ws)):
+            ws = list(icnn.ws[i].parameters())
+            ws[1].data = torch.zeros_like(ws[1], dtype=torch.float64)
+            ws[0].data = torch.zeros_like(ws[0], dtype=torch.float64)
+        ws = list(icnn.ws[-1].parameters())
+        ws[0].data = torch.ones_like(ws[0])
+        ws[1].data = torch.zeros_like(ws[1])
+
+        for i in range(len(icnn.us)):
+            us = list(icnn.us[i].parameters())
+            us[0].data = torch.zeros_like(us[0], dtype=torch.float64)
+
+
         us = list(icnn.us[-1].parameters())  # us is used because values in ws are set to 0 when negative
         u = torch.zeros_like(us[0], dtype=torch.float64)
         b = torch.zeros_like(us[1], dtype=torch.float64)
@@ -301,6 +317,8 @@ def init_icnn_box_bounds_with_softmax(icnn: ICNN_Softmax, box_bounds):
             b[2 * i + 1] = box_bounds[0][i]  # lower bound
         us[0].data = u
         us[1].data = b
+
+
 
 def init_icnn_prev_icnn(current_icnn, prev_icnn):
     current_icnn.load_state_dict(prev_icnn.state_dict())
