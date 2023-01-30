@@ -10,16 +10,16 @@ from script.Optimizer.sdlbfgs import SdLBFGS
 
 
 def train_icnn(model, train_loader, ambient_loader, epochs=10, optimizer=None,
-               return_history=False, sequential=False, hyper_lambda=1):
+               return_history=False, sequential=False, hyper_lambda=1, min_loss_change=1e-5):
     history = []
     if optimizer is None or optimizer == "adam":
         opt = torch.optim.Adam(model.parameters())
     elif optimizer == "LBFGS":
         opt = SdLBFGS(model.parameters())
-        # = torch.optim.LBFGS(model.parameters(), lr=0.1)
+        #opt = torch.optim.LBFGS(model.parameters(), lr=1)
 
     stop_training = False
-
+    last_loss = 0
     for epoch in range(epochs):
         train_loss = 0
         train_n = 0
@@ -50,6 +50,7 @@ def train_icnn(model, train_loader, ambient_loader, epochs=10, optimizer=None,
                 loss.backward()
                 opt.step()
 
+
             if not sequential:
                 with torch.no_grad():
                     for w in model.ws:
@@ -63,6 +64,10 @@ def train_icnn(model, train_loader, ambient_loader, epochs=10, optimizer=None,
                         if len(p.size()) > 1:  # we have a matrix
                             # only want positive entries
                             p[:] = torch.maximum(torch.Tensor([0]), p)
+
+            if abs(loss - last_loss) <= min_loss_change:
+                stop_training = True
+            last_loss = loss
 
             train_loss += loss.item()
             train_n += 1
