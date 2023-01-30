@@ -115,7 +115,10 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
         low = torch.div(torch.add(low, -mean), std)
         up = torch.div(torch.add(up, -mean), std)
 
-        init_icnn_box_bounds(current_icnn, [low, up])
+        #init_icnn_box_bounds(current_icnn, [low, up])
+        plots = Plots_for(0, current_icnn, normalized_included_space.detach(), normalized_ambient_space.detach(),
+                          [-3, 3], [-3, 3])
+        plots.plt_mesh()
 
         # train icnn
         untouched_normalized_ambient_space = normalized_ambient_space.detach().clone()
@@ -157,6 +160,9 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
                 plots.plt_mesh()
         else:
             train_icnn(current_icnn, train_loader, ambient_loader, epochs=icnn_epochs, hyper_lambda=1, optimizer=optimizer)
+
+        plots = Plots_for(0, current_icnn, normalized_included_space.detach(), normalized_ambient_space.detach(), [-3, 3], [-3, 3])
+        plots.plt_mesh()
 
         if train_outer:
             lam = 10
@@ -256,15 +262,6 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
 def init_icnn_box_bounds(icnn: ICNN, box_bounds):
     # todo check for the layer to have the right dimensions
     with torch.no_grad():
-        k = len(icnn.ws)
-        for i in range(0, len(icnn.ws)):
-            ws = list(icnn.ws[i].parameters())
-            ws[1].data = torch.zeros_like(ws[1], dtype=torch.float64)
-
-        for elem in icnn.us:
-            w = list(elem.parameters())
-            w[0].data = torch.zeros_like(w[0], dtype=torch.float64)
-
         ws = list(icnn.ws[3].parameters())  # bias for first relu activation with weights from us (in second layer)
         us = list(icnn.us[2].parameters())  # us is used because values in ws are set to 0 when negative
         b = torch.zeros_like(ws[1], dtype=torch.float64)
@@ -277,6 +274,9 @@ def init_icnn_box_bounds(icnn: ICNN, box_bounds):
         ws[0].data = torch.zeros_like(ws[0], dtype=torch.float64)
         ws[1].data = b
         us[0].data = u
+
+        last_us = list(icnn.us[3].parameters())[0]
+        last_us.data = torch.zeros_like(last_us, dtype=torch.float64)
 
         last = list(icnn.ws[4].parameters())
         last[0].data = torch.mul(torch.ones_like(last[0], dtype=torch.float64), 10)
