@@ -120,7 +120,7 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
         ws = list(current_icnn.ws.parameters())  # bias for first relu activation with weights from us (in second layer)
         us = list(current_icnn.us.parameters())
 
-        plots = Plots_for(0, current_icnn, included_space.detach(), ambient_space.detach(), [-1, 3], [-1, 3])
+        plots = Plots_for(0, current_icnn, normalized_included_space.detach(), normalized_ambient_space.detach(), [-3, 3], [-3, 3])
         plots.plt_mesh()
 
         # train icnn
@@ -164,7 +164,8 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
         else:
             train_icnn(current_icnn, train_loader, ambient_loader, epochs=icnn_epochs, hyper_lambda=1, optimizer=optimizer)
 
-        plots = Plots_for(0, current_icnn, included_space.detach(), ambient_space.detach(), [-1, 3], [-1, 3])
+        plots = Plots_for(0, current_icnn, normalized_included_space.detach(), normalized_ambient_space.detach(),
+                          [-3, 3], [-3, 3])
         plots.plt_mesh()
 
         if train_outer:
@@ -298,14 +299,13 @@ def init_icnn_box_bounds_with_softmax(icnn: ICNN_Softmax, box_bounds):
             ws = list(icnn.ws[i].parameters())
             ws[1].data = torch.zeros_like(ws[1], dtype=torch.float64)
             ws[0].data = torch.zeros_like(ws[0], dtype=torch.float64)
-        ws = list(icnn.ws[-1].parameters())
-        ws[0].data = torch.ones_like(ws[0])
-        ws[1].data = torch.zeros_like(ws[1])
+        last_ws = list(icnn.ws[-1].parameters())
+        last_ws[0].data = torch.ones_like(last_ws[0])
+        last_ws[1].data = torch.zeros_like(last_ws[1])
 
         for i in range(len(icnn.us)):
             us = list(icnn.us[i].parameters())
             us[0].data = torch.zeros_like(us[0], dtype=torch.float64)
-
 
         us = list(icnn.us[-1].parameters())  # us is used because values in ws are set to 0 when negative
         u = torch.zeros_like(us[0], dtype=torch.float64)
