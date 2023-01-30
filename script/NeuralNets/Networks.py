@@ -69,5 +69,61 @@ class ICNN(nn.Module):
             # x1 = nn.Tanh()(a + b)
 
         x1 = self.ws[-1](x1) + self.us[-1](x)  # no ReLU in last layer"""
-
         return x1
+
+
+class ICNN_Softmax(nn.Module):
+
+    def __init__(self, layer_widths, force_positive_init=False):
+        """
+    layer_widths - ([int]) list of layer widths **including** input and output dim
+    """
+        super(ICNN_Softmax, self).__init__()
+
+        self.ws = nn.ParameterList([])  # positive weights for propagation
+        self.us = nn.ParameterList([])  # weights tied to inputs
+        self.layer_widths = layer_widths
+        self.ws.append(nn.Linear(layer_widths[0], layer_widths[1], bias=True, dtype=torch.float64))
+
+        d_in = layer_widths[1]
+
+        for i, lw in enumerate(layer_widths[2:-1]):
+            w = nn.Linear(d_in, lw, dtype=torch.float64)
+
+            with torch.no_grad():
+                if force_positive_init:
+                    for p in w.parameters():
+                        if len(p.size()) > 1:
+                            p[:] = torch.maximum(torch.Tensor([0]), p)
+
+            d_in = lw
+            if i == len(layer_widths) - 2 - 2:
+                u = nn.Linear(layer_widths[0], lw, bias=True, dtype=torch.float64)
+            else:
+                u = nn.Linear(layer_widths[0], lw, bias=False, dtype=torch.float64)
+
+            self.ws.append(w)
+            self.us.append(u)
+
+    def forward(self, x):
+        x = Flatten()(x)
+        x1 = nn.ReLU()(self.ws[0](x))  # first layer is only W
+        for w, u in zip(self.ws[1:-1], self.us[:-1]):
+            a = w(x1)
+            b = u(x)
+            x1 = nn.ReLU()(a + b)
+
+        x1 = self.ws[-1](x1)
+        x1 = torch.nn.Softmax()(x1)
+        x1 = x1.sum()
+
+        x = self.us[-1](x)
+        x = torch.nn.Softmax()(x)
+        x = x.sum()
+
+
+        x_in = torch.tensor([x1, x], dtype=torch.float64)
+        out = torch.nn.Softmax()(x_in)
+        out = out.sum()
+
+        return out

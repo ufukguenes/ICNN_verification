@@ -3,7 +3,7 @@
 from matplotlib import pyplot as plt
 from torch.utils.data import DataLoader
 
-from script.NeuralNets.Networks import SequentialNN, ICNN
+from script.NeuralNets.Networks import SequentialNN, ICNN, ICNN_Softmax
 import torch
 import numpy as np
 
@@ -45,7 +45,7 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
     for i in range(0, len(parameter_list) - 2, 2):  # -2 because last layer has no ReLu activation
         current_layer_index = int(i / 2)
         icnn_input_size = nn.layer_widths[current_layer_index + 1]
-        icnns.append(ICNN([icnn_input_size, 10, 10, 10, 2 * icnn_input_size, 1]))
+        icnns.append(ICNN_Softmax([icnn_input_size, 10, 10, 10, 2 * icnn_input_size, 1]))
         current_icnn = icnns[current_layer_index]
 
         W, b = parameter_list[i], parameter_list[i + 1]
@@ -115,7 +115,13 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
         low = torch.div(torch.add(low, -mean), std)
         up = torch.div(torch.add(up, -mean), std)
 
-        init_icnn_box_bounds(current_icnn, [low, up])
+        #init_icnn_box_bounds(current_icnn, [low, up])
+        init_icnn_box_bounds_with_softmax(current_icnn, [low, up])
+        ws = list(current_icnn.ws.parameters())  # bias for first relu activation with weights from us (in second layer)
+        us = list(current_icnn.us.parameters())
+
+        plots = Plots_for(0, current_icnn, included_space.detach(), ambient_space.detach(), [-1, 3], [-1, 3])
+        plots.plt_mesh()
 
         # train icnn
         untouched_normalized_ambient_space = normalized_ambient_space.detach().clone()
@@ -282,6 +288,19 @@ def init_icnn_box_bounds(icnn: ICNN, box_bounds):
         last[0].data = torch.mul(torch.ones_like(last[0], dtype=torch.float64), 10)
         last[1].data = torch.zeros_like(last[1], dtype=torch.float64)
 
+def init_icnn_box_bounds_with_softmax(icnn: ICNN_Softmax, box_bounds):
+    # todo check for the layer to have the right dimensions
+    with torch.no_grad():
+        us = list(icnn.us[-1].parameters())  # us is used because values in ws are set to 0 when negative
+        u = torch.zeros_like(us[0], dtype=torch.float64)
+        b = torch.zeros_like(us[1], dtype=torch.float64)
+        for i in range(len(box_bounds)):
+            u[2 * i][i] = 1
+            u[2 * i + 1][i] = -1
+            b[2 * i] = - box_bounds[1][i]  # upper bound
+            b[2 * i + 1] = box_bounds[0][i]  # lower bound
+        us[0].data = u
+        us[1].data = b
 
 def init_icnn_prev_icnn(current_icnn, prev_icnn):
     current_icnn.load_state_dict(prev_icnn.state_dict())
