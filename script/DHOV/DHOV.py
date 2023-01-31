@@ -115,7 +115,7 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
         low = torch.div(torch.add(low, -mean), std)
         up = torch.div(torch.add(up, -mean), std)
 
-        init_icnn_box_bounds(current_icnn, [low, up])
+        init_icnn_box_bounds(current_icnn, [low, up]) # todo initialisierung optional machen
 
         # train icnn
         untouched_normalized_ambient_space = normalized_ambient_space.detach().clone()
