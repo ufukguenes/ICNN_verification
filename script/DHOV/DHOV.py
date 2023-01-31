@@ -24,7 +24,7 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
                        icnn_batch_size=1000,
                        icnn_epochs=100, sample_count=1000, keep_ambient_space=False, sample_new=True,
                        use_over_approximation=True, sample_over_input_space=False,
-                       sample_over_output_space=True, use_grad_descent=False, train_outer=False, should_plot='none', optimizer="adam"):
+                       sample_over_output_space=True, use_grad_descent=False, train_outer=False, init_box_bounds=True, should_plot='none', optimizer="adam"):
 
     # todo Achtung ich muss schauen, ob gurobi upper bound inklusive ist, da ich aktuell die upper bound mit eps nicht inklusive habe
     input_flattened = torch.flatten(input)
@@ -110,12 +110,13 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
         dataset = ConvexDataset(data=normalized_ambient_space)
         ambient_loader = DataLoader(dataset, batch_size=icnn_batch_size, shuffle=False) # todo shuffel alle wieder auf true setzen
 
-        low = box_bounds[current_layer_index][0]
-        up = box_bounds[current_layer_index][1]
-        low = torch.div(torch.add(low, -mean), std)
-        up = torch.div(torch.add(up, -mean), std)
+        if init_box_bounds:
+            low = box_bounds[current_layer_index][0]
+            up = box_bounds[current_layer_index][1]
+            low = torch.div(torch.add(low, -mean), std)
+            up = torch.div(torch.add(up, -mean), std)
 
-        init_icnn_box_bounds(current_icnn, [low, up]) # todo initialisierung optional machen
+            init_icnn_box_bounds(current_icnn, [low, up])
 
         # train icnn
         untouched_normalized_ambient_space = normalized_ambient_space.detach().clone()
