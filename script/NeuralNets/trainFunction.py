@@ -10,12 +10,17 @@ from script.Optimizer.sdlbfgs import SdLBFGS
 
 
 def train_icnn(model, train_loader, ambient_loader, epochs=10, optimizer=None,
-               return_history=False, sequential=False, hyper_lambda=1):
+               return_history=False, sequential=False, hyper_lambda=1, train_box_bounds=True):
     history = []
+    if train_box_bounds:
+        params_to_train = model.parameters()
+    else:
+        params_to_train = list(model.parameters())
+        params_to_train = params_to_train[:len(params_to_train) - 2] # todo anpassen auf andere architektur falls merge
     if optimizer is None or optimizer == "adam":
-        opt = torch.optim.Adam(model.parameters())
+        opt = torch.optim.Adam(params_to_train)
     elif optimizer == "LBFGS":
-        opt = SdLBFGS(model.parameters())
+        opt = SdLBFGS(params_to_train)
         # = torch.optim.LBFGS(model.parameters(), lr=0.1)
 
     stop_training = False

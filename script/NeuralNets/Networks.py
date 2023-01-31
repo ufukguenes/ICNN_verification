@@ -126,17 +126,17 @@ class ICNN_Softmax(nn.Module):
         out = self.ws[-1](x_in)"""
 
         # torch.max
-        """x1 = self.ws[len_ws - 2](x1)
+        x1 = self.ws[len_ws - 2](x1)
         x1 = torch.max(x1, dim=1)[0]
         x2 = self.us[-1](x)
         x2 = torch.max(x2, dim=1)[0]
-        out = torch.maximum(x1, x2)"""
+        out = torch.maximum(x1, x2)
 
 
         # torch.maximum
-        x1 = self.ws[len_ws - 2](x1)
+        """x1 = self.ws[len_ws - 2](x1)
         x2 = self.us[-1](x)
         x_in = torch.maximum(x1, x2)
-        out = self.ws[-1](x_in)
+        out = self.ws[-1](x_in)"""
 
         return out
