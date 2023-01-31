@@ -163,7 +163,7 @@ def net_2d():
         dhov.start_verification(nn, test_image, eps=1, icnn_epochs=500, sample_new=False, use_over_approximation=True,
                                 sample_over_input_space=False, sample_over_output_space=True,
                                 keep_ambient_space=False, use_grad_descent=False, train_outer=False, init_box_bounds=True,
-                                should_plot="simple", optimizer="LBFGS")
+                                adapt_lambda_on_included_space=True, should_plot="none", optimizer="adam")
 
 def cifar_net():
     batch_size = 10

@@ -24,7 +24,8 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
                        icnn_batch_size=1000,
                        icnn_epochs=100, sample_count=1000, keep_ambient_space=False, sample_new=True,
                        use_over_approximation=True, sample_over_input_space=False,
-                       sample_over_output_space=True, use_grad_descent=False, train_outer=False, init_box_bounds=True, should_plot='none', optimizer="adam"):
+                       sample_over_output_space=True, use_grad_descent=False, train_outer=False, init_box_bounds=True,
+                       adapt_lambda_on_included_space=False, should_plot='none', optimizer="adam"):
 
     # todo Achtung ich muss schauen, ob gurobi upper bound inklusive ist, da ich aktuell die upper bound mit eps nicht inklusive habe
     input_flattened = torch.flatten(input)
@@ -138,7 +139,7 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
                 else:
                     epochs_in_run = epochs_per_optimization + modulo_epochs
 
-                train_icnn(current_icnn, train_loader, ambient_loader, epochs=epochs_in_run, hyper_lambda=0.5, optimizer=optimizer)
+                train_icnn(current_icnn, train_loader, ambient_loader, epochs=epochs_in_run, hyper_lambda=0.5, optimizer=optimizer, adapt_lambda_on_included_space=adapt_lambda_on_included_space)
 
                 if h < num_optimizations:
                     for k in range(optimization_steps):
@@ -157,7 +158,7 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
                                   [-2, 3], [-2, 3])
                 plots.plt_mesh()
         else:
-            train_icnn(current_icnn, train_loader, ambient_loader, epochs=icnn_epochs, hyper_lambda=1, optimizer=optimizer)
+            train_icnn(current_icnn, train_loader, ambient_loader, epochs=icnn_epochs, hyper_lambda=1, optimizer=optimizer, adapt_lambda_on_included_space=adapt_lambda_on_included_space)
 
         if train_outer:
             lam = 10

@@ -10,7 +10,7 @@ from script.Optimizer.sdlbfgs import SdLBFGS
 
 
 def train_icnn(model, train_loader, ambient_loader, epochs=10, optimizer=None,
-               return_history=False, sequential=False, hyper_lambda=1, min_loss_change=1e-5):
+               return_history=False, sequential=False, adapt_lambda_on_included_space=False,  hyper_lambda=1, min_loss_change=1e-5):
     history = []
     if optimizer is None or optimizer == "adam":
         opt = torch.optim.Adam(model.parameters())
@@ -29,8 +29,6 @@ def train_icnn(model, train_loader, ambient_loader, epochs=10, optimizer=None,
         print("=== Epoch: {}===".format(epoch))
         epoch_start_time = time.time()
         for i, (X, X_ambient) in enumerate(zip(train_loader, ambient_loader)):
-            ws = list(model.ws.parameters())
-            us = list(model.us.parameters())
             if optimizer == "LBFGS":
                 def closure():
                     opt.zero_grad()
@@ -80,8 +78,22 @@ def train_icnn(model, train_loader, ambient_loader, epochs=10, optimizer=None,
 
         if train_n == 0:
             train_n = 1
+
         print("batch = {}, mean loss = {}".format(len(train_loader), train_loss / train_n))
         print("time per epoch: {}".format(time.time() - epoch_start_time))
+
+        if adapt_lambda_on_included_space:
+            count_of_outside = 0
+            for x in train_loader:
+                out = model(x)
+                for y in out:
+                    if y > 0:
+                        count_of_outside += 1
+
+            if count_of_outside > 0:
+                hyper_lambda *= 0.95
+            else:
+                hyper_lambda *= 1.2
 
     if return_history:
         return history
