@@ -10,7 +10,7 @@ from script.Optimizer.sdlbfgs import SdLBFGS
 
 
 def train_icnn(model, train_loader, ambient_loader, epochs=10, optimizer=None,
-               return_history=False, sequential=False, adapt_lambda_on_included_space=False,  hyper_lambda=1, min_loss_change=1e-5):
+               return_history=False, sequential=False, adapt_lambda="none",  hyper_lambda=1, preemptive_stop=True, min_loss_change=1e-6):
     history = []
     if optimizer is None or optimizer == "adam":
         opt = torch.optim.Adam(model.parameters())
@@ -20,6 +20,7 @@ def train_icnn(model, train_loader, ambient_loader, epochs=10, optimizer=None,
 
     stop_training = False
     last_loss = 0
+    low = True
     for epoch in range(epochs):
         train_loss = 0
         train_n = 0
@@ -63,7 +64,7 @@ def train_icnn(model, train_loader, ambient_loader, epochs=10, optimizer=None,
                             # only want positive entries
                             p[:] = torch.maximum(torch.Tensor([0]), p)
 
-            if abs(loss - last_loss) <= min_loss_change:
+            if preemptive_stop and abs(loss - last_loss) <= min_loss_change:
                 stop_training = True
             last_loss = loss
 
@@ -82,7 +83,9 @@ def train_icnn(model, train_loader, ambient_loader, epochs=10, optimizer=None,
         print("batch = {}, mean loss = {}".format(len(train_loader), train_loss / train_n))
         print("time per epoch: {}".format(time.time() - epoch_start_time))
 
-        if adapt_lambda_on_included_space:
+        if adapt_lambda == "none":
+            continue
+        elif adapt_lambda == "included":
             count_of_outside = 0
             for x in train_loader:
                 out = model(x)
@@ -90,10 +93,19 @@ def train_icnn(model, train_loader, ambient_loader, epochs=10, optimizer=None,
                     if y > 0:
                         count_of_outside += 1
 
+            percentage = count_of_outside / len(train_loader.dataset)
+
             if count_of_outside > 0:
-                hyper_lambda *= 0.95
+                hyper_lambda = 1 - percentage
             else:
-                hyper_lambda *= 1.2
+                hyper_lambda = 1
+        elif adapt_lambda == "high_low":
+            if low:
+                hyper_lambda = 0.7
+                low = False
+            else:
+                hyper_lambda = 1.2
+                low = True
 
     if return_history:
         return history

@@ -17,15 +17,16 @@ from script.eval import Plots_for
 from script.NeuralNets.trainFunction import train_icnn, train_icnn_outer
 
 """
-should_plot has values: none, simple, detailed
+should_plot has values: none, simple, detailed, verification
 optimizer has values: adam, LBFGS, None. If None, adam will be used
+adapt_lambda has values: none, high_low, included
 """
 def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=None, solver_bound=None,
                        icnn_batch_size=1000,
                        icnn_epochs=100, sample_count=1000, keep_ambient_space=False, sample_new=True,
                        use_over_approximation=True, sample_over_input_space=False,
                        sample_over_output_space=True, use_grad_descent=False, train_outer=False, init_box_bounds=True,
-                       adapt_lambda_on_included_space=False, should_plot='none', optimizer="adam"):
+                       adapt_lambda="none", should_plot='none', optimizer="adam", preemptive_stop=True):
 
     # todo Achtung ich muss schauen, ob gurobi upper bound inklusive ist, da ich aktuell die upper bound mit eps nicht inklusive habe
     input_flattened = torch.flatten(input)
@@ -139,7 +140,8 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
                 else:
                     epochs_in_run = epochs_per_optimization + modulo_epochs
 
-                train_icnn(current_icnn, train_loader, ambient_loader, epochs=epochs_in_run, hyper_lambda=0.5, optimizer=optimizer, adapt_lambda_on_included_space=adapt_lambda_on_included_space)
+                train_icnn(current_icnn, train_loader, ambient_loader, epochs=epochs_in_run, hyper_lambda=0.5,
+                           optimizer=optimizer, adapt_lambda=adapt_lambda, preemptive_stop=preemptive_stop)
 
                 if h < num_optimizations:
                     for k in range(optimization_steps):
@@ -158,7 +160,8 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
                                   [-2, 3], [-2, 3])
                 plots.plt_mesh()
         else:
-            train_icnn(current_icnn, train_loader, ambient_loader, epochs=icnn_epochs, hyper_lambda=1, optimizer=optimizer, adapt_lambda_on_included_space=adapt_lambda_on_included_space)
+            train_icnn(current_icnn, train_loader, ambient_loader, epochs=icnn_epochs, hyper_lambda=1,
+                       optimizer=optimizer, adapt_lambda=adapt_lambda, preemptive_stop=preemptive_stop)
 
         if train_outer:
             lam = 10
@@ -190,6 +193,9 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
         elif should_plot == "simple":
             plots = Plots_for(0, current_icnn, included_space.detach(), ambient_space.detach(), [-1, 3], [-1, 3])
             plots.plt_dotted()
+        if should_plot == "verification":
+            plots = Plots_for(0, current_icnn, included_space.detach(), ambient_space.detach(), [-1, 3], [-1, 3])
+            plots.plt_mesh()
 
         # verify and enlarge convex approximation
         if use_over_approximation:
@@ -211,6 +217,10 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
             elif should_plot == "simple":
                 plots.c = c
                 plots.plt_dotted()
+            if should_plot == "verification":
+                plots.c = c
+                plots.plt_mesh()
+                break
         else:
             c = 0
 
