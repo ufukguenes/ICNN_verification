@@ -16,7 +16,7 @@ def train_icnn(model, train_loader, ambient_loader, epochs=10, optimizer=None,
         params_to_train = model.parameters()
     else:
         params_to_train = list(model.parameters())
-        params_to_train = params_to_train[:len(params_to_train) - 2] # todo anpassen auf andere architektur falls merge
+        params_to_train = params_to_train[:len(params_to_train) - 4] # todo anpassen auf andere architektur falls merge
     if optimizer is None or optimizer == "adam":
         opt = torch.optim.Adam(params_to_train)
     elif optimizer == "LBFGS":

@@ -82,12 +82,13 @@ class ICNN_Softmax(nn.Module):
 
         self.ws = nn.ParameterList([])  # positive weights for propagation
         self.us = nn.ParameterList([])  # weights tied to inputs
+        self.ls = nn.ParameterList([])
         self.layer_widths = layer_widths
         self.ws.append(nn.Linear(layer_widths[0], layer_widths[1], bias=True, dtype=torch.float64))
 
         d_in = layer_widths[1]
 
-        for i, lw in enumerate(layer_widths[2:-1]):
+        for i, lw in enumerate(layer_widths[2:]): #enumerate(layer_widths[2:-1]):
             w = nn.Linear(d_in, lw, dtype=torch.float64)
 
             with torch.no_grad():
@@ -97,15 +98,23 @@ class ICNN_Softmax(nn.Module):
                             p[:] = torch.maximum(torch.Tensor([0]), p)
 
             d_in = lw
-            if i == len(layer_widths) - 2 - 2:
+            """if i == len(layer_widths) - 2 - 2:
                 u = nn.Linear(layer_widths[0], lw, bias=True, dtype=torch.float64)
             else:
-                u = nn.Linear(layer_widths[0], lw, bias=False, dtype=torch.float64)
+                u = nn.Linear(layer_widths[0], lw, bias=False, dtype=torch.float64)"""
+            u = nn.Linear(layer_widths[0], lw, bias=False, dtype=torch.float64)
 
             self.ws.append(w)
             self.us.append(u)
-        #self.us.append(nn.Linear(layer_widths[0], 2 * layer_widths[0], bias=True, dtype=torch.float64))
-        self.ws.append(nn.Linear(d_in, 1, bias=True, dtype=torch.float64))
+        self.us.append(nn.Linear(layer_widths[0], 2 * layer_widths[0], bias=True, dtype=torch.float64))
+        #self.ws.append(nn.Linear(d_in, 1, bias=True, dtype=torch.float64))
+        self.ls.append(nn.Linear(layer_widths[0], 2 * layer_widths[0], bias=False, dtype=torch.float64))
+        self.ls.append(nn.Linear(2 * layer_widths[0], 2 * layer_widths[0] - 1, bias=False, dtype=torch.float64))
+        with torch.no_grad():
+            l1 = list(self.ls[0].parameters())
+            l2 = list(self.ls[1].parameters())
+            l1[0].data = torch.tensor([[1, 1], [1, -1], [-1, 1], [-1, -1]], dtype=torch.float64)
+            l2[0].data = torch.tensor([[1, 0, 0, -1], [0, 1, 0, -1], [0, 0, 1, -1]], dtype=torch.float64)
 
     def forward(self, x):
         x = Flatten()(x)
@@ -156,7 +165,20 @@ class ICNN_Softmax(nn.Module):
         x_in = torch.maximum(x1, x2)
         out = self.ws[-1](x_in)"""
 
-        
+        # something like and
+        icnn_out = self.ws[len_ws - 2](x1)
+        icnn_out = torch.nn.ReLU()(icnn_out)
+        w1 = self.ws[-1]
+        u1 = self.us[len(self.us) - 2]
+        icnn_out = w1(icnn_out) + u1(x)
+
+        box_out = self.us[-1](x)
+        box_out = torch.max(box_out, dim=1, keepdim=True)[0]
+        x_in = torch.cat([icnn_out, box_out], dim=1)
+
+        x_in = self.ls[0](x_in)
+        x_in = self.ls[1](x_in)
+        out = torch.max(x_in, dim=1)[0]
 
         return out
 
