@@ -18,7 +18,7 @@ from script.NeuralNets.trainFunction import train_icnn, train_icnn_outer
 
 """
 should_plot has values: none, simple, detailed, verification
-optimizer has values: adam, LBFGS, None. If None, adam will be used
+optimizer has values: adam, LBFGS, SdLBFGS, None. If None, adam will be used
 adapt_lambda has values: none, high_low, included
 """
 def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=None, solver_bound=None,

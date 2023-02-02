@@ -15,8 +15,9 @@ def train_icnn(model, train_loader, ambient_loader, epochs=10, optimizer=None,
     if optimizer is None or optimizer == "adam":
         opt = torch.optim.Adam(model.parameters())
     elif optimizer == "LBFGS":
+        opt = torch.optim.LBFGS(model.parameters(), lr=1)
+    elif optimizer == "SdLBFGS":
         opt = SdLBFGS(model.parameters())
-        #opt = torch.optim.LBFGS(model.parameters(), lr=1)
 
     stop_training = False
     last_loss = 0
@@ -30,7 +31,7 @@ def train_icnn(model, train_loader, ambient_loader, epochs=10, optimizer=None,
         print("=== Epoch: {}===".format(epoch))
         epoch_start_time = time.time()
         for i, (X, X_ambient) in enumerate(zip(train_loader, ambient_loader)):
-            if optimizer == "LBFGS":
+            if optimizer in ["LBFGS", "SdLBFGS"]:
                 def closure():
                     opt.zero_grad()
                     prediction_ambient = model(X_ambient)
