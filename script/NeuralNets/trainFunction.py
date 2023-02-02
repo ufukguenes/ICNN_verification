@@ -10,7 +10,7 @@ from script.Optimizer.sdlbfgs import SdLBFGS
 
 
 def train_icnn(model, train_loader, ambient_loader, epochs=10, optimizer=None,
-               return_history=False, sequential=False, hyper_lambda=1, train_box_bounds=True):
+               return_history=False, sequential=False, hyper_lambda=1, train_box_bounds=False):
     history = []
     if train_box_bounds:
         params_to_train = model.parameters()

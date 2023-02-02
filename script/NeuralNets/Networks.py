@@ -104,7 +104,7 @@ class ICNN_Softmax(nn.Module):
 
             self.ws.append(w)
             self.us.append(u)
-
+        #self.us.append(nn.Linear(layer_widths[0], 2 * layer_widths[0], bias=True, dtype=torch.float64))
         self.ws.append(nn.Linear(d_in, 1, bias=True, dtype=torch.float64))
 
     def forward(self, x):
@@ -126,11 +126,28 @@ class ICNN_Softmax(nn.Module):
         out = self.ws[-1](x_in)"""
 
         # torch.max
+        """
         x1 = self.ws[len_ws - 2](x1)
         x1 = torch.max(x1, dim=1)[0]
         x2 = self.us[-1](x)
         x2 = torch.max(x2, dim=1)[0]
-        out = torch.maximum(x1, x2)
+        out = torch.maximum(x1, x2)"""
+
+        # LogSumExp -  funktioniert nicht, da wenn alle werte negativ sind nicht unbedingt etwas negatives rauskommt
+        """x1 = self.ws[len_ws - 2](x1)
+        x1 = torch.logsumexp(x1, dim=1, keepdim=True)
+        x2 = self.us[-1](x)
+        x2 = torch.logsumexp(x2, dim=1, keepdim=True)
+        x_in = torch.cat([x1, x2], dim=1)
+        out = torch.logsumexp(x_in, dim=1)"""
+
+        # Boltzmann operator
+        """x1 = self.ws[len_ws - 2](x1)
+        x1 = boltzmann_op(x1)
+        x2 = self.us[-1](x)
+        x2 = boltzmann_op(x2)
+        x_in = torch.cat([x1, x2], dim=1)
+        out = boltzmann_op(x_in)"""
 
 
         # torch.maximum
@@ -139,4 +156,14 @@ class ICNN_Softmax(nn.Module):
         x_in = torch.maximum(x1, x2)
         out = self.ws[-1](x_in)"""
 
+        
+
         return out
+
+
+def boltzmann_op(x):
+    scale = torch.mul(x, 10)
+    exp = torch.exp(scale)
+    summed = torch.mul(x, exp).sum(dim=1, keepdim=True)
+    summed_exp = exp.sum(dim=1, keepdim=True)
+    return torch.div(summed, summed_exp)
