@@ -3,10 +3,6 @@
   <component name="ChangeListManager">
     <list default="true" id="cce5989f-4d39-4791-9eda-009127cdf42d" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/script/DHOV/DHOV.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/DHOV/DHOV.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/script/DHOV/MainDHOV.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/DHOV/MainDHOV.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/script/DHOV/Normalisation.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/DHOV/Normalisation.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/script/NeuralNets/Networks.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/NeuralNets/Networks.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -37,7 +33,8 @@
     "WebServerToolWindowFactoryState": "false",
     "last_opened_file_path": "C:/Users/Ufuk/Documents/Programming/ICNN_verification/script/DHOV/MainDHOV.py",
     "node.js.detected.package.eslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)"
+    "node.js.selected.package.eslint": "(autodetect)",
+    "settings.editor.selected.configurable": "reference.settings.project.statistic.project.settings"
   }
 }]]></component>
   <component name="RunManager">
