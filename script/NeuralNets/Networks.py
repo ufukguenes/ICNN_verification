@@ -76,8 +76,8 @@ class ICNN_Softmax(nn.Module):
 
     def __init__(self, layer_widths, force_positive_init=False):
         """
-    layer_widths - ([int]) list of layer widths **including** input and output dim
-    """
+        layer_widths - ([int]) list of layer widths **including** input and output dim
+        """
         super(ICNN_Softmax, self).__init__()
 
         self.ws = nn.ParameterList([])  # positive weights for propagation
@@ -88,7 +88,7 @@ class ICNN_Softmax(nn.Module):
 
         d_in = layer_widths[1]
 
-        for i, lw in enumerate(layer_widths[2:]): #enumerate(layer_widths[2:-1]):
+        for i, lw in enumerate(layer_widths[2:]):
             w = nn.Linear(d_in, lw, dtype=torch.float64)
 
             with torch.no_grad():
@@ -98,18 +98,15 @@ class ICNN_Softmax(nn.Module):
                             p[:] = torch.maximum(torch.Tensor([0]), p)
 
             d_in = lw
-            """if i == len(layer_widths) - 2 - 2:
-                u = nn.Linear(layer_widths[0], lw, bias=True, dtype=torch.float64)
-            else:
-                u = nn.Linear(layer_widths[0], lw, bias=False, dtype=torch.float64)"""
             u = nn.Linear(layer_widths[0], lw, bias=False, dtype=torch.float64)
 
             self.ws.append(w)
             self.us.append(u)
         self.us.append(nn.Linear(layer_widths[0], 2 * layer_widths[0], bias=True, dtype=torch.float64))
-        #self.ws.append(nn.Linear(d_in, 1, bias=True, dtype=torch.float64))
+
         self.ls.append(nn.Linear(layer_widths[0], 2 * layer_widths[0], bias=False, dtype=torch.float64))
         self.ls.append(nn.Linear(2 * layer_widths[0], 2 * layer_widths[0] - 1, bias=False, dtype=torch.float64))
+
         with torch.no_grad():
             l1 = list(self.ls[0].parameters())
             l2 = list(self.ls[1].parameters())
@@ -124,46 +121,6 @@ class ICNN_Softmax(nn.Module):
             a = w(x1)
             b = u(x)
             x1 = nn.ReLU()(a + b)
-
-        # torch.softmax
-        """x1 = self.ws[len_ws - 2](x1)
-        x1 = torch.nn.Softmax()(x1)
-        x2 = self.us[-1](x)
-        x2 = torch.nn.Softmax()(x2)
-        x_in = x1 + x2
-        x_in = torch.nn.Softmax()(x_in)
-        out = self.ws[-1](x_in)"""
-
-        # torch.max
-        """
-        x1 = self.ws[len_ws - 2](x1)
-        x1 = torch.max(x1, dim=1)[0]
-        x2 = self.us[-1](x)
-        x2 = torch.max(x2, dim=1)[0]
-        out = torch.maximum(x1, x2)"""
-
-        # LogSumExp -  funktioniert nicht, da wenn alle werte negativ sind nicht unbedingt etwas negatives rauskommt
-        """x1 = self.ws[len_ws - 2](x1)
-        x1 = torch.logsumexp(x1, dim=1, keepdim=True)
-        x2 = self.us[-1](x)
-        x2 = torch.logsumexp(x2, dim=1, keepdim=True)
-        x_in = torch.cat([x1, x2], dim=1)
-        out = torch.logsumexp(x_in, dim=1)"""
-
-        # Boltzmann operator
-        """x1 = self.ws[len_ws - 2](x1)
-        x1 = boltzmann_op(x1)
-        x2 = self.us[-1](x)
-        x2 = boltzmann_op(x2)
-        x_in = torch.cat([x1, x2], dim=1)
-        out = boltzmann_op(x_in)"""
-
-
-        # torch.maximum
-        """x1 = self.ws[len_ws - 2](x1)
-        x2 = self.us[-1](x)
-        x_in = torch.maximum(x1, x2)
-        out = self.ws[-1](x_in)"""
 
         # something like and
         icnn_out = self.ws[len_ws - 2](x1)
@@ -181,11 +138,3 @@ class ICNN_Softmax(nn.Module):
         out = torch.max(x_in, dim=1)[0]
 
         return out
-
-
-def boltzmann_op(x):
-    scale = torch.mul(x, 10)
-    exp = torch.exp(scale)
-    summed = torch.mul(x, exp).sum(dim=1, keepdim=True)
-    summed_exp = exp.sum(dim=1, keepdim=True)
-    return torch.div(summed, summed_exp)

@@ -199,6 +199,9 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
             plots = Plots_for(0, current_icnn, included_space.detach(), ambient_space.detach(), [-1, 3], [-1, 3])
             plots.plt_dotted()
 
+        plots = Plots_for(0, current_icnn, included_space.detach(), ambient_space.detach(),
+                          [-3, 3], [-3, 3])
+        plots.plt_mesh()
         # verify and enlarge convex approximation
         if use_over_approximation:
             if i == 0:
@@ -221,6 +224,11 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
                 plots.plt_dotted()
         else:
             c = 0
+        with torch.no_grad():
+            last_layer = list(current_icnn.ws[-1].parameters())
+            b = last_layer[1]
+            b.data = b + c
+        plots.plt_mesh()
 
         c_values.append(c)
 
