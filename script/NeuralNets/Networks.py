@@ -72,13 +72,13 @@ class ICNN(nn.Module):
         return x1
 
 
-class ICNN_Softmax(nn.Module):
+class ICNN_Logical(nn.Module):
 
     def __init__(self, layer_widths, force_positive_init=False):
         """
         layer_widths - ([int]) list of layer widths **including** input and output dim
         """
-        super(ICNN_Softmax, self).__init__()
+        super(ICNN_Logical, self).__init__()
 
         self.ws = nn.ParameterList([])  # positive weights for propagation
         self.us = nn.ParameterList([])  # weights tied to inputs
@@ -110,7 +110,11 @@ class ICNN_Softmax(nn.Module):
         with torch.no_grad():
             l1 = list(self.ls[1].parameters())
             l2 = list(self.ls[2].parameters())
+
+            # diese architektur ist für alle ICNNs gleich da alle genau 2 ausgaben haben eine vom eigentlichen ICNN
+            # und eine von den Box Bounds
             l1[0].data = torch.tensor([[1, 1], [1, -1], [-1, 1], [-1, -1]], dtype=torch.float64)
+            # todo das kann man auch in einem affine layer zusammen fassen, ist schneller aber auch unübersichtlicher
             l2[0].data = torch.tensor([[1, 0, 0, -1], [0, 1, 0, -1], [0, 0, 1, -1]], dtype=torch.float64)
 
     def forward(self, x):

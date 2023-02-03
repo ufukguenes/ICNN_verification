@@ -111,7 +111,7 @@ def samples_uniform_over(data_samples, amount, bounds, keep_samples=True, paddin
     return data_samples
 
 
-def sample_uniform_excluding(data_samples, amount, including_bound, excluding_bound=None, icnn_c=None, keep_samples=True, padding=0):
+def sample_uniform_excluding(data_samples, amount, including_bound, excluding_bound=None, icnn=None, keep_samples=True, padding=0):
     input_size = data_samples.size(dim=1)
 
     lower = including_bound[0] - padding
@@ -132,18 +132,16 @@ def sample_uniform_excluding(data_samples, amount, including_bound, excluding_bo
             if True not in max_greater_then and True not in min_less_then:
                 shift = True
 
-        elif icnn_c is not None and not shift:
-            icnn = icnn_c[0]
-            c = icnn_c[1]
+        if icnn is not None and not shift:
             inp = torch.unsqueeze(samp, 0)
             out = icnn(inp)
-            if out <= c:
+            if out <= 0:
                 shift = True
 
         if shift:
             rand_index = random.randint(0, samp.size(0) - 1)
-            rand = random.random()
-            if rand < 0.5:
+            rand_bound = random.random()
+            if rand_bound < 0.5:
                 samp[rand_index] = upper[rand_index]
             else:
                 samp[rand_index] = lower[rand_index]

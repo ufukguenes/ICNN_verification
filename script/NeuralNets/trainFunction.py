@@ -9,7 +9,7 @@ from script.NeuralNets.testFunction import test
 from script.Optimizer.sdlbfgs import SdLBFGS
 
 
-def train_icnn(model, train_loader, ambient_loader, epochs=10, optimizer=None,
+def train_icnn(model, train_loader, ambient_loader, epochs=10, optimizer="adam",
                return_history=False, sequential=False, adapt_lambda="none",  hyper_lambda=1, preemptive_stop=True, min_loss_change=1e-6,
                train_box_bounds=False):
     history = []
@@ -18,10 +18,10 @@ def train_icnn(model, train_loader, ambient_loader, epochs=10, optimizer=None,
     else:
         params_to_train = list(model.parameters())
         params_to_train = params_to_train[:len(params_to_train) - 4] # todo anpassen auf andere architektur falls merge
-    if optimizer is None or optimizer == "adam":
+    if optimizer == "adam":
         opt = torch.optim.Adam(params_to_train)
     elif optimizer == "LBFGS":
-        opt = torch.optim.LBFGS(params_to_train, lr=1)
+        opt = torch.optim.LBFGS(params_to_train)
     elif optimizer == "SdLBFGS":
         opt = SdLBFGS(params_to_train)
 

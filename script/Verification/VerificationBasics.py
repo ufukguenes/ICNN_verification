@@ -147,7 +147,7 @@ def add_constr_for_sequential_icnn(model, predictor, input_vars, output_vars, bo
 
 def add_constr_and_logic(model, predictor, original_inp, icnn_out, output_vars, bounds):
     lb = bounds[-1][0]
-    ub = bounds[-1][1]
+    ub = bounds[-1][1] # todo richtige box bounds anwenden (die vom zu approximierenden Layer)
     ls = list(predictor.ls.parameters())
 
     bb_W, bb_b = ls[0].detach().numpy(), ls[1].detach().numpy()
@@ -175,63 +175,3 @@ def add_constr_and_logic(model, predictor, original_inp, icnn_out, output_vars, 
     model.addGenConstrMax(max_var2, affine_var2.tolist())
 
     const = model.addConstrs(max_var2 == output_vars[i] for i in range(len(output_vars.tolist())))
-
-
-def add_constr_for_and_icnn(model, predictor, input_vars, output_vars, bounds):
-    ws = list(predictor.ws.parameters())
-    us = list(predictor.us.parameters())
-    ls = list(predictor.ls.parameters())
-
-    in_var = input_vars
-    for i in range(0, len(ws), 2):
-        lb = bounds[int(i / 2)][0]
-        ub = bounds[int(i / 2)][1]
-        affine_W, affine_b = ws[i].detach().numpy(), ws[i + 1].detach().numpy()
-
-        out_fet = len(affine_b)
-        affine_var = model.addMVar(out_fet, lb=lb, ub=ub, name="affine_var" + str(i))
-        out_vars = model.addMVar(out_fet, lb=lb, ub=ub, name="affine_skip_var" + str(i))
-
-        affine_const = model.addConstrs(
-            affine_W[i] @ in_var + affine_b[i] == affine_var[i] for i in range(len(affine_W)))
-        if i != 0:
-            k = math.floor(i / 2) - 1
-            skip_W = torch.clone(us[k]).detach().numpy()  # has no bias
-            skip_var = model.addMVar(out_fet, lb=lb, ub=ub, name="skip_var" + str(k))
-            skip_const = model.addConstrs(skip_W[i] @ input_vars == skip_var[i] for i in range(len(affine_W)))
-            affine_skip_cons = model.addConstrs(
-                affine_var[i] + skip_var[i] == out_vars[i] for i in range(len(affine_W)))
-        else:
-            affine_no_skip_cons = model.addConstrs(affine_var[i] == out_vars[i] for i in range(len(affine_W)))
-
-        in_var = out_vars
-
-        if i < len(ws) - 2:
-            relu_vars = add_relu_constr(model, in_var, out_fet, lb, ub, i)
-            in_var = relu_vars
-            out_vars = relu_vars
-
-    lb = bounds[-1][0]
-    ub = bounds[-1][1]
-    skip_W, skip_b = us[len(us) - 2].detach().numpy(), us[-1].detach().numpy()  # has no bias
-    skip_var = model.addMVar(4, lb=lb, ub=ub, name="skip_var")
-    skip_const = model.addConstrs(skip_W[i] @ input_vars + skip_b[i] == skip_var[i] for i in range(len(skip_W)))
-    max_var = model.addVar(lb=-float("inf"))
-    model.addGenConstrMax(max_var, skip_var.tolist())
-
-    new_in = out_vars.tolist()
-    new_in.append(max_var)
-
-    affine_W = ls[0].detach().numpy()
-    affine_var1 = model.addMVar(4, lb=-float("inf"))
-    affine_const = model.addConstrs(
-        affine_W[i] @ new_in == affine_var1[i] for i in range(len(affine_W)))
-
-    affine_W = ls[1].detach().numpy()
-    affine_var2 = model.addMVar(3, lb=-float("inf"))
-    affine_const = model.addConstrs(
-        affine_W[i] @ affine_var1 == affine_var2[i] for i in range(len(affine_W)))
-    max_var = model.addVar(lb=-float("inf"))
-    model.addGenConstrMax(max_var, affine_var2.tolist())
-
-    const = model.addConstrs(max_var == output_vars[i] for i in range(out_fet))

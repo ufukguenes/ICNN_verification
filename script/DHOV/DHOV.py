@@ -3,7 +3,7 @@
 from matplotlib import pyplot as plt
 from torch.utils.data import DataLoader
 
-from script.NeuralNets.Networks import SequentialNN, ICNN, ICNN_Softmax
+from script.NeuralNets.Networks import SequentialNN, ICNN, ICNN_Logical
 import torch
 import numpy as np
 
@@ -16,20 +16,32 @@ from script.dataInit import ConvexDataset, Rhombus
 from script.eval import Plots_for
 from script.NeuralNets.trainFunction import train_icnn, train_icnn_outer
 
+#todo zu Klasse umwandeln
 """
 should_plot has values: none, simple, detailed, verification
-optimizer has values: adam, LBFGS, SdLBFGS, None. If None, adam will be used
+optimizer has values: adam, LBFGS, SdLBFGS
 adapt_lambda has values: none, high_low, included
 init_box_bounds has values: none, simple, logical
 """
-def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=None, solver_bound=None,
-                       icnn_batch_size=1000,
-                       icnn_epochs=100, sample_count=1000, keep_ambient_space=False, sample_new=True,
-                       use_over_approximation=True, sample_over_input_space=False,
-                       sample_over_output_space=True, use_grad_descent=False, train_outer=False, init_mode="none",
-                       adapt_lambda="none", should_plot='none', optimizer="adam", preemptive_stop=True):
+def start_verification(nn: SequentialNN, input, eps=0.001, icnn_batch_size=1000, icnn_epochs=100, sample_count=1000,
+                       keep_ambient_space=False, sample_new=True, use_over_approximation=True,
+                       sample_over_input_space=False, sample_over_output_space=True, use_grad_descent=False,
+                       train_outer=False, preemptive_stop=True,
+                       init_mode="none", adapt_lambda="none", should_plot='none', optimizer="adam"):
 
     valid_init_modes = ["none, simple", "logical"]
+    valid_adapt_lambda = ["none", "high_low", "included"]
+    valid_should_plot = ["none", "simple", "detailed", "verification"]
+    valid_optimizer = ["adam", "LBFGS", "SdLBFGS"]
+
+    if init_mode not in valid_init_modes:
+        raise AttributeError("Expected initialization mode, one of: {}, actual: {}".format(valid_init_modes, init_mode))
+    if adapt_lambda not in valid_adapt_lambda:
+        raise AttributeError("Expected adaptive lambda mode one of: {}, actual: {}".format(valid_adapt_lambda, adapt_lambda))
+    if should_plot not in valid_should_plot:
+        raise AttributeError("Expected plotting mode one of: {}, actual: {}".format(valid_should_plot, should_plot))
+    if optimizer not in valid_optimizer:
+        raise AttributeError("Expected optimizer one of: {}, actual: {}".format(valid_optimizer, optimizer))
 
     # todo Achtung ich muss schauen, ob gurobi upper bound inklusive ist, da ich aktuell die upper bound mit eps nicht inklusive habe
     input_flattened = torch.flatten(input)
@@ -48,10 +60,12 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
     c_values = []
     center = input_flattened
 
+    use_logical_bound = False
     if init_mode in ["none", "simple"]:
         icnn_type = ICNN
     elif init_mode == "logical":
-        icnn_type = ICNN_Softmax
+        icnn_type = ICNN_Logical
+        use_logical_bound = True
 
     for i in range(0, len(parameter_list) - 2, 2):  # -2 because last layer has no ReLu activation
         current_layer_index = int(i / 2)
@@ -71,8 +85,7 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
             else:
                 ambient_space = ds.sample_uniform_excluding(ambient_space, int(sample_count / 2),
                                                             box_bounds[current_layer_index - 1],
-                                                            icnn_c=[icnns[current_layer_index - 1],
-                                                                    c_values[current_layer_index - 1]],
+                                                            icnn=icnns[current_layer_index - 1],
                                                             padding=0.5)  # todo test for when lower/upper bound is smaller then eps
 
         if should_plot == "detailed":
@@ -81,7 +94,7 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
         included_space = ds.apply_affine_transform(W, b, included_space)
         ambient_space = ds.apply_affine_transform(W, b, ambient_space)
 
-        if should_plot == "simple" or should_plot == "detailed":
+        if should_plot in ["simple", "detailed"]:
             original_included_space = ds.apply_affine_transform(W, b, original_included_space)
             original_ambient_space = ds.apply_affine_transform(W, b, original_ambient_space)
             if should_plot == "detailed":
@@ -91,7 +104,7 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
         included_space = ds.apply_ReLU_transform(included_space)
         ambient_space = ds.apply_ReLU_transform(ambient_space)
 
-        if should_plot == "simple" or should_plot == "detailed":
+        if should_plot in ["simple", "detailed"]:
             original_included_space = ds.apply_ReLU_transform(original_included_space)
             original_ambient_space = ds.apply_ReLU_transform(original_ambient_space)
             if should_plot == "detailed":
@@ -101,7 +114,7 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
         if sample_over_output_space:
             ambient_space = ds.samples_uniform_over(ambient_space, int(sample_count / 2),
                                                     box_bounds[current_layer_index], padding=0.5)
-            if should_plot == "simple" or should_plot == "detailed":
+            if should_plot in ["simple", "detailed"]:
                 original_ambient_space = ds.samples_uniform_over(original_ambient_space, int(sample_count / 2),
                                                                  box_bounds[current_layer_index], padding=0.5)
 
@@ -134,8 +147,9 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
                 init_icnn_box_bounds_logical(current_icnn, [low, up])
 
         # train icnn
-        untouched_normalized_ambient_space = normalized_ambient_space.detach().clone()
+
         if use_grad_descent:
+            untouched_normalized_ambient_space = normalized_ambient_space.detach().clone()  # todo sollte ich das noch dazu nehmen, dann wird ja ggf die anzahl samples doppelt so groß und es dauert länger
             if should_plot == "simple" or should_plot == "detailed":
                 plt_inc_amb("without gradient descent", normalized_included_space.tolist(),
                             normalized_ambient_space.tolist())
@@ -172,11 +186,12 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
                 plots = Plots_for(0, current_icnn, normalized_included_space.detach(), torch.cat([normalized_ambient_space.detach(), untouched_normalized_ambient_space.detach()]).detach(),
                                   [-2, 3], [-2, 3])
                 plots.plt_mesh()
+            normalized_ambient_space = untouched_normalized_ambient_space #todo das ist vielleicht unnötig
         else:
             train_icnn(current_icnn, train_loader, ambient_loader, epochs=icnn_epochs, hyper_lambda=1,
                        optimizer=optimizer, adapt_lambda=adapt_lambda, preemptive_stop=preemptive_stop)
 
-        if train_outer:
+        if train_outer: # todo will ich train outer behalten oder einfach verwerfen?
             lam = 10
 
             with torch.no_grad():
@@ -191,7 +206,7 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
                 us[0].data = torch.div(us[0].data, lam)
 
             plots = Plots_for(0, current_icnn, normalized_included_space.detach(),
-                              untouched_normalized_ambient_space.detach(),
+                              normalized_ambient_space.detach(),
                               [-1*lam, 3*lam], [-1*lam, 3*lam])
             plots.plt_dotted()
             plots.plt_mesh()
@@ -206,7 +221,7 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
         elif should_plot == "simple":
             plots = Plots_for(0, current_icnn, included_space.detach(), ambient_space.detach(), [-1, 3], [-1, 3])
             plots.plt_dotted()
-        if should_plot == "verification":
+        elif should_plot == "verification":
             plots = Plots_for(0, current_icnn, included_space.detach(), ambient_space.detach(), [-1, 3], [-1, 3])
             plots.plt_mesh()
 
@@ -222,9 +237,9 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
                 prev_c = c_values[current_layer_index - 1]
                 adversarial_input, c = ver.verification(current_icnn,
                                                         icnn_W_b_c=[prev_icnn, W.detach().numpy(), b.detach().numpy(),
-                                                                    prev_c], has_ReLU=True)
+                                                                    prev_c], has_ReLU=True, use_logical_bound=use_logical_bound)
 
-            with torch.no_grad():  # todo einrücken
+            with torch.no_grad():
                 last_layer = list(current_icnn.ws[-1].parameters())
                 b = last_layer[1]
                 b.data = b - c
@@ -253,7 +268,7 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
 
         if sample_new:
             included_space, ambient_space = ds.sample_max_radius(current_icnn, sample_count,
-                                                                 box_bounds=box_bounds[current_layer_index])
+                                                                 box_bounds=box_bounds[current_layer_index]) #todo checken ob max_radius funktioniert für die neue architektur oder ob ich auch hier logical layer einbauen muss
             # todo wenn die box bounds besser als das icnn ist, beschreibt das icnn nicht mehr den included space,
             # man müsste dann noch mal nach dem Training das icnn mit boxbounds zusammenfügen, damit es das gleiche ist
             # dann muss man auch nicht mehr max_radius verwenden zum samplen
@@ -313,20 +328,21 @@ def init_icnn_box_bounds(icnn: ICNN, box_bounds):
         last[0].data = torch.mul(torch.ones_like(last[0], dtype=torch.float64), 10)
         last[1].data = torch.zeros_like(last[1], dtype=torch.float64)
 
-def init_icnn_box_bounds_logical(icnn: ICNN_Softmax, box_bounds):
+def init_icnn_box_bounds_logical(icnn: ICNN_Logical, box_bounds, with_zero=False):
     # todo check for the layer to have the right dimensions
     with torch.no_grad():
-        """for i in range(len(icnn.ws)):
-            ws = list(icnn.ws[i].parameters())
-            ws[1].data = torch.zeros_like(ws[1], dtype=torch.float64)
-            ws[0].data = torch.zeros_like(ws[0], dtype=torch.float64)
-        last_ws = list(icnn.ws[-1].parameters())
-        last_ws[0].data = torch.ones_like(last_ws[0])
-        last_ws[1].data = torch.zeros_like(last_ws[1])
+        if with_zero:
+            for i in range(len(icnn.ws)):
+                ws = list(icnn.ws[i].parameters())
+                ws[1].data = torch.zeros_like(ws[1], dtype=torch.float64)
+                ws[0].data = torch.zeros_like(ws[0], dtype=torch.float64)
+            last_ws = list(icnn.ws[-1].parameters())
+            last_ws[0].data = torch.ones_like(last_ws[0])
+            last_ws[1].data = torch.zeros_like(last_ws[1])
 
-        for i in range(len(icnn.us)):
-            us = list(icnn.us[i].parameters())
-            us[0].data = torch.zeros_like(us[0], dtype=torch.float64)"""
+            for i in range(len(icnn.us)):
+                us = list(icnn.us[i].parameters())
+                us[0].data = torch.zeros_like(us[0], dtype=torch.float64)
 
         bb = list(icnn.ls[0].parameters())  # us is used because values in ws are set to 0 when negative
         u = torch.zeros_like(bb[0], dtype=torch.float64)
