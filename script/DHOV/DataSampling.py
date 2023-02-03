@@ -8,7 +8,7 @@ import script.Verification.VerificationBasics as verbas
 import script.Verification.MilpVerification as milp
 
 
-def sample_max_radius(icnn, c, sample_size, box_bounds=None):
+def sample_max_radius(icnn, sample_size, c=0, box_bounds=None):
     m = grp.Model()
     m.Params.LogToConsole = 0
 
@@ -84,7 +84,7 @@ def sample_max_radius(icnn, c, sample_size, box_bounds=None):
 
 
 
-def regroup_samples(icnn, c, included_space, ambient_space):
+def regroup_samples(icnn, included_space, ambient_space, c=0):
     moved = 0
     for i, elem in enumerate(ambient_space):
         elem = torch.unsqueeze(elem, 0)

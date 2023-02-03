@@ -82,7 +82,7 @@ class ICNN_Softmax(nn.Module):
 
         self.ws = nn.ParameterList([])  # positive weights for propagation
         self.us = nn.ParameterList([])  # weights tied to inputs
-        self.ls = nn.ParameterList([])
+        self.ls = []
         self.layer_widths = layer_widths
         self.ws.append(nn.Linear(layer_widths[0], layer_widths[1], bias=True, dtype=torch.float64))
 

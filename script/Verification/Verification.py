@@ -11,7 +11,7 @@ def load(icnn):
     icnn.load_state_dict(torch.load("../convexHullModel.pth"), strict=False)
 
 
-def verification(icnn, center_eps_W_b=None, A_b=None, icnn_W_b_c=None, has_ReLU=False, sequential=False):
+def verification(icnn, center_eps_W_b=None, A_b=None, icnn_W_b_c=None, has_ReLU=False, sequential=False, use_logical_bound=False):
     m = Model()
 
     #m.Params.LogToConsole = 0
@@ -72,11 +72,17 @@ def verification(icnn, center_eps_W_b=None, A_b=None, icnn_W_b_c=None, has_ReLU=
         # todo wie kann ich hier wiederverwenden, dass ich das constraint_icnn schon mal verifiziert habe?
         constraint_icnn_input_size = constraint_icnn.layer_widths[0]
         input_to_previous_layer = m.addMVar(constraint_icnn_input_size, lb=-float('inf'))
-        output_of_constraint_icnn = m.addMVar(1, lb=-float('inf'))
+        output_of_layer_approx = m.addMVar(1, lb=-float('inf'))
 
         bounds = verbas.calculate_box_bounds(constraint_icnn, None, is_sequential=False)
-        verbas.add_constr_for_non_sequential_icnn(m, constraint_icnn, input_to_previous_layer, output_of_constraint_icnn, bounds)
-        m.addConstr(output_of_constraint_icnn[0] <= c)
+        verbas.add_constr_for_non_sequential_icnn(m, constraint_icnn, input_to_previous_layer, output_of_layer_approx, bounds)
+
+        if use_logical_bound:
+            output_of_and = m.addMVar(1, lb=-float('inf'))
+            verbas.add_constr_and_logic(m, constraint_icnn, input_to_previous_layer, output_of_layer_approx, output_of_and, bounds)
+            output_of_layer_approx = output_of_and
+
+        m.addConstr(output_of_layer_approx[0] <= 0) # todo 0 ersetzen mit c?
 
         """affine_out = add_affine_constr(m, W, b, input_to_previous_layer, lb, ub)
         if has_ReLU:
@@ -89,8 +95,8 @@ def verification(icnn, center_eps_W_b=None, A_b=None, icnn_W_b_c=None, has_ReLU=
             relu_var = m.addMVar(input_size, lb=-float('inf'), name="in_var")
             m.addConstrs(W[i] @ input_to_previous_layer + b[i] == relu_var[i] for i in range(len(W)))
             m.addConstrs(input_var[i] == max_(0, relu_var[i]) for i in range(input_size))
-
         else:
+            t = 1
             m.addConstrs(W[i] @ input_to_previous_layer + b[i] == input_var[i] for i in range(len(W)))
 
     else:

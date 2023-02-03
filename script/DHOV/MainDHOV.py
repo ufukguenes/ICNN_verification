@@ -162,8 +162,8 @@ def net_2d():
     icnns, c_values = \
         dhov.start_verification(nn, test_image, eps=1, icnn_epochs=100, sample_new=False, use_over_approximation=True,
                                 sample_over_input_space=False, sample_over_output_space=True,
-                                keep_ambient_space=False, use_grad_descent=False, train_outer=False, init_box_bounds=True,
-                                adapt_lambda="none", should_plot="simple", optimizer="LBFGS", preemptive_stop=False)
+                                keep_ambient_space=False, use_grad_descent=False, train_outer=False, init_mode="logical",
+                                adapt_lambda="none", should_plot="detailed", optimizer="adam", preemptive_stop=False)
 
 def cifar_net():
     batch_size = 10
