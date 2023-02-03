@@ -52,8 +52,8 @@ def deep_hull_simple_loss(model_output, ambient_space, hyper_lambda=1):
 
     def l_neg(z):
         sig = torch.sigmoid(z)
-        max_value = torch.zeros_like(sig).add(1 - 1e-12)
-        sig = torch.minimum(sig, max_value)
+        min_value = torch.zeros_like(sig).add(1e-12)
+        sig = torch.maximum(sig, min_value)
 
         loss = - torch.log(sig)
         loss = torch.sum(loss)

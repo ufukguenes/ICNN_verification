@@ -17,14 +17,16 @@ from script.eval import Plots_for
 from script.NeuralNets.trainFunction import train_icnn, train_icnn_outer
 
 """
-should_plot has values: none, simple, detailed
-optimizer has values: adam, LBFGS, None. If None, adam will be used
+should_plot has values: none, simple, detailed, verification
+optimizer has values: adam, LBFGS, SdLBFGS, None. If None, adam will be used
+adapt_lambda has values: none, high_low, included
 """
 def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=None, solver_bound=None,
                        icnn_batch_size=1000,
                        icnn_epochs=100, sample_count=1000, keep_ambient_space=False, sample_new=True,
                        use_over_approximation=True, sample_over_input_space=False,
-                       sample_over_output_space=True, use_grad_descent=False, train_outer=False, should_plot='none', optimizer="adam"):
+                       sample_over_output_space=True, use_grad_descent=False, train_outer=False, init_box_bounds=True,
+                       adapt_lambda="none", should_plot='none', optimizer="adam", preemptive_stop=True):
 
     # todo Achtung ich muss schauen, ob gurobi upper bound inklusive ist, da ich aktuell die upper bound mit eps nicht inklusive habe
     input_flattened = torch.flatten(input)
@@ -45,7 +47,7 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
     for i in range(0, len(parameter_list) - 2, 2):  # -2 because last layer has no ReLu activation
         current_layer_index = int(i / 2)
         icnn_input_size = nn.layer_widths[current_layer_index + 1]
-        icnns.append(ICNN_Softmax([icnn_input_size, 10, 10, 10, 2 * icnn_input_size, 1], force_positive_init=True))
+        icnns.append(ICNN_Softmax([icnn_input_size, 10, 10, 10, 2 * icnn_input_size, 1], force_positive_init=True)) #todo make optional (icnn or icnn_softmax
         current_icnn = icnns[current_layer_index]
 
         W, b = parameter_list[i], parameter_list[i + 1]
@@ -110,15 +112,16 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
         dataset = ConvexDataset(data=normalized_ambient_space)
         ambient_loader = DataLoader(dataset, batch_size=icnn_batch_size, shuffle=False) # todo shuffel alle wieder auf true setzen
 
-        low = box_bounds[current_layer_index][0]
-        up = box_bounds[current_layer_index][1]
-        low = torch.div(torch.add(low, -mean), std)
-        up = torch.div(torch.add(up, -mean), std)
+        if init_box_bounds:
+            low = box_bounds[current_layer_index][0]
+            up = box_bounds[current_layer_index][1]
+            low = torch.div(torch.add(low, -mean), std)
+            up = torch.div(torch.add(up, -mean), std)
 
-        #init_icnn_box_bounds(current_icnn, [low, up])
-        init_icnn_box_bounds_with_softmax(current_icnn, [low, up])
-        ws = list(current_icnn.ws.parameters())  # bias for first relu activation with weights from us (in second layer)
-        us = list(current_icnn.us.parameters())
+            #init_icnn_box_bounds(current_icnn, [low, up])
+            init_icnn_box_bounds_with_softmax(current_icnn, [low, up])
+            ws = list(current_icnn.ws.parameters())  # bias for first relu activation with weights from us (in second layer)
+            us = list(current_icnn.us.parameters())
 
         # train icnn
         untouched_normalized_ambient_space = normalized_ambient_space.detach().clone()
@@ -140,7 +143,8 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
                 else:
                     epochs_in_run = epochs_per_optimization + modulo_epochs
 
-                train_icnn(current_icnn, train_loader, ambient_loader, epochs=epochs_in_run, hyper_lambda=0.5, optimizer=optimizer)
+                train_icnn(current_icnn, train_loader, ambient_loader, epochs=epochs_in_run, hyper_lambda=0.5,
+                           optimizer=optimizer, adapt_lambda=adapt_lambda, preemptive_stop=preemptive_stop)
 
                 if h < num_optimizations:
                     for k in range(optimization_steps):
@@ -159,7 +163,8 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
                                   [-2, 3], [-2, 3])
                 plots.plt_mesh()
         else:
-            train_icnn(current_icnn, train_loader, ambient_loader, epochs=icnn_epochs, hyper_lambda=1, optimizer=optimizer)
+            train_icnn(current_icnn, train_loader, ambient_loader, epochs=icnn_epochs, hyper_lambda=1,
+                       optimizer=optimizer, adapt_lambda=adapt_lambda, preemptive_stop=preemptive_stop)
 
         if train_outer:
             lam = 10
@@ -191,7 +196,9 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
         elif should_plot == "simple":
             plots = Plots_for(0, current_icnn, included_space.detach(), ambient_space.detach(), [-1, 3], [-1, 3])
             plots.plt_dotted()
-
+        if should_plot == "verification":
+            plots = Plots_for(0, current_icnn, included_space.detach(), ambient_space.detach(), [-1, 3], [-1, 3])
+            plots.plt_mesh()
 
         # verify and enlarge convex approximation
         if use_over_approximation:
@@ -213,9 +220,13 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
             elif should_plot == "simple":
                 plots.c = c
                 plots.plt_dotted()
+            if should_plot == "verification":
+                plots.c = c
+                plots.plt_mesh()
+                break
         else:
             c = 0
-        with torch.no_grad():
+        with torch.no_grad(): #todo einrücken
             last_layer = list(current_icnn.ws[-1].parameters())
             b = last_layer[1]
             b.data = b - c
@@ -264,10 +275,10 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
 def init_icnn_box_bounds(icnn: ICNN, box_bounds):
     # todo check for the layer to have the right dimensions
     with torch.no_grad():
-        k = len(icnn.ws)
         for i in range(0, len(icnn.ws)):
             ws = list(icnn.ws[i].parameters())
             ws[1].data = torch.zeros_like(ws[1], dtype=torch.float64)
+            ws[0].data = torch.zeros_like(ws[0], dtype=torch.float64)
 
         for elem in icnn.us:
             w = list(elem.parameters())
@@ -285,6 +296,9 @@ def init_icnn_box_bounds(icnn: ICNN, box_bounds):
         ws[0].data = torch.zeros_like(ws[0], dtype=torch.float64)
         ws[1].data = b
         us[0].data = u
+
+        last_us = list(icnn.us[3].parameters())[0]
+        last_us.data = torch.zeros_like(last_us, dtype=torch.float64)
 
         last = list(icnn.ws[4].parameters())
         last[0].data = torch.mul(torch.ones_like(last[0], dtype=torch.float64), 10)
