@@ -1,32 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-<<<<<<< HEAD
-    <list default="true" id="90b0f737-acac-430b-a76c-cab51a684379" name="Changes" comment="" />
-=======
-    <list default="true" id="90b0f737-acac-430b-a76c-cab51a684379" name="Changes" comment="">
+    <list default="true" id="cce5989f-4d39-4791-9eda-009127cdf42d" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/script/DHOV/DHOV.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/DHOV/DHOV.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/script/DHOV/MainDHOV.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/DHOV/MainDHOV.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/script/DHOV/Normalisation.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/DHOV/Normalisation.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/script/NeuralNets/Networks.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/NeuralNets/Networks.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/script/NeuralNets/lossFunction.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/NeuralNets/lossFunction.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/script/NeuralNets/trainFunction.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/NeuralNets/trainFunction.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/script/Verification/VerificationBasics.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/Verification/VerificationBasics.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/script/dataInit.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/dataInit.py" afterDir="false" />
     </list>
->>>>>>> 22eff3f4e99f64c8db76b8f23088b2fcf9e52d4b
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
-  </component>
-  <component name="FileTemplateManagerImpl">
-    <option name="RECENT_TEMPLATES">
-      <list>
-        <option value="Jupyter Notebook" />
-        <option value="Python Script" />
-      </list>
-    </option>
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -37,7 +22,7 @@
   <component name="MarkdownSettingsMigration">
     <option name="stateVersion" value="1" />
   </component>
-  <component name="ProjectId" id="2HYpgVj2snAj00JcLdeLZlaExwO" />
+  <component name="ProjectId" id="2LDzPzpVjsUf2l7xBpqAKP4UN77" />
   <component name="ProjectLevelVcsManager" settingsEditedManually="true">
     <ConfirmationsSetting value="1" id="Add" />
   </component>
@@ -45,66 +30,17 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-<<<<<<< HEAD
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
-    &quot;last_opened_file_path&quot;: &quot;C:/Users/Ufuk/Documents/Programming/ICNN_verification/script/Optimizer&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;
-=======
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
     "RunOnceActivity.OpenProjectViewOnStart": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "WebServerToolWindowFactoryState": "false",
-    "last_opened_file_path": "C:/Users/Ufuk/Documents/Programming/ICNN_verification/script/Optimizer",
+    "last_opened_file_path": "C:/Users/Ufuk/Documents/Programming/ICNN_verification/script/DHOV/MainDHOV.py",
     "node.js.detected.package.eslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable"
->>>>>>> 22eff3f4e99f64c8db76b8f23088b2fcf9e52d4b
+    "node.js.selected.package.eslint": "(autodetect)"
   }
 }]]></component>
-  <component name="RecentsManager">
-    <key name="CopyFile.RECENT_KEYS">
-      <recent name="C:\Users\Ufuk\Documents\Programming\ICNN_verification\script\Optimizer" />
-      <recent name="C:\Users\Ufuk\Documents\Programming\ICNN_verification\script\Experiments" />
-      <recent name="C:\Users\Ufuk\Documents\Programming\DeepHull\script" />
-    </key>
-    <key name="MoveFile.RECENT_KEYS">
-      <recent name="C:\Users\Ufuk\Documents\Programming\ICNN_verification\script\Verification_basics" />
-      <recent name="C:\Users\Ufuk\Documents\Programming\ICNN_verification\script\NeuralNets" />
-      <recent name="C:\Users\Ufuk\Documents\Programming\ICNN_verification\script\DHOV" />
-      <recent name="C:\Users\Ufuk\Documents\Programming\ICNN_verification" />
-      <recent name="C:\Users\Ufuk\Documents\Programming\DeepHull\script\Experiments" />
-    </key>
-  </component>
-  <component name="RunManager" selected="Python.MainDHOV">
-    <configuration name="DHOV" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
-      <module name="DeepHull" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="C:\Users\Ufuk\miniconda3\envs\torchCPU\python.exe" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/script" />
-      <option name="IS_MODULE_SDK" value="false" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/script/DHOV/DHOV.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
+  <component name="RunManager">
     <configuration name="MainDHOV" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
       <module name="DeepHull" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -127,162 +63,16 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="Normalisation" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
-      <module name="DeepHull" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="C:\Users\Ufuk\miniconda3\envs\torchCPU\python.exe" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/script" />
-      <option name="IS_MODULE_SDK" value="false" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="C:\Users\Ufuk\Documents\Programming\ICNN_verification\script\DHOV\Normalisation.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="true" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration name="main" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
-      <module name="DeepHull" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/script/main.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration name="test" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
-      <module name="DeepHull" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="C:\Users\Ufuk\miniconda3\envs\torchCPU\python.exe" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/script" />
-      <option name="IS_MODULE_SDK" value="false" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/script/test.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <list>
-      <item itemvalue="Python.main" />
-      <item itemvalue="Python.DHOV" />
-      <item itemvalue="Python.MainDHOV" />
-      <item itemvalue="Python.test" />
-      <item itemvalue="Python.Normalisation" />
-    </list>
   </component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
-      <changelist id="90b0f737-acac-430b-a76c-cab51a684379" name="Changes" comment="" />
-      <created>1668471982940</created>
+      <changelist id="cce5989f-4d39-4791-9eda-009127cdf42d" name="Changes" comment="" />
+      <created>1675420424151</created>
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
-      <updated>1668471982940</updated>
-      <workItem from="1668471995035" duration="27149000" />
-      <workItem from="1668503643904" duration="10229000" />
-      <workItem from="1668607608314" duration="2130000" />
-      <workItem from="1668674040870" duration="8008000" />
-      <workItem from="1668689580556" duration="37721000" />
-      <workItem from="1668772582419" duration="14135000" />
-      <workItem from="1669019837013" duration="32540000" />
-      <workItem from="1669102162778" duration="2024000" />
-      <workItem from="1669115251344" duration="18785000" />
-      <workItem from="1669215982955" duration="20549000" />
-      <workItem from="1669242958346" duration="507000" />
-      <workItem from="1669243479479" duration="3767000" />
-      <workItem from="1669336514761" duration="8579000" />
-      <workItem from="1669375167094" duration="2984000" />
-      <workItem from="1669412279754" duration="4721000" />
-      <workItem from="1669544390271" duration="3279000" />
-      <workItem from="1669820710385" duration="1800000" />
-      <workItem from="1670060554317" duration="28825000" />
-      <workItem from="1670193281795" duration="8609000" />
-      <workItem from="1670206767527" duration="890000" />
-      <workItem from="1670240176290" duration="44476000" />
-      <workItem from="1670325007465" duration="6515000" />
-      <workItem from="1670426260278" duration="3560000" />
-      <workItem from="1670446068392" duration="1917000" />
-      <workItem from="1670488876310" duration="168000" />
-      <workItem from="1670509136900" duration="8015000" />
-      <workItem from="1670581513730" duration="13376000" />
-      <workItem from="1670599834771" duration="720000" />
-      <workItem from="1670666681316" duration="11322000" />
-      <workItem from="1670746248674" duration="5929000" />
-      <workItem from="1670756905637" duration="4432000" />
-      <workItem from="1670831139927" duration="121000" />
-      <workItem from="1670840850433" duration="10000" />
-      <workItem from="1670850132225" duration="3831000" />
-      <workItem from="1670922962206" duration="19897000" />
-      <workItem from="1670960020039" duration="10424000" />
-      <workItem from="1670998257547" duration="10354000" />
-      <workItem from="1671012044811" duration="62000" />
-      <workItem from="1671188199755" duration="27900000" />
-      <workItem from="1671387093153" duration="1003000" />
-      <workItem from="1671497076028" duration="5264000" />
-      <workItem from="1671533055727" duration="22633000" />
-      <workItem from="1671611929610" duration="1927000" />
-      <workItem from="1671617053253" duration="80000" />
-      <workItem from="1671636670671" duration="2277000" />
-      <workItem from="1671665711262" duration="17308000" />
-      <workItem from="1673261889553" duration="40000" />
-      <workItem from="1673270460293" duration="18498000" />
-      <workItem from="1673346205242" duration="598000" />
-      <workItem from="1673394591094" duration="1108000" />
-      <workItem from="1673433014914" duration="98000" />
-      <workItem from="1673447353802" duration="14920000" />
-      <workItem from="1673512718161" duration="21007000" />
-      <workItem from="1673667348107" duration="2899000" />
-      <workItem from="1673900048566" duration="19404000" />
-      <workItem from="1674032319345" duration="14271000" />
-      <workItem from="1674056903311" duration="2539000" />
-      <workItem from="1674218405934" duration="29145000" />
-      <workItem from="1674384292274" duration="18248000" />
-      <workItem from="1674463988862" duration="3452000" />
-      <workItem from="1674480304243" duration="12792000" />
-      <workItem from="1674563647198" duration="4388000" />
-      <workItem from="1674643287094" duration="1397000" />
-      <workItem from="1674657323471" duration="16484000" />
-      <workItem from="1674725160015" duration="1407000" />
-      <workItem from="1674729462120" duration="7423000" />
-      <workItem from="1674741702262" duration="101000" />
-      <workItem from="1674741815193" duration="462000" />
-<<<<<<< HEAD
-      <workItem from="1674742504018" duration="7947000" />
-      <workItem from="1674804014374" duration="1941000" />
-=======
-      <workItem from="1674742504018" duration="7087000" />
->>>>>>> 22eff3f4e99f64c8db76b8f23088b2fcf9e52d4b
+      <updated>1675420424151</updated>
+      <workItem from="1675420426540" duration="1918000" />
     </task>
     <servers />
   </component>
@@ -294,50 +84,41 @@
       <map>
         <entry key="MAIN">
           <value>
-            <State />
+            <State>
+              <option name="FILTERS">
+                <map>
+                  <entry key="branch">
+                    <value>
+                      <list>
+                        <option value="origin/main" />
+                      </list>
+                    </value>
+                  </entry>
+                </map>
+              </option>
+            </State>
+          </value>
+        </entry>
+      </map>
+    </option>
+    <option name="RECENT_FILTERS">
+      <map>
+        <entry key="Branch">
+          <value>
+            <list>
+              <RecentGroup>
+                <option name="FILTER_VALUES">
+                  <option value="origin/main" />
+                </option>
+              </RecentGroup>
+            </list>
           </value>
         </entry>
       </map>
     </option>
   </component>
-  <component name="VcsManagerConfiguration">
-    <MESSAGE value="including experiments" />
-    <MESSAGE value="created first experiments" />
-  </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
-      <breakpoints>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/script/NeuralNets/trainFunction.py</url>
-          <line>205</line>
-          <option name="timeStamp" value="274" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/script/NeuralNets/trainFunction.py</url>
-          <line>188</line>
-          <option name="timeStamp" value="275" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/script/DHOV/Normalisation.py</url>
-          <line>19</line>
-          <option name="timeStamp" value="278" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/script/Verification/Verification.py</url>
-          <line>58</line>
-          <option name="timeStamp" value="319" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/script/NeuralNets/trainFunction.py</url>
-          <line>140</line>
-          <option name="timeStamp" value="432" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="jupyter-line">
-          <url>notebook://C:/Users/Ufuk/Documents/Programming/ICNN_verification/script/Experiments/NonGenerativeExperiment.ipynb</url>
-          <line>3</line>
-          <option name="timeStamp" value="286" />
-        </line-breakpoint>
-      </breakpoints>
       <default-breakpoints>
         <breakpoint type="python-exception">
           <properties notifyOnTerminate="true" exception="BaseException">
@@ -346,11 +127,6 @@
         </breakpoint>
       </default-breakpoints>
     </breakpoint-manager>
-    <watches-manager>
-      <configuration name="CIFAR10_MILP_Verification">
-        <watch expression="lb" />
-      </configuration>
-    </watches-manager>
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/ICNN_verification$VerificationMethod.coverage" NAME="VerificationMethod Coverage Results" MODIFIED="1670197619802" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script" />
@@ -359,11 +135,7 @@
     <SUITE FILE_PATH="coverage/DeepHull$main.coverage" NAME="main Coverage Results" MODIFIED="1669233392579" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ICNN_verification$main.coverage" NAME="main Coverage Results" MODIFIED="1670249050825" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ICNN_verification$DHOV.coverage" NAME="DHOV Coverage Results" MODIFIED="1674467903275" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script" />
-<<<<<<< HEAD
-    <SUITE FILE_PATH="coverage/ICNN_verification$MainDHOV.coverage" NAME="MainDHOV Coverage Results" MODIFIED="1674815339726" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script/DHOV" />
-=======
-    <SUITE FILE_PATH="coverage/ICNN_verification$MainDHOV.coverage" NAME="MainDHOV Coverage Results" MODIFIED="1674749839986" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script/DHOV" />
->>>>>>> 22eff3f4e99f64c8db76b8f23088b2fcf9e52d4b
+    <SUITE FILE_PATH="coverage/ICNN_verification$MainDHOV.coverage" NAME="MainDHOV Coverage Results" MODIFIED="1675422074504" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script/DHOV" />
     <SUITE FILE_PATH="coverage/DeepHull$Verification.coverage" NAME="Verification Coverage Results" MODIFIED="1669122239179" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script" />
     <SUITE FILE_PATH="coverage/ICNN_verification$test.coverage" NAME="test Coverage Results" MODIFIED="1673302337900" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script" />
     <SUITE FILE_PATH="coverage/DeepHull$eval.coverage" NAME="eval Coverage Results" MODIFIED="1668723858367" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />

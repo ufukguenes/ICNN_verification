@@ -120,9 +120,6 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
         ws = list(current_icnn.ws.parameters())  # bias for first relu activation with weights from us (in second layer)
         us = list(current_icnn.us.parameters())
 
-        plots = Plots_for(0, current_icnn, normalized_included_space.detach(), normalized_ambient_space.detach(), [-3, 3], [-3, 3])
-        plots.plt_mesh()
-
         # train icnn
         untouched_normalized_ambient_space = normalized_ambient_space.detach().clone()
         if use_grad_descent:
@@ -164,10 +161,6 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
         else:
             train_icnn(current_icnn, train_loader, ambient_loader, epochs=icnn_epochs, hyper_lambda=1, optimizer=optimizer)
 
-        plots = Plots_for(0, current_icnn, normalized_included_space.detach(), normalized_ambient_space.detach(),
-                          [-3, 3], [-3, 3])
-        plots.plt_mesh()
-
         if train_outer:
             lam = 10
 
@@ -199,9 +192,7 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
             plots = Plots_for(0, current_icnn, included_space.detach(), ambient_space.detach(), [-1, 3], [-1, 3])
             plots.plt_dotted()
 
-        plots = Plots_for(0, current_icnn, included_space.detach(), ambient_space.detach(),
-                          [-3, 3], [-3, 3])
-        plots.plt_mesh()
+
         # verify and enlarge convex approximation
         if use_over_approximation:
             if i == 0:
@@ -227,8 +218,7 @@ def start_verification(nn: SequentialNN, input, eps=0.001, solver_time_limit=Non
         with torch.no_grad():
             last_layer = list(current_icnn.ws[-1].parameters())
             b = last_layer[1]
-            b.data = b + c
-        plots.plt_mesh()
+            b.data = b - c
 
         c_values.append(c)
 
@@ -315,16 +305,16 @@ def init_icnn_box_bounds_with_softmax(icnn: ICNN_Softmax, box_bounds):
             us = list(icnn.us[i].parameters())
             us[0].data = torch.zeros_like(us[0], dtype=torch.float64)"""
 
-        us = list(icnn.us[-1].parameters())  # us is used because values in ws are set to 0 when negative
-        u = torch.zeros_like(us[0], dtype=torch.float64)
-        b = torch.zeros_like(us[1], dtype=torch.float64)
+        bb = list(icnn.ls[0].parameters())  # us is used because values in ws are set to 0 when negative
+        u = torch.zeros_like(bb[0], dtype=torch.float64)
+        b = torch.zeros_like(bb[1], dtype=torch.float64)
         for i in range(len(box_bounds)):
             u[2 * i][i] = 1
             u[2 * i + 1][i] = -1
             b[2 * i] = - box_bounds[1][i]  # upper bound
             b[2 * i + 1] = box_bounds[0][i]  # lower bound
-        us[0].data = u
-        us[1].data = b
+        bb[0].data = u
+        bb[1].data = b
 
 
 

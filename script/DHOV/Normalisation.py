@@ -21,7 +21,6 @@ def normalize_nn(nn, mean, std, isICNN=False):
             parameter_list[0].data = torch.div(parameter_list[0], std)
             parameter_list[1].data = torch.add(- torch.matmul(parameter_list[0], mean), parameter_list[1])
 
-
     else:
         with torch.no_grad():
             parameter_list = list(nn.ws[0].parameters())
@@ -30,7 +29,7 @@ def normalize_nn(nn, mean, std, isICNN=False):
 
             k = len(nn.us)
             l = len(nn.ws)
-            for i in range(len(nn.us) - 1):
+            for i in range(len(nn.us)):
                 parameter_list = list(nn.us[i].parameters())
                 parameter_list[0].data = torch.div(parameter_list[0], std)
 
@@ -38,7 +37,7 @@ def normalize_nn(nn, mean, std, isICNN=False):
                 internal_parameter_list[1].data = torch.add(- torch.matmul(parameter_list[0], mean),
                                                             internal_parameter_list[1])
 
-            parameter_list = list(nn.us[-1].parameters())
+            parameter_list = list(nn.ls[0].parameters())
             parameter_list[0].data = torch.div(parameter_list[0], std)
             parameter_list[1].data = torch.add(- torch.matmul(parameter_list[0], mean), parameter_list[1])
 

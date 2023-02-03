@@ -88,7 +88,7 @@ class ICNN_Softmax(nn.Module):
 
         d_in = layer_widths[1]
 
-        for i, lw in enumerate(layer_widths[2:]):
+        for lw in layer_widths[2:]:
             w = nn.Linear(d_in, lw, dtype=torch.float64)
 
             with torch.no_grad():
@@ -102,39 +102,34 @@ class ICNN_Softmax(nn.Module):
 
             self.ws.append(w)
             self.us.append(u)
-        self.us.append(nn.Linear(layer_widths[0], 2 * layer_widths[0], bias=True, dtype=torch.float64))
 
+        self.ls.append(nn.Linear(layer_widths[0], 2 * layer_widths[0], bias=True, dtype=torch.float64))
         self.ls.append(nn.Linear(layer_widths[0], 2 * layer_widths[0], bias=False, dtype=torch.float64))
         self.ls.append(nn.Linear(2 * layer_widths[0], 2 * layer_widths[0] - 1, bias=False, dtype=torch.float64))
 
         with torch.no_grad():
-            l1 = list(self.ls[0].parameters())
-            l2 = list(self.ls[1].parameters())
+            l1 = list(self.ls[1].parameters())
+            l2 = list(self.ls[2].parameters())
             l1[0].data = torch.tensor([[1, 1], [1, -1], [-1, 1], [-1, -1]], dtype=torch.float64)
             l2[0].data = torch.tensor([[1, 0, 0, -1], [0, 1, 0, -1], [0, 0, 1, -1]], dtype=torch.float64)
 
     def forward(self, x):
         x = Flatten()(x)
         x1 = nn.ReLU()(self.ws[0](x))  # first layer is only W
-        len_ws = len(self.ws)
-        for w, u in zip(self.ws[1: len_ws - 2], self.us[:-1]):
+        for w, u in zip(self.ws[1:-1], self.us[:-1]):
             a = w(x1)
             b = u(x)
             x1 = nn.ReLU()(a + b)
 
-        # something like and
-        icnn_out = self.ws[len_ws - 2](x1)
-        icnn_out = torch.nn.ReLU()(icnn_out)
-        w1 = self.ws[-1]
-        u1 = self.us[len(self.us) - 2]
-        icnn_out = w1(icnn_out) + u1(x)
+        icnn_out = self.ws[-1](x1) + self.us[-1](x)  # no ReLU in last layer"""
 
-        box_out = self.us[-1](x)
+        # something like and
+        box_out = self.ls[0](x)
         box_out = torch.max(box_out, dim=1, keepdim=True)[0]
         x_in = torch.cat([icnn_out, box_out], dim=1)
 
-        x_in = self.ls[0](x_in)
         x_in = self.ls[1](x_in)
+        x_in = self.ls[2](x_in)
         out = torch.max(x_in, dim=1)[0]
 
         return out
