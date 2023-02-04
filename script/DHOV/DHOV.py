@@ -29,7 +29,7 @@ def start_verification(nn: SequentialNN, input, eps=0.001, icnn_batch_size=1000,
                        train_outer=False, preemptive_stop=True,
                        init_mode="none", adapt_lambda="none", should_plot='none', optimizer="adam"):
 
-    valid_init_modes = ["none, simple", "logical"]
+    valid_init_modes = ["none", "simple", "logical"]
     valid_adapt_lambda = ["none", "high_low", "included"]
     valid_should_plot = ["none", "simple", "detailed", "verification"]
     valid_optimizer = ["adam", "LBFGS", "SdLBFGS"]
@@ -52,7 +52,9 @@ def start_verification(nn: SequentialNN, input, eps=0.001, icnn_batch_size=1000,
     included_space = ds.samples_uniform_over(included_space, int(sample_count / 2), eps_bounds)
 
     ambient_space = torch.empty((0, input_flattened.size(0)), dtype=torch.float64)
-    original_included_space, original_ambient_space = included_space, ambient_space
+
+    if should_plot in valid_should_plot:
+        original_included_space, original_ambient_space = included_space, ambient_space
 
     parameter_list = list(nn.parameters())
 
@@ -63,9 +65,11 @@ def start_verification(nn: SequentialNN, input, eps=0.001, icnn_batch_size=1000,
     use_logical_bound = False
     if init_mode in ["none", "simple"]:
         icnn_type = ICNN
+        train_box_bounds = True
     elif init_mode == "logical":
         icnn_type = ICNN_Logical
         use_logical_bound = True
+        train_box_bounds = False
 
     for i in range(0, len(parameter_list) - 2, 2):  # -2 because last layer has no ReLu activation
         current_layer_index = int(i / 2)
@@ -94,7 +98,7 @@ def start_verification(nn: SequentialNN, input, eps=0.001, icnn_batch_size=1000,
         included_space = ds.apply_affine_transform(W, b, included_space)
         ambient_space = ds.apply_affine_transform(W, b, ambient_space)
 
-        if should_plot in ["simple", "detailed"]:
+        if should_plot in valid_should_plot:
             original_included_space = ds.apply_affine_transform(W, b, original_included_space)
             original_ambient_space = ds.apply_affine_transform(W, b, original_ambient_space)
             if should_plot == "detailed":
@@ -104,7 +108,7 @@ def start_verification(nn: SequentialNN, input, eps=0.001, icnn_batch_size=1000,
         included_space = ds.apply_ReLU_transform(included_space)
         ambient_space = ds.apply_ReLU_transform(ambient_space)
 
-        if should_plot in ["simple", "detailed"]:
+        if should_plot in valid_should_plot:
             original_included_space = ds.apply_ReLU_transform(original_included_space)
             original_ambient_space = ds.apply_ReLU_transform(original_ambient_space)
             if should_plot == "detailed":
@@ -168,7 +172,7 @@ def start_verification(nn: SequentialNN, input, eps=0.001, icnn_batch_size=1000,
                     epochs_in_run = epochs_per_optimization + modulo_epochs
 
                 train_icnn(current_icnn, train_loader, ambient_loader, epochs=epochs_in_run, hyper_lambda=0.5,
-                           optimizer=optimizer, adapt_lambda=adapt_lambda, preemptive_stop=preemptive_stop)
+                           optimizer=optimizer, adapt_lambda=adapt_lambda, preemptive_stop=preemptive_stop, train_box_bounds=train_box_bounds)
 
                 if h < num_optimizations:
                     for k in range(optimization_steps):
@@ -189,7 +193,7 @@ def start_verification(nn: SequentialNN, input, eps=0.001, icnn_batch_size=1000,
             normalized_ambient_space = untouched_normalized_ambient_space #todo das ist vielleicht unnötig
         else:
             train_icnn(current_icnn, train_loader, ambient_loader, epochs=icnn_epochs, hyper_lambda=1,
-                       optimizer=optimizer, adapt_lambda=adapt_lambda, preemptive_stop=preemptive_stop)
+                       optimizer=optimizer, adapt_lambda=adapt_lambda, preemptive_stop=preemptive_stop, train_box_bounds=train_box_bounds)
 
         if train_outer: # todo will ich train outer behalten oder einfach verwerfen?
             lam = 10
@@ -211,7 +215,11 @@ def start_verification(nn: SequentialNN, input, eps=0.001, icnn_batch_size=1000,
             plots.plt_dotted()
             plots.plt_mesh()
 
-        normalize_nn(current_icnn, mean, std, isICNN=True)
+        if init_mode == "logical":
+            with_logical = True
+        else:
+            with_logical = False
+        normalize_nn(current_icnn, mean, std, isICNN=True, with_logical=with_logical)
 
         # matplotlib.use("TkAgg")
         if should_plot == "detailed":
@@ -280,15 +288,15 @@ def start_verification(nn: SequentialNN, input, eps=0.001, icnn_batch_size=1000,
             plt_inc_amb("sampled new", included_space.tolist(), ambient_space.tolist())
             plt_inc_amb("original end of layer", original_included_space.tolist(), original_ambient_space.tolist())
 
-    if should_plot == "simple" or should_plot == "detailed":
+    if should_plot in valid_should_plot:
         index = len(parameter_list) - 2
         W, b = parameter_list[index], parameter_list[index + 1]
         included_space = ds.apply_affine_transform(W, b, included_space)
         ambient_space = ds.apply_affine_transform(W, b, ambient_space)
         original_included_space = ds.apply_affine_transform(W, b, original_included_space)
         original_ambient_space = ds.apply_affine_transform(W, b, original_ambient_space)
-        plt_inc_amb("output approx", included_space.tolist(), ambient_space.tolist())
-        plt_inc_amb("output exact", original_included_space.tolist(), original_ambient_space.tolist())
+        #plt_inc_amb("output approx", included_space.tolist(), ambient_space.tolist())
+        #plt_inc_amb("output exact", original_included_space.tolist(), original_ambient_space.tolist())
         plots = Plots_for(0, current_icnn, included_space.detach(), ambient_space.detach(), [-1, 3], [-1, 3], extr=original_included_space.detach())
         plots.plt_initial()
 

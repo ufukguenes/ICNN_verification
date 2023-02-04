@@ -148,9 +148,9 @@ def add_constr_for_sequential_icnn(model, predictor, input_vars, output_vars, bo
 def add_constr_and_logic(model, predictor, original_inp, icnn_out, output_vars, bounds):
     lb = bounds[-1][0]
     ub = bounds[-1][1] # todo richtige box bounds anwenden (die vom zu approximierenden Layer)
-    ls = list(predictor.ls.parameters())
+    ls = predictor.ls
 
-    bb_W, bb_b = ls[0].detach().numpy(), ls[1].detach().numpy()
+    bb_W, bb_b = ls[0].weight.data.detach().numpy(), ls[0].bias.data.detach().numpy()
     bb_var = model.addMVar(4, lb=lb, ub=ub, name="skip_var")
     skip_const = model.addConstrs(bb_W[i] @ original_inp + bb_b[i] == bb_var[i] for i in range(len(bb_W)))
     max_var = model.addVar(lb=-float("inf"))
@@ -162,12 +162,12 @@ def add_constr_and_logic(model, predictor, original_inp, icnn_out, output_vars, 
     """new_in = icnn_out.tolist()
     new_in.append(max_var)"""
 
-    affine_W = ls[2].detach().numpy()
+    affine_W = ls[1].weight.data.detach().numpy()
     affine_var1 = model.addMVar(4, lb=-float("inf"))
     affine_const = model.addConstrs(
         affine_W[i] @ new_in == affine_var1[i] for i in range(len(affine_W)))
 
-    affine_W2 = ls[3].detach().numpy()
+    affine_W2 = ls[2].weight.data.detach().numpy()
     affine_var2 = model.addMVar(3, lb=-float("inf"))
     affine_const = model.addConstrs(
         affine_W2[i] @ affine_var1 == affine_var2[i] for i in range(len(affine_W2)))

@@ -14,7 +14,7 @@ def get_std(included_space, ambient_space):
     return std
 
 
-def normalize_nn(nn, mean, std, isICNN=False):
+def normalize_nn(nn, mean, std, isICNN=False, with_logical=False):
     if not isICNN:
         with torch.no_grad():
             parameter_list = list(nn.parameters())
@@ -36,10 +36,10 @@ def normalize_nn(nn, mean, std, isICNN=False):
                 internal_parameter_list = list(nn.ws[i + 1].parameters())
                 internal_parameter_list[1].data = torch.add(- torch.matmul(parameter_list[0], mean),
                                                             internal_parameter_list[1])
-
-            parameter_list = list(nn.ls[0].parameters())
-            parameter_list[0].data = torch.div(parameter_list[0], std)
-            parameter_list[1].data = torch.add(- torch.matmul(parameter_list[0], mean), parameter_list[1])
+            if with_logical:
+                parameter_list = list(nn.ls[0].parameters())
+                parameter_list[0].data = torch.div(parameter_list[0], std)
+                parameter_list[1].data = torch.add(- torch.matmul(parameter_list[0], mean), parameter_list[1])
 
 
 def normalize_data(included_space, ambient_space, mean, std):
