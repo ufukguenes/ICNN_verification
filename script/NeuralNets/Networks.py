@@ -133,6 +133,7 @@ class ICNN_Logical(nn.Module):
         x_in = torch.cat([icnn_out, box_out], dim=1)
 
         x_in = self.ls[1](x_in)
+        x_in = nn.ReLU()(x_in)
         x_in = self.ls[2](x_in)
         out = torch.max(x_in, dim=1)[0]
 
