@@ -26,7 +26,7 @@ init_box_bounds has values: none, simple, logical
 def start_verification(nn: SequentialNN, input, eps=0.001, icnn_batch_size=1000, icnn_epochs=100, sample_count=1000,
                        keep_ambient_space=False, sample_new=True, use_over_approximation=True,
                        sample_over_input_space=False, sample_over_output_space=True, use_grad_descent=False,
-                       train_outer=False, preemptive_stop=True,
+                       train_outer=False, preemptive_stop=True, even_gradient_training=False, force_inclusion=1,
                        init_mode="none", adapt_lambda="none", should_plot='none', optimizer="adam"):
 
     valid_init_modes = ["none", "simple", "logical"]
@@ -42,6 +42,8 @@ def start_verification(nn: SequentialNN, input, eps=0.001, icnn_batch_size=1000,
         raise AttributeError("Expected plotting mode one of: {}, actual: {}".format(valid_should_plot, should_plot))
     if optimizer not in valid_optimizer:
         raise AttributeError("Expected optimizer one of: {}, actual: {}".format(valid_optimizer, optimizer))
+    if force_inclusion <= 0:
+        raise AttributeError("Expected force_inclusion to be:  > 0 , got: {}".format(force_inclusion))
 
     # todo Achtung ich muss schauen, ob gurobi upper bound inklusive ist, da ich aktuell die upper bound mit eps nicht inklusive habe
     input_flattened = torch.flatten(input)
@@ -151,49 +153,70 @@ def start_verification(nn: SequentialNN, input, eps=0.001, icnn_batch_size=1000,
                 init_icnn_box_bounds_logical(current_icnn, [low, up])
 
         # train icnn
+        while not is_uneven_gradient(current_icnn, normalized_ambient_space):
+            epochs_per_round = icnn_epochs // force_inclusion
+            epochs_last_round = icnn_epochs % force_inclusion
+            for k in range(force_inclusion):
+                if k > 0:
+                    if k == force_inclusion - 1 and epochs_last_round > 0:
+                        epochs_per_round = epochs_last_round
 
-        if use_grad_descent:
-            untouched_normalized_ambient_space = normalized_ambient_space.detach().clone()  # todo sollte ich das noch dazu nehmen, dann wird ja ggf die anzahl samples doppelt so groß und es dauert länger
-            if should_plot == "simple" or should_plot == "detailed":
-                plt_inc_amb("without gradient descent", normalized_included_space.tolist(),
-                            normalized_ambient_space.tolist())
+                    plots = Plots_for(0, current_icnn, normalized_included_space.detach(), normalized_ambient_space.detach(),
+                                      [-2, 3], [-2, 3])
+                    plots.plt_mesh()
 
-            num_optimizations = 1
-            optimization_steps = 1000
+                    out = current_icnn(normalized_included_space)
+                    max_out = torch.max(out)
+                    with torch.no_grad():
+                        last_layer = list(current_icnn.ws[-1].parameters())
+                        b_temp = last_layer[1]
+                        b_temp.data = b_temp - max_out
+                    plots = Plots_for(0, current_icnn, normalized_included_space.detach(), normalized_ambient_space.detach(),
+                                      [-2, 3], [-2, 3])
+                    plots.plt_mesh()
 
-            epochs_per_optimization = icnn_epochs // (num_optimizations + 1)
-            modulo_epochs = icnn_epochs % (num_optimizations + 1)
+                if use_grad_descent:
+                    untouched_normalized_ambient_space = normalized_ambient_space.detach().clone()  # todo sollte ich das noch dazu nehmen, dann wird ja ggf die anzahl samples doppelt so groß und es dauert länger
+                    if should_plot in ["simple", "detailed"]:
+                        plt_inc_amb("without gradient descent", normalized_included_space.tolist(),
+                                    normalized_ambient_space.tolist())
 
-            for h in range(num_optimizations + 1):
+                    num_optimizations = 1
+                    optimization_steps = 1000
 
-                if h < num_optimizations:
-                    epochs_in_run = epochs_per_optimization
+                    epochs_per_optimization = epochs_per_round // (num_optimizations + 1)
+                    modulo_epochs = epochs_per_round % (num_optimizations + 1)
+
+                    for h in range(num_optimizations + 1):
+
+                        if h < num_optimizations:
+                            epochs_in_run = epochs_per_optimization
+                        else:
+                            epochs_in_run = epochs_per_optimization + modulo_epochs
+
+                        train_icnn(current_icnn, train_loader, ambient_loader, epochs=epochs_in_run, hyper_lambda=0.5,
+                                   optimizer=optimizer, adapt_lambda=adapt_lambda, preemptive_stop=preemptive_stop, train_box_bounds=train_box_bounds)
+
+                        if h < num_optimizations:
+                            for k in range(optimization_steps):
+                                #normalized_ambient_space = dop.gradient_descent_data_optim(current_icnn, normalized_ambient_space.detach())
+                                normalized_ambient_space = dop.adam_data_optim(current_icnn, normalized_ambient_space.detach())
+                            dataset = ConvexDataset(data=torch.cat([normalized_ambient_space.detach(), untouched_normalized_ambient_space.detach()]))
+                            #todo hier muss ich noch verwalten was passiert wenn ambient space in die nächste runde übernommen wird
+                            if optimizer == "LBFGS":
+                                icnn_batch_size = len(torch.cat([normalized_ambient_space.detach(), untouched_normalized_ambient_space.detach()])) + len(normalized_included_space)
+                            ambient_loader = DataLoader(dataset, batch_size=icnn_batch_size, shuffle=False)
+
+                    if should_plot in ["simple", "detailed"]:
+                        plt_inc_amb("with gradient descent", normalized_included_space.tolist(),
+                                    torch.cat([normalized_ambient_space.detach(), untouched_normalized_ambient_space.detach()]).tolist())
+                        plots = Plots_for(0, current_icnn, normalized_included_space.detach(), torch.cat([normalized_ambient_space.detach(), untouched_normalized_ambient_space.detach()]).detach(),
+                                          [-2, 3], [-2, 3])
+                        plots.plt_mesh()
+                    normalized_ambient_space = untouched_normalized_ambient_space #todo das ist vielleicht unnötig
                 else:
-                    epochs_in_run = epochs_per_optimization + modulo_epochs
-
-                train_icnn(current_icnn, train_loader, ambient_loader, epochs=epochs_in_run, hyper_lambda=0.5,
-                           optimizer=optimizer, adapt_lambda=adapt_lambda, preemptive_stop=preemptive_stop, train_box_bounds=train_box_bounds)
-
-                if h < num_optimizations:
-                    for k in range(optimization_steps):
-                        #normalized_ambient_space = dop.gradient_descent_data_optim(current_icnn, normalized_ambient_space.detach())
-                        normalized_ambient_space = dop.adam_data_optim(current_icnn, normalized_ambient_space.detach())
-                    dataset = ConvexDataset(data=torch.cat([normalized_ambient_space.detach(), untouched_normalized_ambient_space.detach()]))
-                    #todo hier muss ich noch verwalten was passiert wenn ambient space in die nächste runde übernommen wird
-                    if optimizer == "LBFGS":
-                        icnn_batch_size = len(torch.cat([normalized_ambient_space.detach(), untouched_normalized_ambient_space.detach()])) + len(normalized_included_space)
-                    ambient_loader = DataLoader(dataset, batch_size=icnn_batch_size, shuffle=False)
-
-            if should_plot == "simple" or should_plot == "detailed":
-                plt_inc_amb("with gradient descent", normalized_included_space.tolist(),
-                            torch.cat([normalized_ambient_space.detach(), untouched_normalized_ambient_space.detach()]).tolist())
-                plots = Plots_for(0, current_icnn, normalized_included_space.detach(), torch.cat([normalized_ambient_space.detach(), untouched_normalized_ambient_space.detach()]).detach(),
-                                  [-2, 3], [-2, 3])
-                plots.plt_mesh()
-            normalized_ambient_space = untouched_normalized_ambient_space #todo das ist vielleicht unnötig
-        else:
-            train_icnn(current_icnn, train_loader, ambient_loader, epochs=icnn_epochs, hyper_lambda=1,
-                       optimizer=optimizer, adapt_lambda=adapt_lambda, preemptive_stop=preemptive_stop, train_box_bounds=train_box_bounds)
+                    train_icnn(current_icnn, train_loader, ambient_loader, epochs=epochs_per_round, hyper_lambda=1,
+                               optimizer=optimizer, adapt_lambda=adapt_lambda, preemptive_stop=preemptive_stop, train_box_bounds=train_box_bounds)
 
         if train_outer: # todo will ich train outer behalten oder einfach verwerfen?
             lam = 10
@@ -249,8 +272,8 @@ def start_verification(nn: SequentialNN, input, eps=0.001, icnn_batch_size=1000,
 
             with torch.no_grad():
                 last_layer = list(current_icnn.ws[-1].parameters())
-                b = last_layer[1]
-                b.data = b - c
+                b_temp = last_layer[1]
+                b_temp.data = b_temp - c
 
             if should_plot == "detailed":
                 plots = Plots_for(0, current_icnn, included_space.detach(), ambient_space.detach(), [-1, 3], [-1, 3])
@@ -368,6 +391,41 @@ def init_icnn_box_bounds_logical(icnn: ICNN_Logical, box_bounds, with_zero=False
 def init_icnn_prev_icnn(current_icnn, prev_icnn):
     current_icnn.load_state_dict(prev_icnn.state_dict())
 
+def is_uneven_gradient(icnn, ambient_space, threshold=0.01):
+    def loss(x):
+        sig = torch.sigmoid(x)
+        min_value = torch.zeros_like(sig).add(1e-12)
+        sig = torch.maximum(sig, min_value)
+        return - torch.log(sig)
+
+    max_val = 0
+    min_val = 10000000
+    max_new_out = 0
+    min_new_out = 0
+    max_x = 0
+    min_x = 0
+    for h, elem in enumerate(ambient_space):
+        new_elem = torch.tensor(elem, dtype=torch.float64, requires_grad=True)
+        inp = torch.unsqueeze(new_elem, dim=0)
+        output = icnn(inp)
+        loss = loss(output)
+        grad = torch.autograd.grad(loss, inp)
+        lr = 0.01
+        grad = torch.mul(grad[0], lr)
+        new = torch.add(inp, grad[0])
+        new_out = icnn(new)
+        temp = torch.sub(new_out, output)
+
+        if temp > max_val:
+            max_val = temp
+            max_x = output
+        elif temp > 0 and temp < min_val:
+            min_val = temp
+            min_x = output
+
+
+
+    return abs(max_val - min_val) < threshold
 
 def imshow_flattened(img_flattened, shape):
     img = np.reshape(img_flattened, shape)
