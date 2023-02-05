@@ -154,7 +154,9 @@ def start_verification(nn: SequentialNN, input, eps=0.001, icnn_batch_size=1000,
                 init_icnn_box_bounds_logical(current_icnn, [low, up])
 
         # train icnn
-        while not dop.test_all(current_icnn, normalized_included_space): #not is_uneven_gradient(current_icnn, normalized_ambient_space):
+        do = True
+        while do: #not dop.test_all(current_icnn, normalized_included_space)[0]: #not is_uneven_gradient(current_icnn, normalized_ambient_space):
+            do = False
             epochs_per_round = icnn_epochs // force_inclusion
             epochs_last_round = icnn_epochs % force_inclusion
             for k in range(force_inclusion):

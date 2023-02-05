@@ -1,6 +1,8 @@
 import random
+import time
 
 import torch
+from functorch import vmap
 
 def gradient_descent_data_optim(icnn, samples):
     new_samples = torch.empty_like(samples, dtype=torch.float64)
@@ -32,7 +34,6 @@ def sgd_data_optim(icnn, samples):
 
 
 def adam_data_optim(icnn, samples):
-
     samples = [torch.tensor(samples.detach(), dtype=torch.float64, requires_grad=True)]
     optimizer = torch.optim.Adam(samples)
     for h, elem in enumerate(samples):
@@ -47,18 +48,21 @@ def adam_data_optim(icnn, samples):
 
 def test_all(icnn, all_sample, threshold=0.02):
     avg = torch.zeros(0, dtype=torch.float64)
-    num_sample = 10
+    num_sample = 100
+    copy = all_sample.detach().clone()
+    copy.apply_(lambda x: even_gradient(icnn, x)[1])
+
     for i in range(num_sample):
-        rand = random.randint(0, len(all_sample)-1)
+        rand = random.randint(0, len(all_sample) - 1)
         rand_sample = all_sample[rand]
         is_, val = even_gradient(icnn, rand_sample, threshold=0.02)
         if is_ or val > 0:
             avg = torch.cat([avg, val])
     if avg.size(0) < num_sample:
-        return False
+        return False, 0
     avg = avg.sum() / num_sample
     out = avg < threshold
-    return out
+    return out, avg
 
 
 def even_gradient(icnn, sample, threshold=0.001):
@@ -70,7 +74,7 @@ def even_gradient(icnn, sample, threshold=0.001):
 
     first_step_size = 1 / torch.linalg.norm(original_grad[0])
     point_1 = line_search(icnn, original_grad[0], sample, low=0, up=first_step_size)
-    point_2 = line_search(icnn, -1*original_grad[0], sample, low=0, up=first_step_size)
+    point_2 = line_search(icnn, -1 * original_grad[0], sample, low=0, up=first_step_size)
 
     grad_1, out_1 = get_grad_output(icnn, point_1)
     grad_2, out_2 = get_grad_output(icnn, point_2)
@@ -98,23 +102,20 @@ def get_grad_output(icnn, sample):
     return grad, output
 
 
-
 def line_search(icnn, grad, x, low=0.0, up=1.0):
-
     new_grad = torch.mul(grad, up)
     new_x = torch.add(new_grad, x)
     new_out = icnn(new_x)
     if new_out < 0:
-        return line_search(icnn, grad, x, low=up, up=2*up)
+        return line_search(icnn, grad, x, low=up, up=2 * up)
 
     new_grad = torch.mul(grad, low)
     new_x = torch.add(new_grad, x)
     new_out = icnn(new_x)
     if new_out > 0:
-        return line_search(icnn, grad, x, low=low/2, up=low)
+        return line_search(icnn, grad, x, low=low / 2, up=low)
 
-
-    middle = (up+low) / 2
+    middle = (up + low) / 2
     new_grad = torch.mul(grad, middle)
     new_x = torch.add(new_grad, x)
     new_out = icnn(new_x)
