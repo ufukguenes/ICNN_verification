@@ -1,4 +1,5 @@
 # DeepHull Over approximated Verification
+import random
 
 from matplotlib import pyplot as plt
 from torch.utils.data import DataLoader
@@ -153,7 +154,7 @@ def start_verification(nn: SequentialNN, input, eps=0.001, icnn_batch_size=1000,
                 init_icnn_box_bounds_logical(current_icnn, [low, up])
 
         # train icnn
-        while not is_uneven_gradient(current_icnn, normalized_ambient_space):
+        while not dop.test_all(current_icnn, normalized_included_space): #not is_uneven_gradient(current_icnn, normalized_ambient_space):
             epochs_per_round = icnn_epochs // force_inclusion
             epochs_last_round = icnn_epochs % force_inclusion
             for k in range(force_inclusion):
@@ -217,6 +218,9 @@ def start_verification(nn: SequentialNN, input, eps=0.001, icnn_batch_size=1000,
                 else:
                     train_icnn(current_icnn, train_loader, ambient_loader, epochs=epochs_per_round, hyper_lambda=1,
                                optimizer=optimizer, adapt_lambda=adapt_lambda, preemptive_stop=preemptive_stop, train_box_bounds=train_box_bounds)
+                plots = Plots_for(0, current_icnn, normalized_included_space.detach(), normalized_ambient_space.detach(),
+                                 [-2, 3], [-2, 3])
+                plots.plt_mesh()
 
         if train_outer: # todo will ich train outer behalten oder einfach verwerfen?
             lam = 10
@@ -391,8 +395,8 @@ def init_icnn_box_bounds_logical(icnn: ICNN_Logical, box_bounds, with_zero=False
 def init_icnn_prev_icnn(current_icnn, prev_icnn):
     current_icnn.load_state_dict(prev_icnn.state_dict())
 
-def is_uneven_gradient(icnn, ambient_space, threshold=0.01):
-    def loss(x):
+def is_uneven_gradient(icnn, ambient_space, threshold=1000):
+    def dh_loss(x):
         sig = torch.sigmoid(x)
         min_value = torch.zeros_like(sig).add(1e-12)
         sig = torch.maximum(sig, min_value)
@@ -405,25 +409,27 @@ def is_uneven_gradient(icnn, ambient_space, threshold=0.01):
     max_x = 0
     min_x = 0
     for h, elem in enumerate(ambient_space):
+        step_size = 0.001
         new_elem = torch.tensor(elem, dtype=torch.float64, requires_grad=True)
         inp = torch.unsqueeze(new_elem, dim=0)
         output = icnn(inp)
-        loss = loss(output)
+        target = torch.tensor([[0]], dtype=torch.float64)
+        loss = torch.nn.MSELoss()(output, target)
         grad = torch.autograd.grad(loss, inp)
-        lr = 0.01
+        magnitude = torch.linalg.norm(grad)
+        lr = step_size / magnitude
         grad = torch.mul(grad[0], lr)
         new = torch.add(inp, grad[0])
         new_out = icnn(new)
-        temp = torch.sub(new_out, output)
+        temp_out = output
+        temp_new_out = new_out
 
-        if temp > max_val:
+        if new_out > max_val:
             max_val = temp
             max_x = output
-        elif temp > 0 and temp < min_val:
+        elif output > 0 and new_out > 0 and temp > 0 and temp < min_val:
             min_val = temp
             min_x = output
-
-
 
     return abs(max_val - min_val) < threshold
 

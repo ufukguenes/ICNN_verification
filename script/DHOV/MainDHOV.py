@@ -160,11 +160,11 @@ def net_2d():
 
     test_image = torch.tensor([[0, 0]], dtype=torch.float64)
     icnns, c_values = \
-        dhov.start_verification(nn, test_image, eps=1, icnn_epochs=500, sample_count=1000, sample_new=False, use_over_approximation=True,
+        dhov.start_verification(nn, test_image, eps=1, icnn_epochs=100, sample_count=1000, sample_new=False, use_over_approximation=True,
                                 sample_over_input_space=False, sample_over_output_space=True, force_inclusion=1,
                                 keep_ambient_space=False, use_grad_descent=False, train_outer=False, preemptive_stop=False,
                                 even_gradient_training=True,
-                                should_plot="verification", optimizer="SdLBFGS", init_mode="simple", adapt_lambda="none")
+                                should_plot="verification", optimizer="adam", init_mode="simple", adapt_lambda="none")
 
 def cifar_net():
     batch_size = 10

@@ -96,7 +96,6 @@ def verification(icnn, center_eps_W_b=None, A_b=None, icnn_W_b_c=None, has_ReLU=
             m.addConstrs(W[i] @ input_to_previous_layer + b[i] == relu_var[i] for i in range(len(W)))
             m.addConstrs(input_var[i] == max_(0, relu_var[i]) for i in range(input_size))
         else:
-            t = 1
             m.addConstrs(W[i] @ input_to_previous_layer + b[i] == input_var[i] for i in range(len(W)))
 
     else:
