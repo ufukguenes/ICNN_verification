@@ -1,6 +1,6 @@
 import torch
 from torch import nn
-
+from functorch import vmap
 
 class Flatten(nn.Module):
 
@@ -130,11 +130,56 @@ class ICNN_Logical(nn.Module):
         # something like and
         box_out = self.ls[0](x)
         box_out = torch.max(box_out, dim=1, keepdim=True)[0]
+        # box_out = torch.logsumexp(box_out, dim=1) # die sind alle unnötig, bei box bounds brauch ich nicht zu approximieren
+        # box_out = boltzmann_op(box_out)
+        # box_out = mellowmax(box_out)
+        # box_out = smu_4(box_out)
+
         x_in = torch.cat([icnn_out, box_out], dim=1)
 
+        #out = torch.max(x_in, dim=1)[0]
+        #out = torch.logsumexp(x_in, dim=1)
+        #out = boltzmann_op(x_in)
+        #out = mellowmax(x_in)
+        #out = smu_2(x_in)
+        #out = smu_binary(icnn_out, box_out)
+        #out = icnn_out
+
         x_in = self.ls[1](x_in)
-        x_in = nn.ReLU()(x_in)
+        #x_in = nn.ReLU()(x_in)
         x_in = self.ls[2](x_in)
         out = torch.max(x_in, dim=1)[0]
 
         return out
+
+
+
+def boltzmann_op(x):
+    scale = torch.mul(x, 10)
+    exp = torch.exp(scale)
+    summed = torch.mul(x, exp).sum(dim=1, keepdim=True)
+    summed_exp = exp.sum(dim=1, keepdim=True)
+    return torch.div(summed, summed_exp)
+
+def mellowmax(x):
+    a = 5
+    scale = torch.mul(x, a)
+    exp = torch.exp(scale)
+    size = x.size(1)
+    summed = torch.div(exp.sum(dim=1, keepdim=True), size)
+    out = torch.div(torch.log(summed), a)
+    return out
+
+def smu_4(x):
+    out = vmap(lambda a: smu_binary(smu_binary(a[0], a[1]), smu_binary(a[2], a[3])))(x)
+    out = torch.unsqueeze(out, dim=1)
+    return out
+
+def smu_2(x):
+    out = vmap(lambda a: smu_binary(a[0], a[1]))(x)
+    return out
+
+def smu_binary(a, b):
+    e = 0.1
+    out = torch.div(a.add(b).add(torch.pow(torch.pow(torch.sub(a, b), 2).add(e), 0.5)), 2)
+    return out

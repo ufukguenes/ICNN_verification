@@ -164,7 +164,7 @@ def net_2d():
                                 sample_over_input_space=False, sample_over_output_space=True, force_inclusion=1,
                                 keep_ambient_space=False, use_grad_descent=False, train_outer=False, preemptive_stop=False,
                                 even_gradient_training=True,
-                                should_plot="verification", optimizer="adam", init_mode="simple", adapt_lambda="none")
+                                should_plot="verification", optimizer="adam", init_mode="logical", adapt_lambda="none")
 
 def cifar_net():
     batch_size = 10
