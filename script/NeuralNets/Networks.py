@@ -74,11 +74,14 @@ class ICNN(nn.Module):
 
 class ICNN_Logical(nn.Module):
 
+
     def __init__(self, layer_widths, force_positive_init=False):
         """
         layer_widths - ([int]) list of layer widths **including** input and output dim
         """
         super(ICNN_Logical, self).__init__()
+
+        self.training_setup = True
 
         self.ws = nn.ParameterList([])  # positive weights for propagation
         self.us = nn.ParameterList([])  # weights tied to inputs
@@ -104,19 +107,19 @@ class ICNN_Logical(nn.Module):
             self.us.append(u)
 
         self.ls.append(nn.Linear(layer_widths[0], 2 * layer_widths[0], bias=True, dtype=torch.float64))
-        # self.ls.append(nn.Linear(2, 4, bias=False, dtype=torch.float64))
-        # self.ls.append(nn.Linear(4, 3, bias=False, dtype=torch.float64))
+        #self.ls.append(nn.Linear(2, 4, bias=False, dtype=torch.float64))
+        #self.ls.append(nn.Linear(4, 3, bias=False, dtype=torch.float64))
         self.ls.append(nn.Linear(2, 3, bias=False, dtype=torch.float64))
 
         with torch.no_grad():
-            """l1 = list(self.ls[1].parameters())
-            l2 = list(self.ls[2].parameters())
+            #l1 = list(self.ls[1].parameters())
+            #l2 = list(self.ls[2].parameters())
 
             # diese architektur ist für alle ICNNs gleich da alle genau 2 ausgaben haben eine vom eigentlichen ICNN
             # und eine von den Box Bounds
-            l1[0].data = torch.tensor([[1, 1], [1, -1], [-1, 1], [-1, -1]], dtype=torch.float64)
+            #l1[0].data = torch.tensor([[1, 1], [1, -1], [-1, 1], [-1, -1]], dtype=torch.float64)
             # todo das kann man auch in einem affine layer zusammen fassen, ist schneller aber auch unübersichtlicher
-            l2[0].data = torch.tensor([[1, 0, 0, -1], [0, 1, 0, -1], [0, 0, 1, -1]], dtype=torch.float64)"""
+            #l2[0].data = torch.tensor([[1, 0, 0, -1], [0, 1, 0, -1], [0, 0, 1, -1]], dtype=torch.float64)
             # Vereinfachung von der zwei Layer Variante
             l1 = list(self.ls[1].parameters())
             l1[0].data = torch.tensor([[2, 2], [2, 0], [0, 2]], dtype=torch.float64)
@@ -141,12 +144,24 @@ class ICNN_Logical(nn.Module):
 
         x_in = torch.cat([icnn_out, box_out], dim=1)
 
-        #out = torch.max(x_in, dim=1)[0]
-        #out = torch.logsumexp(x_in, dim=1)
-        #out = boltzmann_op(x_in)
-        #out = mellowmax(x_in)
-        #out = smu_2(x_in)
-        #out = smu_binary(icnn_out, box_out)
+
+        if self.training_setup:
+            #out = torch.max(x_in, dim=1)[0]
+            #out = torch.logsumexp(x_in, dim=1)
+            #out = boltzmann_op(x_in)
+            #out = mellowmax(x_in)
+            #out = smu_2(x_in)
+            # out = smu_binary(icnn_out, box_out)
+
+            x_in = self.ls[1](x_in)
+            out = torch.max(x_in, dim=1)[0]
+
+            """x_in = self.ls[1](x_in)
+            # x_in = nn.ReLU()(x_in)
+            x_in = self.ls[2](x_in)
+            out = torch.max(x_in, dim=1)[0]"""
+        else:
+            out = torch.max(x_in, dim=1)[0]
         #out = icnn_out
 
         """x_in = self.ls[1](x_in)
@@ -155,8 +170,8 @@ class ICNN_Logical(nn.Module):
         out = torch.max(x_in, dim=1)[0]"""
 
         # Vereinfachung von der zwei Layer Variante
-        x_in = self.ls[1](x_in)
-        out = torch.max(x_in, dim=1)[0]
+        """x_in = self.ls[1](x_in)
+        out = torch.max(x_in, dim=1)[0]"""
 
         return out
 
@@ -170,7 +185,7 @@ def boltzmann_op(x):
     return torch.div(summed, summed_exp)
 
 def mellowmax(x):
-    a = 5
+    a = 10
     scale = torch.mul(x, a)
     exp = torch.exp(scale)
     size = x.size(1)

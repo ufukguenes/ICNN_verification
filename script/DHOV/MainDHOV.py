@@ -164,7 +164,7 @@ def net_2d():
                                 sample_over_input_space=False, sample_over_output_space=True, force_inclusion=1,
                                 keep_ambient_space=False, use_grad_descent=False, train_outer=False, preemptive_stop=False,
                                 even_gradient_training=True,
-                                should_plot="verification", optimizer="adam", init_mode="logical", adapt_lambda="none")
+                                should_plot="none", optimizer="adam", init_mode="simple", adapt_lambda="none")
 
 def cifar_net():
     batch_size = 10
@@ -192,7 +192,7 @@ def cifar_net():
     # matplotlib.use('TkAgg')
 
     icnns, c_values = \
-        dhov.start_verification(nn, testimage, eps=1, icnn_epochs=500, sample_new=True, use_over_approximation=True,
+        dhov.start_verification(nn, testimage, eps=1, icnn_epochs=100, sample_new=True, use_over_approximation=True,
                                 sample_over_input_space=False, sample_over_output_space=True,
                                 keep_ambient_space=False, use_grad_descent=False, train_outer=False,
                                 should_plot="detailed")

@@ -167,11 +167,14 @@ def add_constr_and_logic(model, predictor, original_inp, icnn_out, output_vars, 
     affine_const = model.addConstrs(
         affine_W[i] @ new_in == affine_var1[i] for i in range(len(affine_W)))
 
-    affine_W2 = ls[2].weight.data.detach().numpy()
+    #todo das hier ist für die zwei layer variante von max
+    """affine_W2 = ls[2].weight.data.detach().numpy()
     affine_var2 = model.addMVar(3, lb=-float("inf"))
     affine_const = model.addConstrs(
         affine_W2[i] @ affine_var1 == affine_var2[i] for i in range(len(affine_W2)))
     max_var2 = model.addVar(lb=-float("inf"))
-    model.addGenConstrMax(max_var2, affine_var2.tolist())
+    model.addGenConstrMax(max_var2, affine_var2.tolist())"""
+    max_var2 = model.addVar(lb=-float("inf"))
+    model.addGenConstrMax(max_var2, affine_var1.tolist())
 
     const = model.addConstrs(max_var2 == output_vars[i] for i in range(len(output_vars.tolist())))

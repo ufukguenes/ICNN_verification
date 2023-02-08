@@ -220,35 +220,23 @@ def start_verification(nn: SequentialNN, input, eps=0.001, icnn_batch_size=1000,
                 else:
                     train_icnn(current_icnn, train_loader, ambient_loader, epochs=epochs_per_round, hyper_lambda=1,
                                optimizer=optimizer, adapt_lambda=adapt_lambda, preemptive_stop=preemptive_stop, train_box_bounds=train_box_bounds)
-                plots = Plots_for(0, current_icnn, normalized_included_space.detach(), normalized_ambient_space.detach(),
-                                 [-2, 3], [-2, 3])
-                plots.plt_mesh()
 
         if train_outer: # todo will ich train outer behalten oder einfach verwerfen?
-            lam = 10
-
-            with torch.no_grad():
-                for i in range(0, len(current_icnn.ws)):
-                    ws = list(current_icnn.ws[i].parameters())
-                    ws[1].data = torch.mul(ws[1], lam)
-
-                ws = list(current_icnn.ws[-1].parameters())
-                ws[0].data = torch.div(ws[0].data, lam)
-                ws[1].data = torch.div(ws[1].data, lam)
-                us = list(current_icnn.us[-1].parameters())
-                us[0].data = torch.div(us[0].data, lam)
-
-            plots = Plots_for(0, current_icnn, normalized_included_space.detach(),
-                              normalized_ambient_space.detach(),
-                              [-1*lam, 3*lam], [-1*lam, 3*lam])
-            plots.plt_dotted()
-            plots.plt_mesh()
+            for k in range(icnn_epochs):
+                train_icnn_outer(current_icnn, train_loader, ambient_loader, epochs=1)
+                if k % 10 == 0:
+                    plots = Plots_for(0, current_icnn, normalized_included_space.detach(),
+                                      normalized_ambient_space.detach(),
+                                      [-2, 3], [-2, 3])
+                    plots.plt_mesh()
 
         if init_mode == "logical":
             with_logical = True
         else:
             with_logical = False
         normalize_nn(current_icnn, mean, std, isICNN=True, with_logical=with_logical)
+
+        current_icnn.training_setup = False # todo richtig integrieren in den code
 
         # matplotlib.use("TkAgg")
         if should_plot == "detailed":
@@ -291,6 +279,20 @@ def start_verification(nn: SequentialNN, input, eps=0.001, icnn_batch_size=1000,
             if should_plot == "verification":
                 plots = Plots_for(0, current_icnn, included_space.detach(), ambient_space.detach(), [-1, 3], [-1, 3])
                 plots.plt_mesh()
+
+        current_icnn.training_setup = True
+        plots = Plots_for(0, current_icnn, included_space.detach(), ambient_space.detach(),
+                          [-2, 3], [-2, 3])
+        plots.plt_mesh()
+
+        current_icnn.training_setup = False
+
+        plots = Plots_for(0, current_icnn, included_space.detach(),
+                          ambient_space.detach(),
+                          [-2, 3], [-2, 3])
+        plots.plt_mesh()
+
+        current_icnn.training_setup = True
 
         c_values.append(c)
 

@@ -48,9 +48,8 @@ def adam_data_optim(icnn, samples):
 
 def test_all(icnn, all_sample, threshold=0.02):
     avg = torch.zeros(0, dtype=torch.float64)
-    num_sample = 100
-    copy = all_sample.detach().clone()
-    copy.apply_(lambda x: even_gradient(icnn, x)[1])
+    num_sample = 10
+    #num_sample = len(all_sample)
 
     for i in range(num_sample):
         rand = random.randint(0, len(all_sample) - 1)
@@ -58,11 +57,11 @@ def test_all(icnn, all_sample, threshold=0.02):
         is_, val = even_gradient(icnn, rand_sample, threshold=0.02)
         if is_ or val > 0:
             avg = torch.cat([avg, val])
+    avg_out = avg.sum() / len(avg)
     if avg.size(0) < num_sample:
-        return False, 0
-    avg = avg.sum() / num_sample
-    out = avg < threshold
-    return out, avg
+        return False, avg_out
+    out = avg_out < threshold
+    return out, avg_out
 
 
 def even_gradient(icnn, sample, threshold=0.001):
@@ -79,18 +78,20 @@ def even_gradient(icnn, sample, threshold=0.001):
     grad_1, out_1 = get_grad_output(icnn, point_1)
     grad_2, out_2 = get_grad_output(icnn, point_2)
 
-    lr = 0.015
+    lr = 10
     grad_1 = torch.mul(grad_1[0], lr)
     grad_2 = torch.mul(grad_2[0], lr)
     new_1 = torch.add(point_1, grad_1[0])
     new_2 = torch.add(point_2, grad_2[0])
     new_out_1 = icnn(new_1)
     new_out_2 = icnn(new_2)
+    return True, ((point_1, new_1), (point_2, new_2))
     avg_norm = (torch.linalg.norm(grad_1) + torch.linalg.norm(grad_2)) / 2
     threshold = threshold
 
     out = abs(new_out_1 - new_out_2) < threshold
-    return out, abs(new_out_1 - new_out_2)
+    l = torch.nn.MSELoss()(new_out_1 - new_out_2, torch.zeros_like(new_out_1, dtype=torch.float64))
+    return out, torch.unsqueeze(l, dim=0)
 
 
 def get_grad_output(icnn, sample):
