@@ -1,3 +1,4 @@
+import random
 import time
 
 import torch
@@ -172,22 +173,38 @@ def train_icnn_lbfgs(model, train_loader, ambient_loader, epochs=10, return_hist
         return history
 
 
-def train_icnn_outer(model, ambient_loader, x_argmin, x_min, epochs=10, opt=None, return_history=False,
+def train_icnn_outer(model, train_loader, ambient_loader, epochs=10, opt=None, return_history=False,
                      sequential=False):
     history = []
     if opt is None:
         opt = torch.optim.Adam(model.parameters())
     torch.autograd.set_detect_anomaly(True)
 
+    dataset = train_loader.dataset
+
     for epoch in range(epochs):
         train_loss = 0
         train_n = 0
 
+
         print("=== Epoch: {}===".format(epoch))
         epoch_start_time = time.time()
-        for i, X_ambient in enumerate(ambient_loader):
-            output = model(X_ambient)
-            loss = deep_hull_outer_loss(output, X_ambient, x_argmin, x_min)
+        for i in range(10):
+            rand_index = random.randint(0, len(dataset) - 1)
+            rand_sample = dataset[rand_index]
+            valid, value = dop.even_gradient(model, rand_sample)
+            if valid:
+                ((point_1, new_1), (point_2, new_2)) = value
+            else:
+                continue
+            o_1 = model(point_1)
+            o_1_new = model(new_1)
+            o_2 = model(point_2)
+            o_2_new = model(new_2)
+            delta_1 = o_1 - o_1_new
+            delta_2 = o_2 - o_2_new
+            target = torch.tensor([[0]], dtype=torch.float64)
+            loss = torch.nn.MSELoss()(delta_1 - delta_2, target)
             opt.zero_grad()
             loss.backward()
             opt.step()
