@@ -89,7 +89,7 @@ def verification(icnn, center_eps_W_b=None, A_b=None, icnn_W_b_c=None, has_ReLU=
         return
 
     bounds = verbas.calculate_box_bounds(icnn, None, is_sequential=False)
-    output_var = icnn.add_icnn_constraints(m, input_var, bounds)
+    output_var = icnn.add_constraints(m, input_var, bounds)
 
     m.update()
     m.setObjective(output_var[0], GRB.MAXIMIZE)

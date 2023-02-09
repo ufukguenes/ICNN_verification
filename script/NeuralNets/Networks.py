@@ -4,6 +4,7 @@ import torch
 from torch import nn
 from functorch import vmap
 import script.Verification.VerificationBasics as verbas
+from abc import ABC, abstractmethod
 
 
 class Flatten(nn.Module):
@@ -13,7 +14,36 @@ class Flatten(nn.Module):
         return x.view(x.size(0), -1)
 
 
-class SequentialNN(nn.Sequential):
+class VerifiableNet(ABC):
+    @abstractmethod
+    def calculate_box_bounds(self, input_bounds, with_ReLU=True):
+        pass
+
+    @abstractmethod
+    def add_constraints(self, model, input_vars, bounds):
+        pass
+
+    def add_max_output_constraints(self, model, input_vars, bounds):
+        output = self.add_constraints(model, input_vars, bounds)
+        model.addConstr(output[0] <= 0)
+        return output
+
+    def apply_enlargement(self, value):
+        with torch.no_grad():
+            last_layer = list(self.ws[-1].parameters())
+            b = last_layer[1]
+            b.data = b - value
+
+    @abstractmethod
+    def apply_normalisation(self, mean, std):
+        pass
+
+    @abstractmethod
+    def init(self, lower_bounds, upper_bounds):
+        pass
+
+
+class SequentialNN(nn.Sequential, VerifiableNet):
     def __init__(self, layer_widths):
         super(SequentialNN, self).__init__()
         self.layer_widths = layer_widths
@@ -29,8 +59,81 @@ class SequentialNN(nn.Sequential):
         x = Flatten()(input)
         return super().forward(x)
 
+    def calculate_box_bounds(self, input_bounds, with_ReLU=True):
+        parameter_list = list(self.parameters())
 
-class ICNN(nn.Module):
+        if input_bounds is None:
+            bounds_per_layer = [([torch.tensor([-5000 for k in range(len(parameter_list[i]))]),
+                                  torch.tensor([5000 for k in range(len(parameter_list[i]))])]) for i in
+                                range(0, len(parameter_list), 2)]
+            return bounds_per_layer  # todo None entfernen aus aufrufen und durch sinnvolle eingabe ersetzen
+
+        next_lower_bounds = input_bounds[0]
+        next_upper_bounds = input_bounds[1]
+        bounds_per_layer = []
+        for i in range(0, len(parameter_list), 2):
+            W, b = parameter_list[i], parameter_list[i + 1]
+            W_plus = torch.maximum(W, torch.tensor(0, dtype=torch.float64))
+            W_minus = torch.minimum(W, torch.tensor(0, dtype=torch.float64))
+            lb = torch.matmul(W_plus, next_lower_bounds).add(torch.matmul(W_minus, next_upper_bounds)).add(b)
+            ub = torch.matmul(W_plus, next_upper_bounds).add(torch.matmul(W_minus, next_lower_bounds)).add(b)
+
+            if with_ReLU:
+                next_upper_bounds = torch.maximum(torch.tensor(0, dtype=torch.float64), ub)
+                next_lower_bounds = torch.maximum(torch.tensor(0, dtype=torch.float64), lb)
+            else:
+                next_upper_bounds = ub
+                next_lower_bounds = lb
+
+            bounds_per_layer.append([next_lower_bounds, next_upper_bounds])
+
+        return bounds_per_layer
+
+    def add_constraints(self, model, input_vars, bounds):
+        parameter_list = list(self.parameters())
+        output_vars = model.addMVar(self.layer_widths[-1], lb=-float('inf'))  # todo bounds anpassen
+
+        in_var = input_vars
+        for i in range(0, len(parameter_list), 2):
+            lb = bounds[int(i / 2)][0]
+            ub = bounds[int(i / 2)][1]
+            W, b = parameter_list[i].detach().numpy(), parameter_list[i + 1].detach().numpy()
+
+            out_fet = len(b)
+            out_vars = model.addMVar(out_fet, lb=lb, ub=ub, name="affine_var" + str(i))
+            const = model.addConstrs((W[i] @ in_var + b[i] == out_vars[i] for i in range(len(W))))
+            in_var = out_vars
+
+            if i < len(parameter_list) - 2:
+                # relu_vars = add_relu_constr(model, in_var, out_fet, [-10000 for i in range(len(W))], [10000 for i in range(len(W))], i)
+                relu_vars = verbas.add_relu_constr(model, in_var, out_fet, [-10000 for i in range(len(W))], ub, i)
+                # relu_vars = add_relu_constr(model, in_var, out_fet, lb, ub, i)
+                in_var = relu_vars
+                out_vars = relu_vars
+
+        const = model.addConstrs(out_vars[i] == output_vars[i] for i in range(out_fet))
+        return output_vars
+
+    def apply_normalisation(self, mean, std):
+        with torch.no_grad():
+            parameter_list = list(self.parameters())
+            parameter_list[0].data = torch.div(parameter_list[0], std)
+            parameter_list[1].data = torch.add(- torch.matmul(parameter_list[0], mean), parameter_list[1])
+
+    def init(self, lower_bounds, upper_bounds):
+        if self.init_all_with_zeros:
+            for i in range(0, len(self.ws)):
+                ws = list(self.ws[i].parameters())
+                ws[1].data = torch.zeros_like(ws[1], dtype=torch.float64)
+                ws[0].data = torch.zeros_like(ws[0], dtype=torch.float64)
+
+            # init non box-bound layer with zeros
+            for elem in self.us:
+                w = list(elem.parameters())
+                w[0].data = torch.zeros_like(w[0], dtype=torch.float64)
+
+
+class ICNN(nn.Module, VerifiableNet):
 
     def __init__(self, layer_widths, force_positive_init=False, activation_function="ReLU",
                  init_scaling=10, init_all_with_zeros=False):
@@ -148,10 +251,47 @@ class ICNN(nn.Module):
             last[0].data = torch.mul(torch.ones_like(last[0], dtype=torch.float64), self.init_scaling)
             last[1].data = torch.zeros_like(last[1], dtype=torch.float64)
 
-    def add_icnn_constraints(self, model, input_vars, bounds):
+    def calculate_box_bounds(self, input_bounds, with_ReLU=True):  # todo für andere Netze die Architektur anpassen
+        parameter_list = list(self.parameters())
+        # todo for now this only works for sequential nets
+
+        if input_bounds is None:
+            bounds_per_layer = [([torch.tensor([-5000 for k in range(len(parameter_list[i]))]),
+                                  torch.tensor([5000 for k in range(len(parameter_list[i]))])]) for i in
+                                range(0, len(parameter_list), 2)]
+            return bounds_per_layer  # todo None entfernen aus aufrufen und durch sinnvolle eingabe ersetzen
+
+        next_lower_bounds = input_bounds[0]
+        next_upper_bounds = input_bounds[1]
+        bounds_per_layer = []
+        for i in range(0, len(parameter_list), 2):
+            W, b = parameter_list[i], parameter_list[i + 1]
+            W_plus = torch.maximum(W, torch.tensor(0, dtype=torch.float64))
+            W_minus = torch.minimum(W, torch.tensor(0, dtype=torch.float64))
+            lb = torch.matmul(W_plus, next_lower_bounds).add(torch.matmul(W_minus, next_upper_bounds)).add(b)
+            ub = torch.matmul(W_plus, next_upper_bounds).add(torch.matmul(W_minus, next_lower_bounds)).add(b)
+            if i != 0:
+                U = self.us[i // 2 - 1]
+                U_plus = torch.maximum(U, torch.tensor(0, dtype=torch.float64))
+                U_minus = torch.minimum(U, torch.tensor(0, dtype=torch.float64))
+                lb = lb.add(torch.matmul(U_plus, next_lower_bounds).add(torch.matmul(U_minus, next_upper_bounds)))
+                ub = ub.add(torch.matmul(U_plus, next_upper_bounds).add(torch.matmul(U_minus, next_lower_bounds)))
+
+            if with_ReLU:
+                next_upper_bounds = torch.maximum(torch.tensor(0, dtype=torch.float64), ub)
+                next_lower_bounds = torch.maximum(torch.tensor(0, dtype=torch.float64), lb)
+            else:
+                next_upper_bounds = ub
+                next_lower_bounds = lb
+
+            bounds_per_layer.append([next_lower_bounds, next_upper_bounds])
+
+        return bounds_per_layer
+
+    def add_constraints(self, model, input_vars, bounds):
         ws = list(self.ws.parameters())
         us = list(self.us.parameters())
-        output_vars = model.addMVar(self.layer_widths[-1], lb=-float('inf')) #todo bounds anpassen
+        output_vars = model.addMVar(self.layer_widths[-1], lb=-float('inf'))  # todo bounds anpassen
 
         in_var = input_vars
         for i in range(0, len(ws), 2):
@@ -185,16 +325,21 @@ class ICNN(nn.Module):
         const = model.addConstrs(out_vars[i] == output_vars[i] for i in range(out_fet))
         return output_vars
 
-    def add_max_output_constraints(self, model, input_vars, bounds):
-        output = self.add_icnn_constraints(model, input_vars, bounds)
-        model.addConstr(output[0] <= 0)
-        return output
-
-    def apply_enlargement(self, value):
+    def apply_normalisation(self, mean, std):
         with torch.no_grad():
-            last_layer = list(self.ws[-1].parameters())
-            b = last_layer[1]
-            b.data = b - value
+            parameter_list = list(self.ws[0].parameters())
+            parameter_list[0].data = torch.div(parameter_list[0], std)
+            parameter_list[1].data = torch.add(- torch.matmul(parameter_list[0], mean), parameter_list[1])
+
+            k = len(self.us)
+            l = len(self.ws)
+            for i in range(len(self.us)):
+                parameter_list = list(self.us[i].parameters())
+                parameter_list[0].data = torch.div(parameter_list[0], std)
+
+                internal_parameter_list = list(self.ws[i + 1].parameters())
+                internal_parameter_list[1].data = torch.add(- torch.matmul(parameter_list[0], mean),
+                                                            internal_parameter_list[1])
 
 
 class ICNN_Logical(ICNN):
@@ -272,9 +417,8 @@ class ICNN_Logical(ICNN):
             bb[0].data = u
             bb[1].data = b
 
-
     def add_max_output_constraints(self, model, input_vars, bounds):
-        icnn_output_var = super().add_icnn_constraints(model, input_vars, bounds)
+        icnn_output_var = super().add_constraints(model, input_vars, bounds)
         output_of_and = model.addMVar(1, lb=-float('inf'))
         lb = bounds[-1][0]
         ub = bounds[-1][1]  # todo richtige box bounds anwenden (die vom zu approximierenden Layer)
@@ -289,8 +433,6 @@ class ICNN_Logical(ICNN):
         new_in = model.addMVar(2, lb=-float('inf'))
         model.addConstr(new_in[0] == icnn_output_var[0])
         model.addConstr(new_in[1] == max_var)
-
-
 
         if self.with_two_layers:
             affine_W = ls[1].weight.data.detach().numpy()
@@ -322,6 +464,13 @@ class ICNN_Logical(ICNN):
 
         return output_of_and
 
+    def apply_normalisation(self, mean, std):
+        super().apply_normalisation(mean, std)
+
+        parameter_list = list(self.ls[0].parameters())
+        parameter_list[0].data = torch.div(parameter_list[0], std)
+        parameter_list[1].data = torch.add(- torch.matmul(parameter_list[0], mean), parameter_list[1])
+
 
 class ICNN_Approx_Max(ICNN):
 
@@ -339,7 +488,6 @@ class ICNN_Approx_Max(ICNN):
         self.ls = []
 
         self.ls.append(nn.Linear(self.layer_widths[0], 2 * self.layer_widths[0], bias=True, dtype=torch.float64))
-
 
     def forward(self, x):
         icnn_out = super().forward(x)
@@ -360,8 +508,8 @@ class ICNN_Approx_Max(ICNN):
                 out = smu_2(x_in, self.function_parameter)
             else:
                 raise AttributeError(
-                "Expected activation function to be, one of: {}, actual: {}".format(self.valid_maximum_functions,
-                                                                                    self.maximum_function))
+                    "Expected activation function to be, one of: {}, actual: {}".format(self.valid_maximum_functions,
+                                                                                        self.maximum_function))
         else:
             out = torch.max(x_in, dim=1)[0]
 
@@ -395,7 +543,7 @@ class ICNN_Approx_Max(ICNN):
             bb[1].data = b
 
     def add_max_output_constraints(self, model, input_vars, bounds):
-        icnn_output_var = super().add_icnn_constraints(model, input_vars, bounds)
+        icnn_output_var = super().add_constraints(model, input_vars, bounds)
         output_of_and = model.addMVar(1, lb=-float('inf'))
         lb = bounds[-1][0]
         ub = bounds[-1][1]  # todo richtige box bounds anwenden (die vom zu approximierenden Layer)
@@ -426,8 +574,8 @@ class ICNN_Approx_Max(ICNN):
                 smu_constraints(model, new_in, max_var2, self.function_parameter)
             else:
                 raise AttributeError(
-                "Expected activation function to be, one of: {}, actual: {}".format(self.valid_maximum_functions,
-                                                                                    self.maximum_function))
+                    "Expected activation function to be, one of: {}, actual: {}".format(self.valid_maximum_functions,
+                                                                                        self.maximum_function))
         else:
             model.addGenConstrMax(max_var2, new_in.tolist())
 
@@ -437,6 +585,13 @@ class ICNN_Approx_Max(ICNN):
 
         return output_of_and
 
+    def apply_normalisation(self, mean, std):
+        super().apply_normalisation(mean, std)
+
+        parameter_list = list(self.ls[0].parameters())
+        parameter_list[0].data = torch.div(parameter_list[0], std)
+        parameter_list[1].data = torch.add(- torch.matmul(parameter_list[0], mean), parameter_list[1])
+
 
 def boltzmann_op(x, parameter):
     scale = torch.mul(x, parameter)
@@ -444,6 +599,7 @@ def boltzmann_op(x, parameter):
     summed = torch.mul(x, exp).sum(dim=1, keepdim=True)
     summed_exp = exp.sum(dim=1, keepdim=True)
     return torch.div(summed, summed_exp)
+
 
 def boltzmann_constraints(model, input_var, output_var, parameter):
     scale_var = model.addMVar(input_var.size, lb=-float('inf'))
@@ -482,7 +638,7 @@ def mellowmax_constraints(model, input_var, output_var, parameter):
     summed_divided = model.addMVar(1, lb=0)
     divide_var = model.addMVar(1, lb=-float('inf'))
     model.addConstr(input_var.size * divide_var == 1)
-    model.addConstr(summed_divided[0] == exp_var.sum() * divide_var )
+    model.addConstr(summed_divided[0] == exp_var.sum() * divide_var)
 
     log_var = model.addMVar(1, lb=-float('inf'))
     model.addGenConstrLog(summed_divided, log_var)
@@ -490,6 +646,7 @@ def mellowmax_constraints(model, input_var, output_var, parameter):
     divide_var2 = model.addMVar(1, lb=-float('inf'))
     model.addConstr(parameter * divide_var2 == 1)
     model.addConstr(output_var == log_var * divide_var2)
+
 
 def logsummax_constraints(model, input_var, output_var):
     exp_var = model.addMVar(input_var.size, lb=-float('inf'))
@@ -504,14 +661,17 @@ def logsummax_constraints(model, input_var, output_var):
 
     model.addConstr(output_var == log_var)
 
+
 def smu_2(x, parameter):
     out = vmap(lambda a: smu_binary(a[0], a[1], parameter))(x)
     return out
+
 
 def smu_binary(a, b, parameter):
     e = parameter
     out = torch.div(a.add(b).add(torch.pow(torch.pow(torch.sub(a, b), 2).add(e), 0.5)), 2)
     return out
+
 
 def smu_constraints(model, input_var, output_var, parameter):
     subtract_var = model.addMVar(1, lb=-float('inf'))
@@ -524,4 +684,3 @@ def smu_constraints(model, input_var, output_var, parameter):
     model.addConstr(power_eps_var[0] == power_var[0] + parameter)
     model.addGenConstrPow(root_var, power_eps_var, 0.5)
     model.addConstr(output_var == (input_var[0] + input_var[1] + root_var[0]) * 0.5)
-

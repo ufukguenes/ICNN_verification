@@ -28,15 +28,11 @@ def start_verification(nn: SequentialNN, input, eps=0.001, icnn_batch_size=1000,
                        keep_ambient_space=False, sample_new=True, use_over_approximation=True,
                        sample_over_input_space=False, sample_over_output_space=True, use_grad_descent=False,
                        train_outer=False, preemptive_stop=True, even_gradient_training=False, force_inclusion=1,
-                       init_mode="none", adapt_lambda="none", should_plot='none', optimizer="adam"):
-
-    valid_init_modes = ["none", "simple", "logical"]
+                       init_network=False, adapt_lambda="none", should_plot='none', optimizer="adam"):
     valid_adapt_lambda = ["none", "high_low", "included"]
     valid_should_plot = ["none", "simple", "detailed", "verification"]
     valid_optimizer = ["adam", "LBFGS", "SdLBFGS"]
 
-    if init_mode not in valid_init_modes:
-        raise AttributeError("Expected initialization mode, one of: {}, actual: {}".format(valid_init_modes, init_mode))
     if adapt_lambda not in valid_adapt_lambda:
         raise AttributeError("Expected adaptive lambda mode one of: {}, actual: {}".format(valid_adapt_lambda, adapt_lambda))
     if should_plot not in valid_should_plot:
@@ -64,15 +60,6 @@ def start_verification(nn: SequentialNN, input, eps=0.001, icnn_batch_size=1000,
     icnns = []
     c_values = []
     center = input_flattened
-
-    use_logical_bound = False
-    if init_mode in ["none", "simple"]:
-        icnn_type = ICNN
-        train_box_bounds = True
-    elif init_mode == "logical":
-        icnn_type = ICNN_Logical
-        use_logical_bound = True
-        train_box_bounds = False
 
     for i in range(0, len(parameter_list) - 2, 2):  # -2 because last layer has no ReLu activation
         current_layer_index = int(i / 2)
@@ -143,7 +130,7 @@ def start_verification(nn: SequentialNN, input, eps=0.001, icnn_batch_size=1000,
         dataset = ConvexDataset(data=normalized_ambient_space)
         ambient_loader = DataLoader(dataset, batch_size=icnn_batch_size, shuffle=False) # todo shuffel alle wieder auf true setzen
 
-        if init_mode != "none":
+        if init_network:
             low = box_bounds[current_layer_index][0]
             up = box_bounds[current_layer_index][1]
             low = torch.div(torch.add(low, -mean), std)
@@ -218,11 +205,7 @@ def start_verification(nn: SequentialNN, input, eps=0.001, icnn_batch_size=1000,
                                       [-2, 3], [-2, 3])
                     plots.plt_mesh()
 
-        if init_mode == "logical":
-            with_logical = True
-        else:
-            with_logical = False
-        normalize_nn(current_icnn, mean, std, isICNN=True, with_logical=with_logical)
+        current_icnn.apply_normalisation(mean, std)
 
         current_icnn.use_training_setup = False # todo richtig integrieren in den code
 
