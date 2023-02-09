@@ -94,8 +94,8 @@ class ICNN(nn.Module):
     def init(self, lower_bounds, upper_bounds):
         with torch.no_grad():
             num_of_layers = len(self.layer_widths)
-            last_layer_index = num_of_layers - 1
-            penultimate_layer_index = num_of_layers - 2
+            last_layer_index = num_of_layers - 2
+            penultimate_layer_index = num_of_layers - 3
             size_of_last_layer = self.layer_widths[num_of_layers - 1]
             size_of_penultimate_layer = self.layer_widths[num_of_layers - 2]
             size_of_input = self.layer_widths[0]
@@ -106,7 +106,7 @@ class ICNN(nn.Module):
                 raise AttributeError("To use box-bound initialization, the size of the penultimate layer needs to be "
                                      "2*input size")
 
-            if self.init_all_with_zero:
+            if self.init_all_with_zeros:
                 for i in range(0, len(self.ws)):
                     ws = list(self.ws[i].parameters())
                     ws[1].data = torch.zeros_like(ws[1], dtype=torch.float64)
@@ -117,7 +117,7 @@ class ICNN(nn.Module):
                     w = list(elem.parameters())
                     w[0].data = torch.zeros_like(w[0], dtype=torch.float64)
             else:
-                third_last_layer = list(self.us[penultimate_layer_index - 1].parameters())
+                third_last_layer = list(self.ws[penultimate_layer_index - 1].parameters())
                 third_last_w = third_last_layer[0]
                 third_last_b = third_last_layer[1]
                 third_last_w.data = torch.zeros_like(third_last_w, dtype=torch.float64)
@@ -148,11 +148,10 @@ class ICNN(nn.Module):
             last[0].data = torch.mul(torch.ones_like(last[0], dtype=torch.float64), self.init_scaling)
             last[1].data = torch.zeros_like(last[1], dtype=torch.float64)
 
-    def add_icnn_constraints(self, model, bounds):
+    def add_icnn_constraints(self, model, input_vars, bounds):
         ws = list(self.ws.parameters())
         us = list(self.us.parameters())
-        input_vars = model.addMVar(self.layer_widths[0], lb=-float('inf')) #todo bounds anpassen
-        output_vars = model.addMVar(self.layer_widths[-1], lb=-float('inf'))
+        output_vars = model.addMVar(self.layer_widths[-1], lb=-float('inf')) #todo bounds anpassen
 
         in_var = input_vars
         for i in range(0, len(ws), 2):
@@ -184,15 +183,18 @@ class ICNN(nn.Module):
                 out_vars = relu_vars
 
         const = model.addConstrs(out_vars[i] == output_vars[i] for i in range(out_fet))
-        return input_vars, output_vars
+        return output_vars
 
-    def add_max_output_constraints(self, model, bounds):
-        return self.add_icnn_constraints(model, bounds)
+    def add_max_output_constraints(self, model, input_vars, bounds):
+        output = self.add_icnn_constraints(model, input_vars, bounds)
+        model.addConstr(output[0] <= 0)
+        return output
 
     def apply_enlargement(self, value):
-        last_layer = list(self.ws[-1].parameters())
-        b = last_layer[1]
-        b.data = b - value
+        with torch.no_grad():
+            last_layer = list(self.ws[-1].parameters())
+            b = last_layer[1]
+            b.data = b - value
 
 
 class ICNN_Logical(ICNN):
@@ -204,6 +206,7 @@ class ICNN_Logical(ICNN):
         super(ICNN_Logical, self).__init__(*args, **kwargs)
 
         self.with_two_layers = with_two_layers
+        self.ls = []
 
         self.ls.append(nn.Linear(self.layer_widths[0], 2 * self.layer_widths[0], bias=True, dtype=torch.float64))
         if self.with_two_layers:
@@ -240,6 +243,7 @@ class ICNN_Logical(ICNN):
         else:
             x_in = self.ls[1](x_in)
             out = torch.max(x_in, dim=1)[0]
+        return out
 
     def init(self, lower_bounds, upper_bounds):
         with torch.no_grad():
@@ -269,8 +273,8 @@ class ICNN_Logical(ICNN):
             bb[1].data = b
 
 
-    def add_max_output_constraints(self, model, bounds):
-        icnn_input_var, icnn_output_var = super().add_icnn_constraints(model, bounds)
+    def add_max_output_constraints(self, model, input_vars, bounds):
+        icnn_output_var = super().add_icnn_constraints(model, input_vars, bounds)
         output_of_and = model.addMVar(1, lb=-float('inf'))
         lb = bounds[-1][0]
         ub = bounds[-1][1]  # todo richtige box bounds anwenden (die vom zu approximierenden Layer)
@@ -278,7 +282,7 @@ class ICNN_Logical(ICNN):
 
         bb_W, bb_b = ls[0].weight.data.detach().numpy(), ls[0].bias.data.detach().numpy()
         bb_var = model.addMVar(4, lb=lb, ub=ub, name="skip_var")
-        skip_const = model.addConstrs(bb_W[i] @ icnn_input_var + bb_b[i] == bb_var[i] for i in range(len(bb_W)))
+        skip_const = model.addConstrs(bb_W[i] @ input_vars + bb_b[i] == bb_var[i] for i in range(len(bb_W)))
         max_var = model.addVar(lb=-float("inf"))
         model.addGenConstrMax(max_var, bb_var.tolist())
 
@@ -312,14 +316,16 @@ class ICNN_Logical(ICNN):
         max_var2 = model.addVar(lb=-float("inf"))
         model.addGenConstrMax(max_var2, affine_var1.tolist())
 
-        const = model.addConstrs(max_var2 == output_of_and.tolist()[0])
+        const = model.addConstr(max_var2 == output_of_and.tolist()[0])
 
-        return icnn_input_var, output_of_and
+        model.addConstr(output_of_and.tolist()[0] <= 0)
+
+        return output_of_and
 
 
 class ICNN_Approx_Max(ICNN):
 
-    def __init__(self, maximum_function="max", function_parameter=1, use_training_setup=True, *args, **kwargs):
+    def __init__(self, *args, maximum_function="max", function_parameter=1, use_training_setup=True, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.valid_maximum_functions = ["max", "Boltzmann", "LogSumExp", "Mellowmax", "SMU"]
@@ -330,6 +336,7 @@ class ICNN_Approx_Max(ICNN):
         self.maximum_function = maximum_function
         self.function_parameter = function_parameter
         self.use_training_setup = use_training_setup
+        self.ls = []
 
         self.ls.append(nn.Linear(self.layer_widths[0], 2 * self.layer_widths[0], bias=True, dtype=torch.float64))
 
@@ -340,17 +347,17 @@ class ICNN_Approx_Max(ICNN):
         box_out = torch.max(box_out, dim=1, keepdim=True)[0]
         x_in = torch.cat([icnn_out, box_out], dim=1)
 
-        if self.training_setup:
+        if self.use_training_setup:
             if self.maximum_function == "max":
                 out = torch.max(x_in, dim=1)[0]
             elif self.maximum_function == "Boltzmann":
-                out = boltzmann_op(x_in)
+                out = boltzmann_op(x_in, self.function_parameter)
             elif self.maximum_function == "LogSumExp":
                 out = torch.logsumexp(x_in, dim=1)
             elif self.maximum_function == "Mellowmax":
-                out = mellowmax(x_in)
+                out = mellowmax(x_in, self.function_parameter)
             elif self.maximum_function == "SMU":
-                out = smu_2(x_in)
+                out = smu_2(x_in, self.function_parameter)
             else:
                 raise AttributeError(
                 "Expected activation function to be, one of: {}, actual: {}".format(self.valid_maximum_functions,
@@ -387,8 +394,8 @@ class ICNN_Approx_Max(ICNN):
             bb[0].data = u
             bb[1].data = b
 
-    def add_max_output_constraints(self, model, bounds):
-        icnn_input_var, icnn_output_var = super().add_icnn_constraints(model, bounds)
+    def add_max_output_constraints(self, model, input_vars, bounds):
+        icnn_output_var = super().add_icnn_constraints(model, input_vars, bounds)
         output_of_and = model.addMVar(1, lb=-float('inf'))
         lb = bounds[-1][0]
         ub = bounds[-1][1]  # todo richtige box bounds anwenden (die vom zu approximierenden Layer)
@@ -396,7 +403,7 @@ class ICNN_Approx_Max(ICNN):
 
         bb_W, bb_b = ls[0].weight.data.detach().numpy(), ls[0].bias.data.detach().numpy()
         bb_var = model.addMVar(4, lb=lb, ub=ub, name="skip_var")
-        skip_const = model.addConstrs(bb_W[i] @ icnn_input_var + bb_b[i] == bb_var[i] for i in range(len(bb_W)))
+        skip_const = model.addConstrs(bb_W[i] @ input_vars + bb_b[i] == bb_var[i] for i in range(len(bb_W)))
         max_var = model.addVar(lb=-float("inf"))
         model.addGenConstrMax(max_var, bb_var.tolist())
 
@@ -406,13 +413,13 @@ class ICNN_Approx_Max(ICNN):
 
         max_var2 = model.addVar(lb=-float("inf"))
 
-        if self.training_setup:
+        if self.use_training_setup:
             if self.maximum_function == "max":
                 model.addGenConstrMax(max_var2, new_in.tolist())
             elif self.maximum_function == "Boltzmann":
                 boltzmann_constraints(model, new_in, max_var2, self.function_parameter)
             elif self.maximum_function == "LogSumExp":
-                logsummax_constraints(model, new_in, max_var2, self.function_parameter)
+                logsummax_constraints(model, new_in, max_var2)
             elif self.maximum_function == "Mellowmax":
                 mellowmax_constraints(model, new_in, max_var2, self.function_parameter)
             elif self.maximum_function == "SMU":
@@ -424,9 +431,11 @@ class ICNN_Approx_Max(ICNN):
         else:
             model.addGenConstrMax(max_var2, new_in.tolist())
 
-        model.addConstrs(max_var2 == output_of_and.tolist()[0])
+        model.addConstr(max_var2 == output_of_and.tolist()[0])
 
-        return icnn_input_var, output_of_and
+        model.addConstr(output_of_and.tolist()[0] <= 0)
+
+        return output_of_and
 
 
 def boltzmann_op(x, parameter):
@@ -437,17 +446,20 @@ def boltzmann_op(x, parameter):
     return torch.div(summed, summed_exp)
 
 def boltzmann_constraints(model, input_var, output_var, parameter):
-    scale_var = model.addMVar(input_var.size(), lb=-float('inf'))
-    model.addConstrs(scale_var[i] == parameter * input_var[i] for i in range(input_var.size()))
+    scale_var = model.addMVar(input_var.size, lb=-float('inf'))
+    model.addConstrs(scale_var[i] == parameter * input_var[i] for i in range(input_var.size))
 
-    exp_var = model.addMVar(input_var.size(), lb=-float('inf'))
-    for i in range(input_var.size()):
+    exp_var = model.addMVar(input_var.size, lb=-float('inf'))
+    for i in range(input_var.size):
         model.addGenConstrExp(scale_var[i], exp_var[i])
 
-    mul_var = model.addMVar(input_var.size(), lb=-float('inf'))
-    model.addConstrs(mul_var[i] == exp_var[i] * input_var[i] for i in range(input_var.size()))
+    mul_var = model.addMVar(input_var.size, lb=-float('inf'))
+    model.addConstrs(mul_var[i] == exp_var[i] * input_var[i] for i in range(input_var.size))
 
-    model.addConstr(output_var[0] == mul_var.sum() / exp_var.sum())
+    divide_var = model.addMVar(1, lb=-float('inf'))
+    model.addConstr(exp_var.sum() * divide_var == 1)
+
+    model.addConstr(output_var == mul_var.sum() * divide_var)
 
 
 def mellowmax(x, parameter):
@@ -460,36 +472,37 @@ def mellowmax(x, parameter):
 
 
 def mellowmax_constraints(model, input_var, output_var, parameter):
-    scale_var = model.addMVar(input_var.size(), lb=-float('inf'))
-    model.addConstrs(scale_var[i] == parameter * input_var[i] for i in range(input_var.size()))
+    scale_var = model.addMVar(input_var.size, lb=-float('inf'))
+    model.addConstrs(scale_var[i] == parameter * input_var[i] for i in range(input_var.size))
 
-    exp_var = model.addMVar(input_var.size(), lb=-float('inf'))
-    for i in range(input_var.size()):
+    exp_var = model.addMVar(input_var.size, lb=-float('inf'))
+    for i in range(input_var.size):
         model.addGenConstrExp(scale_var[i], exp_var[i])
 
-    summed_divided = model.addMVar(1, lb=-float('inf'))
-    model.addConstr(summed_divided[0] == exp_var.sum() / input_var.size())
+    summed_divided = model.addMVar(1, lb=0)
+    divide_var = model.addMVar(1, lb=-float('inf'))
+    model.addConstr(input_var.size * divide_var == 1)
+    model.addConstr(summed_divided[0] == exp_var.sum() * divide_var )
 
     log_var = model.addMVar(1, lb=-float('inf'))
     model.addGenConstrLog(summed_divided, log_var)
 
-    model.addConstr(output_var[0] == log_var / parameter)
+    divide_var2 = model.addMVar(1, lb=-float('inf'))
+    model.addConstr(parameter * divide_var2 == 1)
+    model.addConstr(output_var == log_var * divide_var2)
 
-def logsummax_constraints(model, input_var, output_var, parameter):
-    scale_var = model.addMVar(input_var.size(), lb=-float('inf'))
-    model.addConstrs(scale_var[i] == parameter * input_var[i] for i in range(input_var.size()))
+def logsummax_constraints(model, input_var, output_var):
+    exp_var = model.addMVar(input_var.size, lb=-float('inf'))
+    for i in range(input_var.size):
+        model.addGenConstrExp(input_var[i], exp_var[i])
 
-    exp_var = model.addMVar(input_var.size(), lb=-float('inf'))
-    for i in range(input_var.size()):
-        model.addGenConstrExp(scale_var[i], exp_var[i])
-
-    summed = model.addMVar(1, lb=-float('inf'))
+    summed = model.addMVar(1, lb=0)
     model.addConstr(summed[0] == exp_var.sum())
 
     log_var = model.addMVar(1, lb=-float('inf'))
     model.addGenConstrLog(summed, log_var)
 
-    model.addConstr(output_var[0] == log_var / parameter)
+    model.addConstr(output_var == log_var)
 
 def smu_2(x, parameter):
     out = vmap(lambda a: smu_binary(a[0], a[1], parameter))(x)
@@ -502,12 +515,13 @@ def smu_binary(a, b, parameter):
 
 def smu_constraints(model, input_var, output_var, parameter):
     subtract_var = model.addMVar(1, lb=-float('inf'))
-    power_var = model.addMVar(1, lb=-float('inf'))
-    root_var = model.addMVar(1, lb=-float('inf'))
+    power_var = model.addMVar(1, lb=0)
+    root_var = model.addMVar(1, lb=0)
     power_eps_var = model.addMVar(1, lb=-float('inf'))
 
     model.addConstr(subtract_var[0] == input_var[0] - input_var[1])
     model.addGenConstrPow(power_var, subtract_var, 2)
     model.addConstr(power_eps_var[0] == power_var[0] + parameter)
     model.addGenConstrPow(root_var, power_eps_var, 0.5)
-    model.addConstr(output_var[0] == (input_var[0] + input_var[1] + root_var[0]) / 2)
+    model.addConstr(output_var == (input_var[0] + input_var[1] + root_var[0]) * 0.5)
+

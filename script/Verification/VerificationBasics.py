@@ -11,11 +11,13 @@ def add_relu_constr(model, input_vars, number_of_out_features, lb, ub, i=0):
     model.update()
     relu_const_0 = model.addConstrs((var >= 0) for var in relu_vars.tolist())
     relu_const_1 = model.addConstrs((var >= x) for var, x in zip(relu_vars.tolist(), input_vars.tolist()))
-    #relu_const_if1 = model.addConstrs((var <= a_i * ub) for var, a_i in zip(relu_vars.tolist(), a.tolist()))
-    relu_const_if1 = model.addConstrs((relu_vars.tolist()[k] <= a.tolist()[k] * ub[k]) for k in range(number_of_out_features))
-    #relu_const_if0 = model.addConstrs((var <= x - lb * (1 - a_i)) for var, x, a_i in zip(relu_vars.tolist(), input_vars.tolist(), a.tolist()))
-    relu_const_if0 = model.addConstrs((relu_vars.tolist()[k] <= input_vars.tolist()[k] - lb[k] * (1 - a.tolist()[k])) for k in range(number_of_out_features))
-
+    # relu_const_if1 = model.addConstrs((var <= a_i * ub) for var, a_i in zip(relu_vars.tolist(), a.tolist()))
+    relu_const_if1 = model.addConstrs(
+        (relu_vars.tolist()[k] <= a.tolist()[k] * ub[k]) for k in range(number_of_out_features))
+    # relu_const_if0 = model.addConstrs((var <= x - lb * (1 - a_i)) for var, x, a_i in zip(relu_vars.tolist(), input_vars.tolist(), a.tolist()))
+    relu_const_if0 = model.addConstrs(
+        (relu_vars.tolist()[k] <= input_vars.tolist()[k] - lb[k] * (1 - a.tolist()[k])) for k in
+        range(number_of_out_features))
 
     """
     # Variante 2: Füge Constraints für jede Komponente im Vektor einzeln hinzu
@@ -41,6 +43,7 @@ def add_relu_constr(model, input_vars, number_of_out_features, lb, ub, i=0):
 
     return relu_vars
 
+
 def add_affine_constr(model, W, b, input_vars, lb, ub, i=0):
     out_fet = len(b)
     out_vars = model.addMVar(out_fet, lb=lb, ub=ub, name="affine_var" + str(i))
@@ -56,7 +59,7 @@ def calculate_box_bounds(nn, input_bounds, is_sequential=True, with_ReLU=True):
         bounds_per_layer = [([torch.tensor([-5000 for k in range(len(parameter_list[i]))]),
                               torch.tensor([5000 for k in range(len(parameter_list[i]))])]) for i in
                             range(0, len(parameter_list), 2)]
-        return bounds_per_layer #todo None entfernen aus aufrufen und durch sinnvolle eingabe ersetzen
+        return bounds_per_layer  # todo None entfernen aus aufrufen und durch sinnvolle eingabe ersetzen
 
     next_lower_bounds = input_bounds[0]
     next_upper_bounds = input_bounds[1]
@@ -85,42 +88,6 @@ def calculate_box_bounds(nn, input_bounds, is_sequential=True, with_ReLU=True):
     return bounds_per_layer
 
 
-def add_constr_for_non_sequential_icnn(model, predictor, input_vars, output_vars, bounds):
-    ws = list(predictor.ws.parameters())
-    us = list(predictor.us.parameters())
-
-    in_var = input_vars
-    for i in range(0, len(ws), 2):
-        lb = bounds[int(i / 2)][0]
-        ub = bounds[int(i / 2)][1]
-        affine_W, affine_b = ws[i].detach().numpy(), ws[i + 1].detach().numpy()
-
-        out_fet = len(affine_b)
-        affine_var = model.addMVar(out_fet, lb=lb, ub=ub, name="affine_var" + str(i))
-        out_vars = model.addMVar(out_fet, lb=lb, ub=ub, name="affine_skip_var" + str(i))
-
-        affine_const = model.addConstrs(
-            affine_W[i] @ in_var + affine_b[i] == affine_var[i] for i in range(len(affine_W)))
-        if i != 0:
-            k = math.floor(i / 2) - 1
-            skip_W = torch.clone(us[k]).detach().numpy()  # has no bias
-            skip_var = model.addMVar(out_fet, lb=lb, ub=ub, name="skip_var" + str(k))
-            skip_const = model.addConstrs(skip_W[i] @ input_vars == skip_var[i] for i in range(len(affine_W)))
-            affine_skip_cons = model.addConstrs(
-                affine_var[i] + skip_var[i] == out_vars[i] for i in range(len(affine_W)))
-        else:
-            affine_no_skip_cons = model.addConstrs(affine_var[i] == out_vars[i] for i in range(len(affine_W)))
-
-        in_var = out_vars
-
-        if i < len(ws) - 2:
-            relu_vars = add_relu_constr(model, in_var, out_fet, lb, ub, i)
-            in_var = relu_vars
-            out_vars = relu_vars
-
-    const = model.addConstrs(out_vars[i] == output_vars[i] for i in range(out_fet))
-
-
 def add_constr_for_sequential_icnn(model, predictor, input_vars, output_vars, bounds):
     parameter_list = list(predictor.parameters())
 
@@ -136,45 +103,10 @@ def add_constr_for_sequential_icnn(model, predictor, input_vars, output_vars, bo
         in_var = out_vars
 
         if i < len(parameter_list) - 2:
-            #relu_vars = add_relu_constr(model, in_var, out_fet, [-10000 for i in range(len(W))], [10000 for i in range(len(W))], i)
+            # relu_vars = add_relu_constr(model, in_var, out_fet, [-10000 for i in range(len(W))], [10000 for i in range(len(W))], i)
             relu_vars = add_relu_constr(model, in_var, out_fet, [-10000 for i in range(len(W))], ub, i)
-            #relu_vars = add_relu_constr(model, in_var, out_fet, lb, ub, i)
+            # relu_vars = add_relu_constr(model, in_var, out_fet, lb, ub, i)
             in_var = relu_vars
             out_vars = relu_vars
 
     const = model.addConstrs(out_vars[i] == output_vars[i] for i in range(out_fet))
-
-
-def add_constr_and_logic(model, predictor, original_inp, icnn_out, output_vars, bounds):
-    lb = bounds[-1][0]
-    ub = bounds[-1][1] # todo richtige box bounds anwenden (die vom zu approximierenden Layer)
-    ls = predictor.ls
-
-    bb_W, bb_b = ls[0].weight.data.detach().numpy(), ls[0].bias.data.detach().numpy()
-    bb_var = model.addMVar(4, lb=lb, ub=ub, name="skip_var")
-    skip_const = model.addConstrs(bb_W[i] @ original_inp + bb_b[i] == bb_var[i] for i in range(len(bb_W)))
-    max_var = model.addVar(lb=-float("inf"))
-    model.addGenConstrMax(max_var, bb_var.tolist())
-
-    new_in = model.addMVar(2, lb=-float('inf'))
-    model.addConstr(new_in[0] == icnn_out[0])
-    model.addConstr(new_in[1] == max_var)
-    """new_in = icnn_out.tolist()
-    new_in.append(max_var)"""
-
-    affine_W = ls[1].weight.data.detach().numpy()
-    affine_var1 = model.addMVar(4, lb=-float("inf"))
-    affine_const = model.addConstrs(
-        affine_W[i] @ new_in == affine_var1[i] for i in range(len(affine_W)))
-
-    #todo das hier ist für die zwei layer variante von max
-    """affine_W2 = ls[2].weight.data.detach().numpy()
-    affine_var2 = model.addMVar(3, lb=-float("inf"))
-    affine_const = model.addConstrs(
-        affine_W2[i] @ affine_var1 == affine_var2[i] for i in range(len(affine_W2)))
-    max_var2 = model.addVar(lb=-float("inf"))
-    model.addGenConstrMax(max_var2, affine_var2.tolist())"""
-    max_var2 = model.addVar(lb=-float("inf"))
-    model.addGenConstrMax(max_var2, affine_var1.tolist())
-
-    const = model.addConstrs(max_var2 == output_vars[i] for i in range(len(output_vars.tolist())))

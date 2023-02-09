@@ -4,7 +4,7 @@ import random
 from matplotlib import pyplot as plt
 from torch.utils.data import DataLoader
 
-from script.NeuralNets.Networks import SequentialNN, ICNN, ICNN_Logical
+from script.NeuralNets.Networks import SequentialNN, ICNN, ICNN_Logical, ICNN_Approx_Max
 import torch
 import numpy as np
 
@@ -77,7 +77,9 @@ def start_verification(nn: SequentialNN, input, eps=0.001, icnn_batch_size=1000,
     for i in range(0, len(parameter_list) - 2, 2):  # -2 because last layer has no ReLu activation
         current_layer_index = int(i / 2)
         icnn_input_size = nn.layer_widths[current_layer_index + 1]
-        icnns.append(icnn_type([icnn_input_size, 10, 10, 10, 2 * icnn_input_size, 1], force_positive_init=True))
+        #icnns.append(ICNN([icnn_input_size, 10, 10, 10, 2 * icnn_input_size, 1], force_positive_init=False, init_scaling=10, init_all_with_zeros=False))
+        #icnns.append(ICNN_Logical([icnn_input_size, 10, 10, 10, 2 * icnn_input_size, 1], force_positive_init=False, with_two_layers=False, init_scaling=10, init_all_with_zeros=False))
+        icnns.append(ICNN_Approx_Max([icnn_input_size, 10, 10, 10, 2 * icnn_input_size, 1], maximum_function="Mellowmax", function_parameter=10, force_positive_init=False, init_scaling=10, init_all_with_zeros=False))
         current_icnn = icnns[current_layer_index]
 
         W, b = parameter_list[i], parameter_list[i + 1]
@@ -146,12 +148,8 @@ def start_verification(nn: SequentialNN, input, eps=0.001, icnn_batch_size=1000,
             up = box_bounds[current_layer_index][1]
             low = torch.div(torch.add(low, -mean), std)
             up = torch.div(torch.add(up, -mean), std)
+            current_icnn.init(low, up)
 
-            if init_mode == "simple":
-                init_icnn_box_bounds(current_icnn, [low, up])
-
-            elif init_mode == "logical":
-                init_icnn_box_bounds_logical(current_icnn, [low, up])
 
         # train icnn
         do = True
@@ -164,19 +162,9 @@ def start_verification(nn: SequentialNN, input, eps=0.001, icnn_batch_size=1000,
                     if k == force_inclusion - 1 and epochs_last_round > 0:
                         epochs_per_round = epochs_last_round
 
-                    plots = Plots_for(0, current_icnn, normalized_included_space.detach(), normalized_ambient_space.detach(),
-                                      [-2, 3], [-2, 3])
-                    plots.plt_mesh()
-
                     out = current_icnn(normalized_included_space)
                     max_out = torch.max(out)
-                    with torch.no_grad():
-                        last_layer = list(current_icnn.ws[-1].parameters())
-                        b_temp = last_layer[1]
-                        b_temp.data = b_temp - max_out
-                    plots = Plots_for(0, current_icnn, normalized_included_space.detach(), normalized_ambient_space.detach(),
-                                      [-2, 3], [-2, 3])
-                    plots.plt_mesh()
+                    current_icnn.apply_enlargement(max_out)
 
                 if use_grad_descent:
                     untouched_normalized_ambient_space = normalized_ambient_space.detach().clone()  # todo sollte ich das noch dazu nehmen, dann wird ja ggf die anzahl samples doppelt so groß und es dauert länger
@@ -236,7 +224,7 @@ def start_verification(nn: SequentialNN, input, eps=0.001, icnn_batch_size=1000,
             with_logical = False
         normalize_nn(current_icnn, mean, std, isICNN=True, with_logical=with_logical)
 
-        current_icnn.training_setup = False # todo richtig integrieren in den code
+        current_icnn.use_training_setup = False # todo richtig integrieren in den code
 
         # matplotlib.use("TkAgg")
         if should_plot == "detailed":
@@ -264,10 +252,7 @@ def start_verification(nn: SequentialNN, input, eps=0.001, icnn_batch_size=1000,
                                                         icnn_W_b_c=[prev_icnn, W.detach().numpy(), b.detach().numpy(),
                                                                     prev_c], has_ReLU=True, use_logical_bound=use_logical_bound)
 
-            with torch.no_grad():
-                last_layer = list(current_icnn.ws[-1].parameters())
-                b_temp = last_layer[1]
-                b_temp.data = b_temp - c
+            current_icnn.apply_enlargement(c)
 
             if should_plot == "detailed":
                 plots = Plots_for(0, current_icnn, included_space.detach(), ambient_space.detach(), [-1, 3], [-1, 3])
@@ -280,7 +265,7 @@ def start_verification(nn: SequentialNN, input, eps=0.001, icnn_batch_size=1000,
                 plots = Plots_for(0, current_icnn, included_space.detach(), ambient_space.detach(), [-1, 3], [-1, 3])
                 plots.plt_mesh()
 
-        current_icnn.training_setup = True
+        """current_icnn.training_setup = True
         plots = Plots_for(0, current_icnn, included_space.detach(), ambient_space.detach(),
                           [-2, 3], [-2, 3])
         plots.plt_mesh()
@@ -292,7 +277,7 @@ def start_verification(nn: SequentialNN, input, eps=0.001, icnn_batch_size=1000,
                           [-2, 3], [-2, 3])
         plots.plt_mesh()
 
-        current_icnn.training_setup = True
+        current_icnn.training_setup = True"""
 
         c_values.append(c)
 
@@ -333,71 +318,6 @@ def start_verification(nn: SequentialNN, input, eps=0.001, icnn_batch_size=1000,
 
     return icnns, c_values
 
-
-
-def init_icnn_box_bounds(icnn: ICNN, box_bounds):
-    # todo check for the layer to have the right dimensions
-    with torch.no_grad():
-        for i in range(0, len(icnn.ws)):
-            ws = list(icnn.ws[i].parameters())
-            ws[1].data = torch.zeros_like(ws[1], dtype=torch.float64)
-            ws[0].data = torch.zeros_like(ws[0], dtype=torch.float64)
-
-        for elem in icnn.us:
-            w = list(elem.parameters())
-            w[0].data = torch.zeros_like(w[0], dtype=torch.float64)
-
-        ws = list(icnn.ws[3].parameters())  # bias for first relu activation with weights from us (in second layer)
-        us = list(icnn.us[2].parameters())  # us is used because values in ws are set to 0 when negative
-        b = torch.zeros_like(ws[1], dtype=torch.float64)
-        u = torch.zeros_like(us[0], dtype=torch.float64)
-        for i in range(len(box_bounds)):
-            u[2 * i][i] = 1
-            u[2 * i + 1][i] = -1
-            b[2 * i] = - box_bounds[1][i]  # upper bound
-            b[2 * i + 1] = box_bounds[0][i]  # lower bound
-        ws[0].data = torch.zeros_like(ws[0], dtype=torch.float64)
-        ws[1].data = b
-        us[0].data = u
-
-        last_us = list(icnn.us[3].parameters())[0]
-        last_us.data = torch.zeros_like(last_us, dtype=torch.float64)
-
-        last = list(icnn.ws[4].parameters())
-        last[0].data = torch.mul(torch.ones_like(last[0], dtype=torch.float64), 10)
-        last[1].data = torch.zeros_like(last[1], dtype=torch.float64)
-
-def init_icnn_box_bounds_logical(icnn: ICNN_Logical, box_bounds, with_zero=False):
-    # todo check for the layer to have the right dimensions
-    with torch.no_grad():
-        if with_zero:
-            for i in range(len(icnn.ws)):
-                ws = list(icnn.ws[i].parameters())
-                ws[1].data = torch.zeros_like(ws[1], dtype=torch.float64)
-                ws[0].data = torch.zeros_like(ws[0], dtype=torch.float64)
-            last_ws = list(icnn.ws[-1].parameters())
-            last_ws[0].data = torch.ones_like(last_ws[0])
-            last_ws[1].data = torch.zeros_like(last_ws[1])
-
-            for i in range(len(icnn.us)):
-                us = list(icnn.us[i].parameters())
-                us[0].data = torch.zeros_like(us[0], dtype=torch.float64)
-
-        bb = list(icnn.ls[0].parameters())  # us is used because values in ws are set to 0 when negative
-        u = torch.zeros_like(bb[0], dtype=torch.float64)
-        b = torch.zeros_like(bb[1], dtype=torch.float64)
-        for i in range(len(box_bounds)):
-            u[2 * i][i] = 1
-            u[2 * i + 1][i] = -1
-            b[2 * i] = - box_bounds[1][i]  # upper bound
-            b[2 * i + 1] = box_bounds[0][i]  # lower bound
-        bb[0].data = u
-        bb[1].data = b
-
-
-
-def init_icnn_prev_icnn(current_icnn, prev_icnn):
-    current_icnn.load_state_dict(prev_icnn.state_dict())
 
 def is_uneven_gradient(icnn, ambient_space, threshold=1000):
     def dh_loss(x):

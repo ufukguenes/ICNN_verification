@@ -75,21 +75,8 @@ def verification(icnn, center_eps_W_b=None, A_b=None, icnn_W_b_c=None, has_ReLU=
         output_of_layer_approx = m.addMVar(1, lb=-float('inf'))
 
         bounds = verbas.calculate_box_bounds(constraint_icnn, None, is_sequential=False)
-        verbas.add_constr_for_non_sequential_icnn(m, constraint_icnn, input_to_previous_layer, output_of_layer_approx, bounds)
 
-        if use_logical_bound:
-            output_of_and = m.addMVar(1, lb=-float('inf'))
-            verbas.add_constr_and_logic(m, constraint_icnn, input_to_previous_layer, output_of_layer_approx, output_of_and, bounds)
-            output_of_layer_approx = output_of_and
-
-        m.addConstr(output_of_layer_approx[0] <= 0) # todo 0 ersetzen mit c?
-
-        """affine_out = add_affine_constr(m, W, b, input_to_previous_layer, lb, ub)
-        if has_ReLU:
-            relu_out = add_relu_constr(m, affine_out, constraint_icnn_input_size, lb, ub)
-            input_var = relu_out
-        else:
-            input_var = affine_out"""
+        output_of_layer_approx = constraint_icnn.add_max_output_constraints(m, input_to_previous_layer, bounds)
 
         if has_ReLU:
             relu_var = m.addMVar(input_size, lb=-float('inf'), name="in_var")
@@ -101,13 +88,8 @@ def verification(icnn, center_eps_W_b=None, A_b=None, icnn_W_b_c=None, has_ReLU=
     else:
         return
 
-    if sequential:
-        bounds = verbas.calculate_box_bounds(icnn, None)
-        verbas.add_constr_for_sequential_icnn(m, icnn, input_var, output_var, bounds)
-        # model_constr = gml.add_sequential_constr(m, icnn, input_var, output_var) # Gurobi api for sequential NN
-    else:
-        bounds = verbas.calculate_box_bounds(icnn, None, is_sequential=False)
-        verbas.add_constr_for_non_sequential_icnn(m, icnn, input_var, output_var, bounds)
+    bounds = verbas.calculate_box_bounds(icnn, None, is_sequential=False)
+    output_var = icnn.add_icnn_constraints(m, input_var, bounds)
 
     m.update()
     m.setObjective(output_var[0], GRB.MAXIMIZE)
