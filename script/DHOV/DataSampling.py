@@ -13,8 +13,8 @@ def sample_max_radius(icnn, sample_size):
     input_to_icnn_one = m.addMVar(icnn_input_size, lb=-float('inf'))
     input_to_icnn_two = m.addMVar(icnn_input_size, lb=-float('inf'))
     bounds = icnn.calculate_box_bounds(None)
-    output_of_icnn_one = icnn.add_max_output_constraints(m, input_to_icnn_one, bounds)
-    output_of_icnn_two = icnn.add_max_output_constraints(m, input_to_icnn_two, bounds)
+    icnn.add_max_output_constraints(m, input_to_icnn_one, bounds)
+    icnn.add_max_output_constraints(m, input_to_icnn_two, bounds)
 
     difference = m.addVar(lb=-float('inf'))
 
@@ -72,7 +72,6 @@ def sample_max_radius(icnn, sample_size):
     return included_space, ambient_space
 
 
-
 def regroup_samples(icnn, included_space, ambient_space, c=0):
     moved = 0
     for i, elem in enumerate(ambient_space):
@@ -96,11 +95,11 @@ def samples_uniform_over(data_samples, amount, bounds, keep_samples=True, paddin
     else:
         data_samples = random_samples
 
-
     return data_samples
 
 
-def sample_uniform_excluding(data_samples, amount, including_bound, excluding_bound=None, icnn=None, keep_samples=True, padding=0):
+def sample_uniform_excluding(data_samples, amount, including_bound, excluding_bound=None, icnn=None,
+                             keep_samples=True, padding=0):
     input_size = data_samples.size(dim=1)
 
     lower = including_bound[0] - padding
@@ -143,16 +142,15 @@ def sample_uniform_excluding(data_samples, amount, including_bound, excluding_bo
     return data_samples
 
 
-def apply_affine_transform(W, b, data_samples):
-    transformed_samples = torch.empty((data_samples.size(0), b.size(0)), dtype=torch.float64)
+def apply_affine_transform(affine_w, affine_b, data_samples):
+    transformed_samples = torch.empty((data_samples.size(0), affine_b.size(0)), dtype=torch.float64)
     for i in range(data_samples.shape[0]):
-        transformed_samples[i] = torch.matmul(W, data_samples[i]).add(b)
-
+        transformed_samples[i] = torch.matmul(affine_w, data_samples[i]).add(affine_b)
 
     return transformed_samples
 
 
-def apply_ReLU_transform(data_samples):
+def apply_relu_transform(data_samples):
     relu = torch.nn.ReLU()
     transformed_samples = relu(data_samples)
 

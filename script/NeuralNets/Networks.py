@@ -15,8 +15,11 @@ class Flatten(nn.Module):
 
 
 class VerifiableNet(ABC):
+    def __init__(self):
+        self.ws = None
+
     @abstractmethod
-    def calculate_box_bounds(self, input_bounds, with_ReLU=True):
+    def calculate_box_bounds(self, input_bounds, with_relu=True):
         pass
 
     @abstractmethod
@@ -55,11 +58,11 @@ class SequentialNN(nn.Sequential, VerifiableNet):
 
         self.append(nn.Linear(d_in, layer_widths[-1], dtype=torch.float64))
 
-    def forward(self, input):
-        x = Flatten()(input)
+    def forward(self, x):
+        x = Flatten()(x)
         return super().forward(x)
 
-    def calculate_box_bounds(self, input_bounds, with_ReLU=True):
+    def calculate_box_bounds(self, input_bounds, with_relu=True):
         parameter_list = list(self.parameters())
 
         if input_bounds is None:
@@ -73,12 +76,12 @@ class SequentialNN(nn.Sequential, VerifiableNet):
         bounds_per_layer = []
         for i in range(0, len(parameter_list), 2):
             W, b = parameter_list[i], parameter_list[i + 1]
-            W_plus = torch.maximum(W, torch.tensor(0, dtype=torch.float64))
-            W_minus = torch.minimum(W, torch.tensor(0, dtype=torch.float64))
-            lb = torch.matmul(W_plus, next_lower_bounds).add(torch.matmul(W_minus, next_upper_bounds)).add(b)
-            ub = torch.matmul(W_plus, next_upper_bounds).add(torch.matmul(W_minus, next_lower_bounds)).add(b)
+            w_plus = torch.maximum(W, torch.tensor(0, dtype=torch.float64))
+            w_minus = torch.minimum(W, torch.tensor(0, dtype=torch.float64))
+            lb = torch.matmul(w_plus, next_lower_bounds).add(torch.matmul(w_minus, next_upper_bounds)).add(b)
+            ub = torch.matmul(w_plus, next_upper_bounds).add(torch.matmul(w_minus, next_lower_bounds)).add(b)
 
-            if with_ReLU:
+            if with_relu:
                 next_upper_bounds = torch.maximum(torch.tensor(0, dtype=torch.float64), ub)
                 next_lower_bounds = torch.maximum(torch.tensor(0, dtype=torch.float64), lb)
             else:
@@ -105,9 +108,7 @@ class SequentialNN(nn.Sequential, VerifiableNet):
             in_var = out_vars
 
             if i < len(parameter_list) - 2:
-                # relu_vars = add_relu_constr(model, in_var, out_fet, [-10000 for i in range(len(W))], [10000 for i in range(len(W))], i)
                 relu_vars = verbas.add_relu_constr(model, in_var, out_fet, [-10000 for i in range(len(W))], ub, i)
-                # relu_vars = add_relu_constr(model, in_var, out_fet, lb, ub, i)
                 in_var = relu_vars
                 out_vars = relu_vars
 
@@ -144,7 +145,6 @@ class ICNN(nn.Module, VerifiableNet):
         super(ICNN, self).__init__()
 
         valid_activation_functions = ["ReLU", "Softplus", "Tanh"]
-        valid_init_method = ["ReLU", "Softplus", "Tanh"]
 
         if activation_function not in valid_activation_functions:
             raise AttributeError(
@@ -251,7 +251,7 @@ class ICNN(nn.Module, VerifiableNet):
             last[0].data = torch.mul(torch.ones_like(last[0], dtype=torch.float64), self.init_scaling)
             last[1].data = torch.zeros_like(last[1], dtype=torch.float64)
 
-    def calculate_box_bounds(self, input_bounds, with_ReLU=True):  # todo für andere Netze die Architektur anpassen
+    def calculate_box_bounds(self, input_bounds, with_relu=True):  # todo für andere Netze die Architektur anpassen
         parameter_list = list(self.parameters())
         # todo for now this only works for sequential nets
 
@@ -266,18 +266,18 @@ class ICNN(nn.Module, VerifiableNet):
         bounds_per_layer = []
         for i in range(0, len(parameter_list), 2):
             W, b = parameter_list[i], parameter_list[i + 1]
-            W_plus = torch.maximum(W, torch.tensor(0, dtype=torch.float64))
-            W_minus = torch.minimum(W, torch.tensor(0, dtype=torch.float64))
-            lb = torch.matmul(W_plus, next_lower_bounds).add(torch.matmul(W_minus, next_upper_bounds)).add(b)
-            ub = torch.matmul(W_plus, next_upper_bounds).add(torch.matmul(W_minus, next_lower_bounds)).add(b)
+            w_plus = torch.maximum(W, torch.tensor(0, dtype=torch.float64))
+            w_minus = torch.minimum(W, torch.tensor(0, dtype=torch.float64))
+            lb = torch.matmul(w_plus, next_lower_bounds).add(torch.matmul(w_minus, next_upper_bounds)).add(b)
+            ub = torch.matmul(w_plus, next_upper_bounds).add(torch.matmul(w_minus, next_lower_bounds)).add(b)
             if i != 0:
-                U = self.us[i // 2 - 1]
-                U_plus = torch.maximum(U, torch.tensor(0, dtype=torch.float64))
-                U_minus = torch.minimum(U, torch.tensor(0, dtype=torch.float64))
-                lb = lb.add(torch.matmul(U_plus, next_lower_bounds).add(torch.matmul(U_minus, next_upper_bounds)))
-                ub = ub.add(torch.matmul(U_plus, next_upper_bounds).add(torch.matmul(U_minus, next_lower_bounds)))
+                affine_u = self.us[i // 2 - 1]
+                u_plus = torch.maximum(affine_u, torch.tensor(0, dtype=torch.float64))
+                u_minus = torch.minimum(affine_u, torch.tensor(0, dtype=torch.float64))
+                lb = lb.add(torch.matmul(u_plus, next_lower_bounds).add(torch.matmul(u_minus, next_upper_bounds)))
+                ub = ub.add(torch.matmul(u_plus, next_upper_bounds).add(torch.matmul(u_minus, next_lower_bounds)))
 
-            if with_ReLU:
+            if with_relu:
                 next_upper_bounds = torch.maximum(torch.tensor(0, dtype=torch.float64), ub)
                 next_lower_bounds = torch.maximum(torch.tensor(0, dtype=torch.float64), lb)
             else:
@@ -297,23 +297,23 @@ class ICNN(nn.Module, VerifiableNet):
         for i in range(0, len(ws), 2):
             lb = bounds[int(i / 2)][0]
             ub = bounds[int(i / 2)][1]
-            affine_W, affine_b = ws[i].detach().numpy(), ws[i + 1].detach().numpy()
+            affine_w, affine_b = ws[i].detach().numpy(), ws[i + 1].detach().numpy()
 
             out_fet = len(affine_b)
             affine_var = model.addMVar(out_fet, lb=lb, ub=ub, name="affine_var" + str(i))
             out_vars = model.addMVar(out_fet, lb=lb, ub=ub, name="affine_skip_var" + str(i))
 
             affine_const = model.addConstrs(
-                affine_W[i] @ in_var + affine_b[i] == affine_var[i] for i in range(len(affine_W)))
+                affine_w[i] @ in_var + affine_b[i] == affine_var[i] for i in range(len(affine_w)))
             if i != 0:
                 k = math.floor(i / 2) - 1
                 skip_W = torch.clone(us[k]).detach().numpy()  # has no bias
                 skip_var = model.addMVar(out_fet, lb=lb, ub=ub, name="skip_var" + str(k))
-                skip_const = model.addConstrs(skip_W[i] @ input_vars == skip_var[i] for i in range(len(affine_W)))
+                skip_const = model.addConstrs(skip_W[i] @ input_vars == skip_var[i] for i in range(len(affine_w)))
                 affine_skip_cons = model.addConstrs(
-                    affine_var[i] + skip_var[i] == out_vars[i] for i in range(len(affine_W)))
+                    affine_var[i] + skip_var[i] == out_vars[i] for i in range(len(affine_w)))
             else:
-                affine_no_skip_cons = model.addConstrs(affine_var[i] == out_vars[i] for i in range(len(affine_W)))
+                affine_no_skip_cons = model.addConstrs(affine_var[i] == out_vars[i] for i in range(len(affine_w)))
 
             in_var = out_vars
 
@@ -331,8 +331,6 @@ class ICNN(nn.Module, VerifiableNet):
             parameter_list[0].data = torch.div(parameter_list[0], std)
             parameter_list[1].data = torch.add(- torch.matmul(parameter_list[0], mean), parameter_list[1])
 
-            k = len(self.us)
-            l = len(self.ws)
             for i in range(len(self.us)):
                 parameter_list = list(self.us[i].parameters())
                 parameter_list[0].data = torch.div(parameter_list[0], std)
@@ -342,13 +340,13 @@ class ICNN(nn.Module, VerifiableNet):
                                                             internal_parameter_list[1])
 
 
-class ICNN_Logical(ICNN):
+class ICNNLogical(ICNN):
 
     def __init__(self, *args, with_two_layers=False, **kwargs):
         """
         layer_widths - ([int]) list of layer widths **including** input and output dim
         """
-        super(ICNN_Logical, self).__init__(*args, **kwargs)
+        super(ICNNLogical, self).__init__(*args, **kwargs)
 
         self.with_two_layers = with_two_layers
         self.ls = []
@@ -424,9 +422,9 @@ class ICNN_Logical(ICNN):
         ub = bounds[-1][1]  # todo richtige box bounds anwenden (die vom zu approximierenden Layer)
         ls = self.ls
 
-        bb_W, bb_b = ls[0].weight.data.detach().numpy(), ls[0].bias.data.detach().numpy()
+        bb_w, bb_b = ls[0].weight.data.detach().numpy(), ls[0].bias.data.detach().numpy()
         bb_var = model.addMVar(4, lb=lb, ub=ub, name="skip_var")
-        skip_const = model.addConstrs(bb_W[i] @ input_vars + bb_b[i] == bb_var[i] for i in range(len(bb_W)))
+        skip_const = model.addConstrs(bb_w[i] @ input_vars + bb_b[i] == bb_var[i] for i in range(len(bb_w)))
         max_var = model.addVar(lb=-float("inf"))
         model.addGenConstrMax(max_var, bb_var.tolist())
 
@@ -435,10 +433,10 @@ class ICNN_Logical(ICNN):
         model.addConstr(new_in[1] == max_var)
 
         if self.with_two_layers:
-            affine_W = ls[1].weight.data.detach().numpy()
+            affine_w = ls[1].weight.data.detach().numpy()
             affine_var1 = model.addMVar(4, lb=-float("inf"))
             affine_const = model.addConstrs(
-                affine_W[i] @ new_in == affine_var1[i] for i in range(len(affine_W)))
+                affine_w[i] @ new_in == affine_var1[i] for i in range(len(affine_w)))
 
             affine_W2 = ls[2].weight.data.detach().numpy()
             affine_var2 = model.addMVar(3, lb=-float("inf"))
@@ -447,11 +445,10 @@ class ICNN_Logical(ICNN):
             max_var2 = model.addVar(lb=-float("inf"))
             model.addGenConstrMax(max_var2, affine_var2.tolist())
         else:
-            affine_W = ls[1].weight.data.detach().numpy()
-            # todo das kann man vereinfachen in dem man mit "with_two_layers zusammenlegt und die dimension automatisch auswählt
+            affine_w = ls[1].weight.data.detach().numpy()
             affine_var1 = model.addMVar(3, lb=-float("inf"))
             affine_const = model.addConstrs(
-                affine_W[i] @ new_in == affine_var1[i] for i in range(len(affine_W)))
+                affine_w[i] @ new_in == affine_var1[i] for i in range(len(affine_w)))
             max_var2 = model.addVar(lb=-float("inf"))
             model.addGenConstrMax(max_var2, affine_var1.tolist())
 
@@ -472,7 +469,7 @@ class ICNN_Logical(ICNN):
         parameter_list[1].data = torch.add(- torch.matmul(parameter_list[0], mean), parameter_list[1])
 
 
-class ICNN_Approx_Max(ICNN):
+class ICNNApproxMax(ICNN):
 
     def __init__(self, *args, maximum_function="max", function_parameter=1, use_training_setup=True, **kwargs):
         super().__init__(*args, **kwargs)
@@ -549,9 +546,9 @@ class ICNN_Approx_Max(ICNN):
         ub = bounds[-1][1]  # todo richtige box bounds anwenden (die vom zu approximierenden Layer)
         ls = self.ls
 
-        bb_W, bb_b = ls[0].weight.data.detach().numpy(), ls[0].bias.data.detach().numpy()
+        bb_w, bb_b = ls[0].weight.data.detach().numpy(), ls[0].bias.data.detach().numpy()
         bb_var = model.addMVar(4, lb=lb, ub=ub, name="skip_var")
-        skip_const = model.addConstrs(bb_W[i] @ input_vars + bb_b[i] == bb_var[i] for i in range(len(bb_W)))
+        skip_const = model.addConstrs(bb_w[i] @ input_vars + bb_b[i] == bb_var[i] for i in range(len(bb_w)))
         max_var = model.addVar(lb=-float("inf"))
         model.addGenConstrMax(max_var, bb_var.tolist())
 

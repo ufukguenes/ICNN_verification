@@ -1,13 +1,12 @@
 import torch
 import gurobipy as grp
-import script.Verification.VerificationBasics as verbas
 
 
-def sequential(predictor, input, output_size, label, eps=0.01, time_limit=None, bound=None):
+def sequential(predictor, input_x, output_size, label, eps=0.01, time_limit=None, bound=None):
     m = grp.Model()
-    input_flattened = torch.flatten(input)
+    input_flattened = torch.flatten(input_x)
     input_size = input_flattened.size(0)
-    bounds = verbas.calculate_box_bounds(predictor, [input_flattened.add(-eps), input_flattened.add(eps)], with_ReLU=False)
+    bounds = predictor.calculate_box_bounds(m, [input_flattened.add(-eps), input_flattened.add(eps)], with_ReLU=False)
 
     bounds = [[elem[0].detach().tolist(), elem[1].detach().tolist()] for elem in bounds]
 
@@ -25,7 +24,7 @@ def sequential(predictor, input, output_size, label, eps=0.01, time_limit=None, 
     m.addConstrs(input_var[i] <= input_flattened[i] + eps for i in range(input_size))
     m.addConstrs(input_var[i] >= input_flattened[i] - eps for i in range(input_size))
 
-    verbas.add_constr_for_sequential_icnn(m, predictor, input_var, output_var, bounds)
+    predictor.add_constraints(m, input_var, bounds)
 
     lower_diff_bound = [lb - bounds[-1][1][label] for lb in bounds[-1][0]]
     upper_diff_bound = [ub - bounds[-1][0][label] for ub in bounds[-1][1]]

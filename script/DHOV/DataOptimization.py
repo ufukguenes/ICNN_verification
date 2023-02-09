@@ -4,6 +4,7 @@ import time
 import torch
 from functorch import vmap
 
+
 def gradient_descent_data_optim(icnn, samples):
     new_samples = torch.empty_like(samples, dtype=torch.float64)
     for h, elem in enumerate(samples):
@@ -49,7 +50,7 @@ def adam_data_optim(icnn, samples):
 def test_all(icnn, all_sample, threshold=0.02):
     avg = torch.zeros(0, dtype=torch.float64)
     num_sample = 10
-    #num_sample = len(all_sample)
+    # num_sample = len(all_sample)
 
     for i in range(num_sample):
         rand = random.randint(0, len(all_sample) - 1)
@@ -85,13 +86,11 @@ def even_gradient(icnn, sample, threshold=0.001):
     new_2 = torch.add(point_2, grad_2[0])
     new_out_1 = icnn(new_1)
     new_out_2 = icnn(new_2)
-    return True, ((point_1, new_1), (point_2, new_2))
-    avg_norm = (torch.linalg.norm(grad_1) + torch.linalg.norm(grad_2)) / 2
-    threshold = threshold
+    # return True, ((point_1, new_1), (point_2, new_2))
 
     out = abs(new_out_1 - new_out_2) < threshold
-    l = torch.nn.MSELoss()(new_out_1 - new_out_2, torch.zeros_like(new_out_1, dtype=torch.float64))
-    return out, torch.unsqueeze(l, dim=0)
+    loss = torch.nn.MSELoss()(new_out_1 - new_out_2, torch.zeros_like(new_out_1, dtype=torch.float64))
+    return out, torch.unsqueeze(loss, dim=0)
 
 
 def get_grad_output(icnn, sample):

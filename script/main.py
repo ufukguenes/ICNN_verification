@@ -67,7 +67,7 @@ if init:
 plots.plt_mesh()
 
 for i in range(100):
-    history = train_icnn_adversarial(icnn, adversarial, train_loader, adversarial_loader, epochs=epochs, train_ICNN=False, hyper_lambda=hyper_lambda, use_max_distance=True)
+    history = train_icnn_adversarial(icnn, adversarial, train_loader, adversarial_loader, epochs=epochs, train_icnn=False, hyper_lambda=hyper_lambda, use_max_distance=True)
     if i % 10 == 0:
         print("run {}".format(i))
         plots.plt_adversarial_dotted()

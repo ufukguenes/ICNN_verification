@@ -5,13 +5,14 @@ import torch
 
 import torch.nn as nn
 
-from script.NeuralNets.lossFunction import deep_hull_simple_loss
+from script.NeuralNets.lossFunction import deep_hull_simple_loss, deep_hull_loss
 from script.NeuralNets.testFunction import test
 from script.Optimizer.sdlbfgs import SdLBFGS
 import script.DHOV.DataOptimization as dop
 
-def train_icnn(model, train_loader, ambient_loader, epochs=10, optimizer="adam",
-               return_history=False, sequential=False, adapt_lambda="none",  hyper_lambda=1, preemptive_stop=True, min_loss_change=1e-6):
+
+def train_icnn(model, train_loader, ambient_loader, epochs=10, optimizer="adam", return_history=False,
+               sequential=False, adapt_lambda="none",  hyper_lambda=1, preemptive_stop=True, min_loss_change=1e-6):
     history = []
 
     params_to_train = model.parameters()
@@ -49,12 +50,9 @@ def train_icnn(model, train_loader, ambient_loader, epochs=10, optimizer="adam",
                 prediction_ambient = model(X_ambient)
                 output = model(X)
                 loss = deep_hull_simple_loss(output, prediction_ambient, hyper_lambda=hyper_lambda)
-                #add = dop.test_all(model, X)
-                #loss = loss + 100 * add[1]
                 opt.zero_grad()
                 loss.backward()
                 opt.step()
-
 
             if not sequential:
                 with torch.no_grad():
@@ -117,60 +115,7 @@ def train_icnn(model, train_loader, ambient_loader, epochs=10, optimizer="adam",
         return history
 
 
-def train_icnn_lbfgs(model, train_loader, ambient_loader, epochs=10, return_history=False, sequential=False,
-                     hyper_lambda=1):
-    history = []
-    opt = torch.optim.LBFGS(model.parameters())
-    for epoch in range(epochs):
-        train_loss = 0
-        train_n = 0
-
-        print("=== Epoch: {}===".format(epoch))
-        epoch_start_time = time.time()
-        for i, (X, X_ambient) in enumerate(zip(train_loader, ambient_loader)):
-
-            def closure():
-                opt.zero_grad()
-                prediction_ambient = model(X_ambient)
-                output = model(X)
-                loss = deep_hull_simple_loss(output, prediction_ambient, hyper_lambda=hyper_lambda)
-                loss.backward()
-                return loss
-
-            opt.step(closure)
-
-            if not sequential:
-                with torch.no_grad():
-                    for w in model.ws:
-                        for p in w.parameters():
-                            if len(p.size()) > 1:  # we have a matrix
-                                # only want positive entries
-                                p[:] = torch.maximum(torch.Tensor([0]), p)
-            else:
-                with torch.no_grad():
-                    for p in model.parameters():
-                        if len(p.size()) > 1:  # we have a matrix
-                            # only want positive entries
-                            p[:] = torch.maximum(torch.Tensor([0]), p)
-
-            train_loss += loss.item()
-            train_n += 1
-
-            if return_history:
-                history.append(train_loss / train_n)
-
-            if i % 100 == 0:
-                print("batch = {}, mean loss = {}".format(i, train_loss / train_n))
-
-        print("batch = {}, mean loss = {}".format(len(train_loader), train_loss / train_n))
-        print("time per epoch: {}".format(time.time() - epoch_start_time))
-
-    if return_history:
-        return history
-
-
-def train_icnn_outer(model, train_loader, ambient_loader, epochs=10, opt=None, return_history=False,
-                     sequential=False):
+def train_icnn_outer(model, train_loader, ambient_loader, epochs=10, opt=None, return_history=False, sequential=False):
     history = []
     if opt is None:
         opt = torch.optim.Adam(model.parameters())
@@ -181,7 +126,6 @@ def train_icnn_outer(model, train_loader, ambient_loader, epochs=10, opt=None, r
     for epoch in range(epochs):
         train_loss = 0
         train_n = 0
-
 
         print("=== Epoch: {}===".format(epoch))
         epoch_start_time = time.time()
@@ -235,7 +179,7 @@ def train_icnn_outer(model, train_loader, ambient_loader, epochs=10, opt=None, r
         return history
 
 
-def train_icnn_adversarial(model, adversarial, train_loader, adversarial_loader, epochs=10, train_ICNN=True,
+def train_icnn_adversarial(model, adversarial, train_loader, adversarial_loader, epochs=10, train_icnn=True,
                            opt_model=None, opt_adv=None, return_history=False, hyper_lambda=1, use_max_distance=False):
     history = []
     model.train()
@@ -269,7 +213,7 @@ def train_icnn_adversarial(model, adversarial, train_loader, adversarial_loader,
 
             opt_adv.step()
 
-            if train_ICNN:
+            if train_icnn:
                 opt_model.step()
                 with torch.no_grad():
                     for w in model.ws:

@@ -100,12 +100,12 @@ def start_verification(nn: SequentialNN, input, icnns, eps=0.001, icnn_batch_siz
                 plt_inc_amb("original affin e" + str(i), original_included_space.tolist(),
                             original_ambient_space.tolist())
 
-        included_space = ds.apply_ReLU_transform(included_space)
-        ambient_space = ds.apply_ReLU_transform(ambient_space)
+        included_space = ds.apply_relu_transform(included_space)
+        ambient_space = ds.apply_relu_transform(ambient_space)
 
         if should_plot in valid_should_plot:
-            original_included_space = ds.apply_ReLU_transform(original_included_space)
-            original_ambient_space = ds.apply_ReLU_transform(original_ambient_space)
+            original_included_space = ds.apply_relu_transform(original_included_space)
+            original_ambient_space = ds.apply_relu_transform(original_ambient_space)
             if should_plot == "detailed":
                 plt_inc_amb("relu " + str(i), included_space.tolist(), ambient_space.tolist())
                 plt_inc_amb("original relu e" + str(i), original_included_space.tolist(),
@@ -236,15 +236,15 @@ def start_verification(nn: SequentialNN, input, icnns, eps=0.001, icnn_batch_siz
         # verify and enlarge convex approximation
         if use_over_approximation:
             if i == 0:
-                adversarial_input, c = ver.verification(current_icnn, has_ReLU=True,
-                                                        center_eps_W_b=[center.detach().numpy(), eps,
+                adversarial_input, c = ver.verification(current_icnn, has_relu=True,
+                                                        center_eps_w_b=[center.detach().numpy(), eps,
                                                                         affine_w.detach().numpy(),
                                                                         affine_b.detach().numpy()])
             else:
                 prev_icnn = icnns[current_layer_index - 1]
                 # prev_W, prev_b = parameter_list[i-2].detach().numpy(), parameter_list[i - 1].detach().numpy()
-                adversarial_input, c = ver.verification(current_icnn, has_ReLU=True,
-                                                        icnn_W_b_c=[prev_icnn, affine_w.detach().numpy(),
+                adversarial_input, c = ver.verification(current_icnn, has_relu=True,
+                                                        icnn_w_b_c=[prev_icnn, affine_w.detach().numpy(),
                                                                     affine_b.detach().numpy()])
 
             current_icnn.apply_enlargement(c)
