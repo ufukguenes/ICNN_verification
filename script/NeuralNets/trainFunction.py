@@ -11,14 +11,10 @@ from script.Optimizer.sdlbfgs import SdLBFGS
 import script.DHOV.DataOptimization as dop
 
 def train_icnn(model, train_loader, ambient_loader, epochs=10, optimizer="adam",
-               return_history=False, sequential=False, adapt_lambda="none",  hyper_lambda=1, preemptive_stop=True, min_loss_change=1e-6,
-               train_box_bounds=False):
+               return_history=False, sequential=False, adapt_lambda="none",  hyper_lambda=1, preemptive_stop=True, min_loss_change=1e-6):
     history = []
-    if train_box_bounds:
-        params_to_train = model.parameters()
-    else:
-        params_to_train = list(model.parameters())
-        params_to_train = params_to_train[:len(params_to_train) - 4] # todo anpassen auf andere architektur falls merge
+
+    params_to_train = model.parameters()
     if optimizer == "adam":
         opt = torch.optim.Adam(params_to_train)
     elif optimizer == "LBFGS":

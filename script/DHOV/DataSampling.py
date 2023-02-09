@@ -4,24 +4,17 @@ import numpy as np
 import torch
 import gurobipy as grp
 
-import script.Verification.VerificationBasics as verbas
-import script.Verification.MilpVerification as milp
 
-
-def sample_max_radius(icnn, sample_size, c=0, box_bounds=None):
+def sample_max_radius(icnn, sample_size):
     m = grp.Model()
     m.Params.LogToConsole = 0
 
     icnn_input_size = icnn.layer_widths[0]
     input_to_icnn_one = m.addMVar(icnn_input_size, lb=-float('inf'))
     input_to_icnn_two = m.addMVar(icnn_input_size, lb=-float('inf'))
-    output_of_icnn_one = m.addMVar(1, lb=-float('inf'))
-    output_of_icnn_two = m.addMVar(1, lb=-float('inf'))
-    bounds = verbas.calculate_box_bounds(icnn, None, is_sequential=False)
-    verbas.add_constr_for_non_sequential_icnn(m, icnn, input_to_icnn_one, output_of_icnn_one, bounds)
-    m.addConstr(output_of_icnn_one <= c)
-    verbas.add_constr_for_non_sequential_icnn(m, icnn, input_to_icnn_two, output_of_icnn_two, bounds)
-    m.addConstr(output_of_icnn_two <= c)
+    bounds = icnn.calculate_box_bounds(None)
+    output_of_icnn_one = icnn.add_max_output_constraints(m, input_to_icnn_one, bounds)
+    output_of_icnn_two = icnn.add_max_output_constraints(m, input_to_icnn_two, bounds)
 
     difference = m.addVar(lb=-float('inf'))
 
@@ -52,10 +45,6 @@ def sample_max_radius(icnn, sample_size, c=0, box_bounds=None):
         choice_for_upper_bound = [center_values[k] + eps_values[k], center_values[k] + eps_values[k]]
         choice_for_lower_bound = [center_values[k] - eps_values[k], center_values[k] - eps_values[k]]
 
-        if box_bounds is not None:
-            choice_for_upper_bound.append(box_bounds[1][k].item())
-            choice_for_lower_bound.append(box_bounds[0][k].item())
-
         distance_to_center_upper = [abs(center_values[k] - choice_for_upper_bound[i]) for i in
                                     range(len(choice_for_upper_bound))]
         distance_to_center_lower = [abs(center_values[k] - choice_for_lower_bound[i]) for i in
@@ -74,7 +63,7 @@ def sample_max_radius(icnn, sample_size, c=0, box_bounds=None):
     for samp in samples:
         samp = torch.unsqueeze(samp, 0)
         out = icnn(samp)
-        if out <= c:
+        if out <= 0:
             included_space = torch.cat([included_space, samp], dim=0)
         else:
             ambient_space = torch.cat([ambient_space, samp], dim=0)

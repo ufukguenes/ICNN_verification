@@ -561,7 +561,7 @@ class ICNN_Approx_Max(ICNN):
 
         max_var2 = model.addVar(lb=-float("inf"))
 
-        if self.use_training_setup:
+        if False and self.use_training_setup: #todo only works with exact max constraints
             if self.maximum_function == "max":
                 model.addGenConstrMax(max_var2, new_in.tolist())
             elif self.maximum_function == "Boltzmann":

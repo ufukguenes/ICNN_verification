@@ -5,7 +5,7 @@ from torchvision.transforms import Compose, ToTensor, Normalize
 import DataSampling as ds
 import DHOV as dhov
 from torch.utils.data import DataLoader
-from script.NeuralNets.Networks import SequentialNN, ICNN
+from script.NeuralNets.Networks import SequentialNN, ICNN, ICNN_Approx_Max, ICNN_Logical
 from script.dataInit import Rhombus, ConvexDataset
 
 
@@ -159,12 +159,24 @@ def net_2d():
 
 
     test_image = torch.tensor([[0, 0]], dtype=torch.float64)
+
+    icnns = []
+    for i in range((len(parameter_list) - 2) // 2):
+        layer_index = int(i / 2)
+        icnn_input_size = nn.layer_widths[layer_index + 1]
+        #next_net = ICNN([icnn_input_size, 10, 10, 10, 2 * icnn_input_size, 1], force_positive_init=False, init_scaling=10, init_all_with_zeros=False)
+        next_net = ICNN_Logical([icnn_input_size, 10, 10, 10, 1], force_positive_init=False, with_two_layers=False, init_scaling=10, init_all_with_zeros=False)
+        #next_net = ICNN_Approx_Max([icnn_input_size, 10, 10, 10, 1], maximum_function="Mellowmax", function_parameter=10, force_positive_init=False, init_scaling=10, init_all_with_zeros=False)
+
+        icnns.append(next_net)
+
+
     icnns, c_values = \
-        dhov.start_verification(nn, test_image, eps=1, icnn_epochs=10, sample_count=1000, sample_new=False, use_over_approximation=True,
+        dhov.start_verification(nn, test_image, icnns, eps=1, icnn_epochs=100, sample_count=1000, sample_new=True, use_over_approximation=True,
                                 sample_over_input_space=False, sample_over_output_space=True, force_inclusion=1,
                                 keep_ambient_space=False, use_grad_descent=False, train_outer=False, preemptive_stop=False,
                                 even_gradient_training=False,
-                                should_plot="verification", optimizer="SdLBFGS", init_mode="logical", adapt_lambda="none")
+                                should_plot="detailed", optimizer="adam", init_network=True, adapt_lambda="none")
 
 def cifar_net():
     batch_size = 10

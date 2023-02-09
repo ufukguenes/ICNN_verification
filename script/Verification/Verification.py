@@ -67,7 +67,6 @@ def verification(icnn, center_eps_W_b=None, A_b=None, icnn_W_b_c=None, has_ReLU=
         # W und b bilden die affine Transformation des Layers, dass gerade verifiziert/ vergrößert werden soll
         W = icnn_W_b_c[1]
         b = icnn_W_b_c[2]
-        c = icnn_W_b_c[3]
 
         # todo wie kann ich hier wiederverwenden, dass ich das constraint_icnn schon mal verifiziert habe?
         constraint_icnn_input_size = constraint_icnn.layer_widths[0]
