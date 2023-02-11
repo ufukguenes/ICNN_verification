@@ -1,12 +1,20 @@
+import numpy as np
+import scipy.linalg
 import torch
+from gurobipy import Model
+from matplotlib import pyplot as plt
 from torchvision.datasets import CIFAR10
 from torchvision.transforms import Compose, ToTensor, Normalize
+import gurobipy as grp
 
 import DataSampling as ds
 import DHOV as dhov
 from torch.utils.data import DataLoader
 from script.NeuralNets.Networks import SequentialNN, ICNN, ICNNApproxMax, ICNNLogical
+from script.Verification.Verifier import SingleNeuronVerifier, MILPVerifier, DHOVVerifier
 from script.dataInit import Rhombus, ConvexDataset
+import script.Verification.SingleNeuronVerification as snv
+import polytope as pc
 
 
 def last_layer_identity(last_icnn: ICNN, last_c, W, b, A_out, b_out, nn_bounds, solver_time_limit, solver_bound):
@@ -160,23 +168,76 @@ def net_2d():
 
     test_image = torch.tensor([[0, 0]], dtype=torch.float64)
 
+
     icnns = []
     for i in range((len(parameter_list) - 2) // 2):
         layer_index = int(i / 2)
         icnn_input_size = nn.layer_widths[layer_index + 1]
         #next_net = ICNN([icnn_input_size, 10, 10, 10, 2 * icnn_input_size, 1], force_positive_init=False, init_scaling=10, init_all_with_zeros=False)
         next_net = ICNNLogical([icnn_input_size, 10, 10, 10, 1], force_positive_init=False, with_two_layers=False, init_scaling=10, init_all_with_zeros=False)
-        #next_net = ICNN_Approx_Max([icnn_input_size, 10, 10, 10, 1], maximum_function="Mellowmax", function_parameter=10, force_positive_init=False, init_scaling=10, init_all_with_zeros=False)
+        #next_net = ICNNApproxMax([icnn_input_size, 10, 10, 10, 1], maximum_function="SMU", function_parameter=0.1, force_positive_init=False, init_scaling=10, init_all_with_zeros=False)
 
         icnns.append(next_net)
 
 
-    icnns, c_values = \
-        dhov.start_verification(nn, test_image, icnns, eps=1, icnn_epochs=100, sample_count=1000, sample_new=True, use_over_approximation=True,
-                                sample_over_input_space=False, sample_over_output_space=True, force_inclusion=1,
-                                keep_ambient_space=False, use_grad_descent=False, train_outer=False, preemptive_stop=False,
+    icnns = \
+        dhov.start_verification(nn, test_image, icnns, eps=1, icnn_epochs=100, icnn_batch_size=1000, sample_count=1000, sample_new=True, use_over_approximation=True,
+                                sample_over_input_space=False, sample_over_output_space=True, force_inclusion_steps=0,
+                                keep_ambient_space=False, data_grad_descent_steps=0, train_outer=False, preemptive_stop=False,
                                 even_gradient_training=False,
-                                should_plot="detailed", optimizer="adam", init_network=True, adapt_lambda="none")
+                                should_plot="none", optimizer="SdLBFGS", init_network=True, adapt_lambda="none")
+
+    milp_verifier = MILPVerifier(nn, test_image, 1)
+    snv_verifier = SingleNeuronVerifier(nn, test_image, 1)
+    dhov_verifier = DHOVVerifier(icnns, nn, test_image, 1)
+    dhov_affine_verifier = DHOVVerifier(icnns, nn, test_image, 1, with_affine=True)
+
+    milp_verifier.generate_constraints_for_net()
+    snv_verifier.generate_constraints_for_net()
+    dhov_verifier.generate_constraints_for_net()
+    dhov_affine_verifier.generate_constraints_for_net()
+
+    input_flattened = torch.flatten(test_image)
+    input_size = input_flattened.size(0)
+    bounds = nn.calculate_box_bounds([input_flattened.add(-1), input_flattened.add(1)], with_relu=True)
+
+    test_space = torch.empty((0, input_flattened.size(0)), dtype=torch.float64)
+    box_bound_output_space = ds.samples_uniform_over(test_space, 3000, bounds[-1])
+
+    in_snv = []
+    in_milp = []
+    in_dhov = []
+    in_dhov_affine = []
+    for i, sample in enumerate(box_bound_output_space):
+        if i % 10 == 0:
+            print(i)
+        in_milp.append(milp_verifier.test_feasibility(sample))
+        in_snv.append(snv_verifier.test_feasibility(sample))
+        in_dhov.append(dhov_verifier.test_feasibility(sample))
+        in_dhov_affine.append(dhov_affine_verifier.test_feasibility(sample))
+
+    plt_inc_amb("milp", box_bound_output_space.detach().numpy(), in_milp)
+    plt_inc_amb("snv", box_bound_output_space.detach().numpy(), in_snv)
+    plt_inc_amb("dhov", box_bound_output_space.detach().numpy(), in_dhov)
+    plt_inc_amb("dhov with affine", box_bound_output_space.detach().numpy(), in_dhov_affine)
+
+    """A_snv, b_snv = to_A_b(snv_model)
+    A_icnn, b_icnn = to_A_b(icnn_model)
+
+    snv_polytope = pc.Polytope(A_snv, b_snv)
+    icnn_polytope = pc.Polytope(A_icnn, b_icnn)
+
+    snv_convex = pc.is_convex(pc.Region([snv_polytope]))
+    icnn_convex = pc.is_convex(pc.Region([icnn_polytope]))
+
+    snv_volume = pc.volume(pc.Region([snv_polytope]))
+    icnn_volume = pc.volume(pc.Region([icnn_polytope]))
+    snv_extreme = pc.extreme(snv_polytope)
+    icnn_extreme = pc.extreme(icnn_polytope)
+
+    print(snv_polytope)
+    print(icnn_volume)"""
+
 
 def cifar_net():
     batch_size = 10
@@ -206,8 +267,56 @@ def cifar_net():
     icnns, c_values = \
         dhov.start_verification(nn, testimage, eps=1, icnn_epochs=100, sample_new=True, use_over_approximation=True,
                                 sample_over_input_space=False, sample_over_output_space=True,
-                                keep_ambient_space=False, use_grad_descent=False, train_outer=False,
+                                keep_ambient_space=False, data_grad_descent_steps=False, train_outer=False,
                                 should_plot="detailed")
+
+
+def to_A_b(model):
+    #print(model.display())
+    matrix_a = model.getA().toarray()
+    constr = model.getConstrs()
+    con_by_name = model.getConstrByName("lb_const0[0]")
+
+    lhs = []
+    rhs = []
+    #print("==============================")
+    for i, elem in enumerate(constr):
+        #print(elem.ConstrName)
+        if elem.Sense == "<":
+            lhs.append(matrix_a[i])
+            rhs.append(elem.RHS)
+        elif elem.Sense == ">":
+            lhs.append(-1 * matrix_a[i])
+            rhs.append(-1 * elem.RHS)
+        elif elem.Sense == "=":
+            lhs.append(matrix_a[i])
+            rhs.append(elem.RHS)
+            lhs.append(-1 * matrix_a[i])
+            rhs.append(-1 * elem.RHS)
+
+
+    lhs = np.array(lhs)
+    rhs = np.array(rhs)
+    lhs[-0 == lhs] = 0
+    rhs[-0 == rhs] = 0
+    return lhs, rhs
+
+def plt_inc_amb(caption, points, is_true):
+    true_points = []
+    false_points = []
+    for i in range(len(points)):
+        if is_true[i]:
+            true_points.append(points[i])
+        else:
+            false_points.append(points[i])
+
+    plt.figure(figsize=(20, 10))
+    plt.scatter(list(map(lambda x: x[0], false_points)), list(map(lambda x: x[1], false_points)), c="#ff7f0e")
+    plt.scatter(list(map(lambda x: x[0], true_points)), list(map(lambda x: x[1], true_points)), c="#1f77b4")
+    plt.title(caption)
+    plt.show()
 
 #cifar_net()
 net_2d()
+
+

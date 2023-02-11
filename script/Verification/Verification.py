@@ -70,7 +70,7 @@ def verification(icnn, center_eps_w_b=None, a_b=None, icnn_w_b_c=None, has_relu=
         input_to_previous_layer = m.addMVar(constraint_icnn_input_size, lb=-float('inf'))
         output_of_layer_approx = m.addMVar(1, lb=-float('inf'))
 
-        bounds = verbas.calculate_box_bounds(constraint_icnn, None, is_sequential=False)
+        bounds = constraint_icnn.calculate_box_bounds(None)
 
         output_of_layer_approx = constraint_icnn.add_max_output_constraints(m, input_to_previous_layer, bounds)
 
@@ -84,7 +84,7 @@ def verification(icnn, center_eps_w_b=None, a_b=None, icnn_w_b_c=None, has_relu=
     else:
         return
 
-    bounds = verbas.calculate_box_bounds(icnn, None, is_sequential=False)
+    bounds = icnn.calculate_box_bounds(None)
     output_var = icnn.add_constraints(m, input_var, bounds)
 
     m.update()

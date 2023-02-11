@@ -1,14 +1,13 @@
 import torch
 import gurobipy as grp
+import script.Verification.VerificationBasics as verbas
 
 
-def sequential(predictor, input_x, output_size, label, eps=0.01, time_limit=None, bound=None):
+def sequential(predictor, input_x, eps, feasible_input=None, time_limit=None, bound=None):
     m = grp.Model()
     input_flattened = torch.flatten(input_x)
     input_size = input_flattened.size(0)
-    bounds = predictor.calculate_box_bounds(m, [input_flattened.add(-eps), input_flattened.add(eps)], with_ReLU=False)
-
-    bounds = [[elem[0].detach().tolist(), elem[1].detach().tolist()] for elem in bounds]
+    bounds = predictor.calculate_box_bounds([input_flattened.add(-eps), input_flattened.add(eps)], with_relu=False)
 
     input_flattened = input_flattened.numpy()
 
@@ -18,39 +17,38 @@ def sequential(predictor, input_x, output_size, label, eps=0.01, time_limit=None
     if bound is not None:
         m.setParam("BestObjStop", bound)
 
-    input_var = m.addMVar(input_size, lb=[elem - eps for elem in input_flattened], ub=[elem + eps for elem in input_flattened], name="in_var")
-    output_var = m.addMVar(output_size, lb=bounds[-1][0], ub=bounds[-1][1], name="output_var")
+    if feasible_input is None:
+        input_var = m.addMVar(input_size, lb=[elem - eps for elem in input_flattened],
+                              ub=[elem + eps for elem in input_flattened], name="in_var")
+        m.addConstrs(input_var[i] <= input_flattened[i] + eps for i in range(input_size))
+        m.addConstrs(input_var[i] >= input_flattened[i] - eps for i in range(input_size))
+    else:
+        input_var = m.addMVar(input_size, lb=-float("inf"), name="in_var")
+        m.addConstrs(input_var[i] <= feasible_input[i] for i in range(input_size))
+        m.addConstrs(input_var[i] >= feasible_input[i] for i in range(input_size))
 
-    m.addConstrs(input_var[i] <= input_flattened[i] + eps for i in range(input_size))
-    m.addConstrs(input_var[i] >= input_flattened[i] - eps for i in range(input_size))
+    parameter_list = list(predictor.parameters())
+    in_var = input_var
+    for i in range(0, len(parameter_list) - 2, 2):
+        lb = bounds[int(i / 2)][0].detach().numpy()
+        ub = bounds[int(i / 2)][1].detach().numpy()
+        W, b = parameter_list[i].detach().numpy(), parameter_list[i + 1].detach().numpy()
 
-    predictor.add_constraints(m, input_var, bounds)
+        out_fet = len(b)
+        out_vars = m.addMVar(out_fet, lb=lb, ub=ub, name="affine_var" + str(i))
+        const = m.addConstrs((W[i] @ in_var + b[i] == out_vars[i] for i in range(len(W))))
 
-    lower_diff_bound = [lb - bounds[-1][1][label] for lb in bounds[-1][0]]
-    upper_diff_bound = [ub - bounds[-1][0][label] for ub in bounds[-1][1]]
+        relu_in_var = out_vars
+        relu_vars = verbas.add_relu_constr(m, relu_in_var, out_fet, lb, ub)
+        m.update()
+        in_var = relu_vars
 
-    lower_diff_bound.pop(label)
-    upper_diff_bound.pop(label)
+    lb = bounds[-1][0].detach().numpy()
+    ub = bounds[-1][1].detach().numpy()
+    W, b = parameter_list[len(parameter_list) - 2].detach().numpy(), parameter_list[-1].detach().numpy()
 
-    difference = m.addVars(output_size - 1, lb=lower_diff_bound, ub=upper_diff_bound)
-    m.addConstrs(difference[i] == output_var.tolist()[i] - output_var.tolist()[label] for i in range(0, label))
-    m.addConstrs(
-        difference[i - 1] == output_var.tolist()[i] - output_var.tolist()[label] for i in range(label + 1, output_size))
+    out_fet = len(b)
+    out_vars = m.addMVar(out_fet, lb=lb, ub=ub, name="last_affine_var")
+    const = m.addConstrs((W[i] @ in_var + b[i] == out_vars[i] for i in range(len(W))), name="out_const")
 
-    min_diff_bound = min(lower_diff_bound)
-    max_diff_bound = min(upper_diff_bound)
-    max_var = m.addVar(lb=min_diff_bound, ub=bound)
-    m.addConstr(max_var == grp.max_(difference))
-
-    m.update()
-    m.setObjective(max_var, grp.GRB.MAXIMIZE)
-    m.optimize()
-
-    if m.Status == grp.GRB.OPTIMAL or m.Status == grp.GRB.TIME_LIMIT or m.Status == grp.GRB.USER_OBJ_LIMIT:
-        inp = input_var.getAttr("x")
-        for o in difference.select():
-            print(o.getAttr("x"))
-        print("optimum solution with value \n {}".format(output_var.getAttr("x")))
-        print("max_var {}".format(max_var.getAttr("x")))
-        test_inp = torch.tensor([inp], dtype=torch.float64)
-        return test_inp, output_var
+    return m
