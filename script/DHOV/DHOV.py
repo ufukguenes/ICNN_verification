@@ -27,8 +27,8 @@ adapt_lambda has values: none, high_low, included
 def start_verification(nn: SequentialNN, input, icnns, eps=0.001, icnn_batch_size=1000, icnn_epochs=100,
                        sample_count=1000,
                        keep_ambient_space=False, sample_new=True, use_over_approximation=True,
-                       sample_over_input_space=False, sample_over_output_space=True, use_grad_descent=False,
-                       train_outer=False, preemptive_stop=True, even_gradient_training=False, force_inclusion=1,
+                       sample_over_input_space=False, sample_over_output_space=True, data_grad_descent_steps=0,
+                       train_outer=False, preemptive_stop=True, even_gradient_training=False, force_inclusion_steps=0,
                        init_network=False, adapt_lambda="none", should_plot='none', optimizer="adam"):
     valid_adapt_lambda = ["none", "high_low", "included"]
     valid_should_plot = ["none", "simple", "detailed", "verification"]
@@ -43,8 +43,10 @@ def start_verification(nn: SequentialNN, input, icnns, eps=0.001, icnn_batch_siz
         raise AttributeError("Expected plotting mode one of: {}, actual: {}".format(valid_should_plot, should_plot))
     if optimizer not in valid_optimizer:
         raise AttributeError("Expected optimizer one of: {}, actual: {}".format(valid_optimizer, optimizer))
-    if force_inclusion <= 0:
-        raise AttributeError("Expected force_inclusion to be:  > 0 , got: {}".format(force_inclusion))
+    if force_inclusion_steps < 0:
+        raise AttributeError("Expected force_inclusion to be:  >= 0 , got: {}".format(force_inclusion_steps))
+    if data_grad_descent_steps < 0:
+        raise AttributeError("Expected force_inclusion to be:  >= 0 , got: {}".format(data_grad_descent_steps))
     if len(icnns) != (len(parameter_list) - 2) / 2:
         raise AttributeError("For each layer one ICNN is needed to be trained. "
                              "Amount provided: {}, expected: {}".format(len(icnns), (len(parameter_list) - 2) / 2))
@@ -65,6 +67,9 @@ def start_verification(nn: SequentialNN, input, icnns, eps=0.001, icnn_batch_siz
 
     center = input_flattened
     current_icnn = icnns[0]
+
+    force_inclusion_steps += 1
+    data_grad_descent_steps += 1
 
     for i in range(0, len(parameter_list) - 2, 2):  # -2 because last layer has no ReLu activation
         current_layer_index = int(i / 2)
@@ -128,13 +133,10 @@ def start_verification(nn: SequentialNN, input, icnns, eps=0.001, icnn_batch_siz
         normalized_included_space, normalized_ambient_space = norm.normalize_data(included_space, ambient_space, mean,
                                                                                   std)
 
-        if optimizer == "LBFGS":  # todo does LBFGS support minibatch? I dont think so!
-            icnn_batch_size = len(normalized_ambient_space) + len(normalized_included_space)
         dataset = ConvexDataset(data=normalized_included_space)
-        train_loader = DataLoader(dataset, batch_size=icnn_batch_size, shuffle=False)
+        train_loader = DataLoader(dataset, batch_size=icnn_batch_size)
         dataset = ConvexDataset(data=normalized_ambient_space)
-        ambient_loader = DataLoader(dataset, batch_size=icnn_batch_size,
-                                    shuffle=False)  # todo shuffel alle wieder auf true setzen
+        ambient_loader = DataLoader(dataset, batch_size=icnn_batch_size)
 
         if init_network:
             low = box_bounds[current_layer_index][0]
@@ -144,66 +146,55 @@ def start_verification(nn: SequentialNN, input, icnns, eps=0.001, icnn_batch_siz
             current_icnn.init(low, up)
 
         # train icnn
-        epochs_per_inclusion = icnn_epochs // force_inclusion
-        epochs_in_last_inclusion = icnn_epochs % force_inclusion
-        for k in range(force_inclusion):
-            if k > 0:
-                if k == force_inclusion - 1 and epochs_in_last_inclusion > 0:
+        epochs_per_inclusion = icnn_epochs // force_inclusion_steps
+        epochs_in_last_inclusion = icnn_epochs % force_inclusion_steps
+        for inclusion_round in range(force_inclusion_steps):
+            if inclusion_round > 0:
+                if inclusion_round == force_inclusion_steps - 1 and epochs_in_last_inclusion > 0:
                     epochs_per_inclusion = epochs_in_last_inclusion
 
                 out = current_icnn(normalized_included_space)
                 max_out = torch.max(out)
                 current_icnn.apply_enlargement(max_out)
-
-            if use_grad_descent:
+            if data_grad_descent_steps > 1:
                 # todo sollte ich das noch dazu nehmen, dann wird ja ggf die anzahl samples
                 #  doppelt so groß und es dauert länger
                 untouched_normalized_ambient_space = normalized_ambient_space.detach().clone()
                 if should_plot in ["simple", "detailed"]:
                     plt_inc_amb("without gradient descent", normalized_included_space.tolist(),
                                 normalized_ambient_space.tolist())
+                for gd_round in range(data_grad_descent_steps):
+                    optimization_steps = 1000
 
-                num_optimizations = 1
-                optimization_steps = 1000
-
-                epochs_per_optimization = epochs_per_inclusion // (num_optimizations + 1)
-                modulo_epochs = epochs_per_inclusion % (num_optimizations + 1)
-
-                for h in range(num_optimizations + 1):
-
-                    if h < num_optimizations:
-                        epochs_in_run = epochs_per_optimization
+                    if gd_round == data_grad_descent_steps - 1:
+                        epochs_in_run = epochs_per_inclusion % data_grad_descent_steps
                     else:
-                        epochs_in_run = epochs_per_optimization + modulo_epochs
+                        epochs_in_run = epochs_per_inclusion // data_grad_descent_steps
 
-                    train_icnn(current_icnn, train_loader, ambient_loader, epochs=epochs_in_run, hyper_lambda=0.5,
+                    train_icnn(current_icnn, train_loader, ambient_loader, epochs=epochs_in_run, hyper_lambda=1,
                                optimizer=optimizer, adapt_lambda=adapt_lambda, preemptive_stop=preemptive_stop)
 
-                    if h < num_optimizations:
-                        for v in range(optimization_steps):
-                            # normalized_ambient_space =
-                            # dop.gradient_descent_data_optim(current_icnn, normalized_ambient_space.detach())
-                            normalized_ambient_space = dop.adam_data_optim(current_icnn,
-                                                                           normalized_ambient_space.detach())
-                        dataset = ConvexDataset(data=torch.cat(
-                            [normalized_ambient_space.detach(), untouched_normalized_ambient_space.detach()]))
-                        # todo hier muss ich noch verwalten was passiert wenn ambient space in die nächste runde
-                        #  übernommen wird
-                        if optimizer == "LBFGS":
-                            icnn_batch_size = len(torch.cat([normalized_ambient_space.detach(),
-                                                             untouched_normalized_ambient_space.detach()])) + len(
-                                normalized_included_space)
-                        ambient_loader = DataLoader(dataset, batch_size=icnn_batch_size, shuffle=False)
+                    for v in range(optimization_steps):
+                        # normalized_ambient_space =
+                        # dop.gradient_descent_data_optim(current_icnn, normalized_ambient_space.detach())
+                        normalized_ambient_space = dop.adam_data_optim(current_icnn, normalized_ambient_space.detach())
+                    dataset = ConvexDataset(data=torch.cat(
+                       [normalized_ambient_space.detach(), untouched_normalized_ambient_space.detach()]))
 
-                if should_plot in ["simple", "detailed"]:
-                    plt_inc_amb("with gradient descent", normalized_included_space.tolist(),
-                                torch.cat([normalized_ambient_space.detach(),
-                                           untouched_normalized_ambient_space.detach()]).tolist())
-                    plots = Plots_for(0, current_icnn, normalized_included_space.detach(), torch.cat(
-                        [normalized_ambient_space.detach(), untouched_normalized_ambient_space.detach()]).detach(),
-                                      [-2, 3], [-2, 3])
-                    plots.plt_mesh()
-                normalized_ambient_space = untouched_normalized_ambient_space  # todo das ist vielleicht unnötig
+                    # todo hier muss ich noch verwalten was passiert wenn ambient space in die nächste runde
+                    #  übernommen wird
+                    ambient_loader = DataLoader(dataset, batch_size=icnn_batch_size, shuffle=True)
+
+                    if should_plot in ["simple", "detailed"]:
+                        """plt_inc_amb("with gradient descent", normalized_included_space.tolist(),
+                                    torch.cat([normalized_ambient_space.detach(),
+                                               untouched_normalized_ambient_space.detach()]).tolist())"""
+                        plots = Plots_for(0, current_icnn, normalized_included_space.detach(), torch.cat(
+                            [normalized_ambient_space.detach(), untouched_normalized_ambient_space.detach()]).detach(),
+                                          [-2, 3], [-2, 3])
+
+                        plots.plt_mesh()
+
             else:
                 train_icnn(current_icnn, train_loader, ambient_loader, epochs=epochs_per_inclusion, hyper_lambda=1,
                            optimizer=optimizer, adapt_lambda=adapt_lambda, preemptive_stop=preemptive_stop)
