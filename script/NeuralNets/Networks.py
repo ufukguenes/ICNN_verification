@@ -81,7 +81,7 @@ class SequentialNN(nn.Sequential, VerifiableNet):
             lb = torch.matmul(w_plus, next_lower_bounds).add(torch.matmul(w_minus, next_upper_bounds)).add(b)
             ub = torch.matmul(w_plus, next_upper_bounds).add(torch.matmul(w_minus, next_lower_bounds)).add(b)
 
-            if with_relu:
+            if with_relu and i < len(parameter_list) - 2:
                 next_upper_bounds = torch.maximum(torch.tensor(0, dtype=torch.float64), ub)
                 next_lower_bounds = torch.maximum(torch.tensor(0, dtype=torch.float64), lb)
             else:
@@ -98,8 +98,8 @@ class SequentialNN(nn.Sequential, VerifiableNet):
 
         in_var = input_vars
         for i in range(0, len(parameter_list), 2):
-            lb = bounds[int(i / 2)][0]
-            ub = bounds[int(i / 2)][1]
+            lb = bounds[int(i / 2)][0].detach().numpy()
+            ub = bounds[int(i / 2)][1].detach().numpy()
             W, b = parameter_list[i].detach().numpy(), parameter_list[i + 1].detach().numpy()
 
             out_fet = len(b)
@@ -277,7 +277,7 @@ class ICNN(nn.Module, VerifiableNet):
                 lb = lb.add(torch.matmul(u_plus, next_lower_bounds).add(torch.matmul(u_minus, next_upper_bounds)))
                 ub = ub.add(torch.matmul(u_plus, next_upper_bounds).add(torch.matmul(u_minus, next_lower_bounds)))
 
-            if with_relu:
+            if with_relu and i < len(parameter_list) - 2:
                 next_upper_bounds = torch.maximum(torch.tensor(0, dtype=torch.float64), ub)
                 next_lower_bounds = torch.maximum(torch.tensor(0, dtype=torch.float64), lb)
             else:
@@ -295,8 +295,8 @@ class ICNN(nn.Module, VerifiableNet):
 
         in_var = input_vars
         for i in range(0, len(ws), 2):
-            lb = bounds[int(i / 2)][0]
-            ub = bounds[int(i / 2)][1]
+            lb = bounds[int(i / 2)][0].detach().numpy()
+            ub = bounds[int(i / 2)][1].detach().numpy()
             affine_w, affine_b = ws[i].detach().numpy(), ws[i + 1].detach().numpy()
 
             out_fet = len(affine_b)
@@ -418,8 +418,8 @@ class ICNNLogical(ICNN):
     def add_max_output_constraints(self, model, input_vars, bounds):
         icnn_output_var = super().add_constraints(model, input_vars, bounds)
         output_of_and = model.addMVar(1, lb=-float('inf'))
-        lb = bounds[-1][0]
-        ub = bounds[-1][1]  # todo richtige box bounds anwenden (die vom zu approximierenden Layer)
+        lb = bounds[-1][0].detach().numpy()
+        ub = bounds[-1][1].detach().numpy()  # todo richtige box bounds anwenden (die vom zu approximierenden Layer)
         ls = self.ls
 
         bb_w, bb_b = ls[0].weight.data.detach().numpy(), ls[0].bias.data.detach().numpy()
@@ -542,8 +542,8 @@ class ICNNApproxMax(ICNN):
     def add_max_output_constraints(self, model, input_vars, bounds):
         icnn_output_var = super().add_constraints(model, input_vars, bounds)
         output_of_and = model.addMVar(1, lb=-float('inf'))
-        lb = bounds[-1][0]
-        ub = bounds[-1][1]  # todo richtige box bounds anwenden (die vom zu approximierenden Layer)
+        lb = bounds[-1][0].detach().numpy()
+        ub = bounds[-1][1].detach().numpy() # todo richtige box bounds anwenden (die vom zu approximierenden Layer)
         ls = self.ls
 
         bb_w, bb_b = ls[0].weight.data.detach().numpy(), ls[0].bias.data.detach().numpy()
