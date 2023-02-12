@@ -83,6 +83,13 @@ class SingleNeuronVerifier(Verifier):
 
     def generate_constraints_for_net(self):
         m = grp.Model()
+
+        if self.time_limit is not None:
+            m.setParam("TimeLimit", self.time_limit)
+
+        if self.solver_bound is not None:
+            m.setParam("BestObjStop", self.solver_bound)
+
         if not self.print_log:
             m.Params.LogToConsole = 0
 
@@ -134,6 +141,13 @@ class MILPVerifier(Verifier):
 
     def generate_constraints_for_net(self):
         m = grp.Model()
+
+        if self.time_limit is not None:
+            m.setParam("TimeLimit", self.time_limit)
+
+        if self.solver_bound is not None:
+            m.setParam("BestObjStop", self.solver_bound)
+
         if not self.print_log:
             m.Params.LogToConsole = 0
 
@@ -160,7 +174,6 @@ class MILPVerifier(Verifier):
 
             relu_in_var = out_vars
             relu_vars = verbas.add_relu_constr(m, relu_in_var, out_fet, lb, ub)
-            m.update()
             in_var = relu_vars
 
         lb = bounds[-1][0].detach().numpy()
@@ -171,44 +184,9 @@ class MILPVerifier(Verifier):
         out_vars = m.addMVar(out_fet, lb=-float("inf"), ub=ub, name="last_affine_var")
         const = m.addConstrs((W[i] @ in_var + b[i] == out_vars[i] for i in range(len(W))), name="out_const")
 
-        m.update()
-
         self.model = m
         self.output_vars = out_vars
         self.input_vars = input_var
-
-        m.setParam("BestObjStop", 0.001)
-
-        # lower_diff_bound = [lb - bounds[-1][1][label] for lb in bounds[-1][0]]
-        # upper_diff_bound = [ub - bounds[-1][0][label] for ub in bounds[-1][1]]
-
-        # lower_diff_bound.pop(label)
-        # upper_diff_bound.pop(label)
-
-        output_size = out_fet
-        difference = m.addVars(output_size - 1, lb=-float("inf"))
-        m.addConstrs(difference[i] == out_vars.tolist()[i] - out_vars.tolist()[6] for i in range(0, 6))
-        m.addConstrs(
-            difference[i - 1] == out_vars.tolist()[i] - out_vars.tolist()[6] for i in
-            range(6 + 1, output_size))
-
-        # min_diff_bound = min(lower_diff_bound)
-        # max_diff_bound = max(upper_diff_bound)
-        max_var = m.addVar(lb=-float("inf"))
-        m.addConstr(max_var == grp.max_(difference))
-
-        m.update()
-        m.setObjective(max_var, grp.GRB.MAXIMIZE)
-        m.optimize()
-
-        if m.Status == grp.GRB.OPTIMAL or m.Status == grp.GRB.TIME_LIMIT or m.Status == grp.GRB.USER_OBJ_LIMIT:
-            inp = input_var.getAttr("x")
-            for o in difference.select():
-                print(o.getAttr("x"))
-            print("optimum solution with value \n {}".format(out_vars.getAttr("x")))
-            print("max_var {}".format(max_var.getAttr("x")))
-            test_inp = torch.tensor([inp], dtype=torch.float64)
-            return test_inp
 
 
 class DHOVVerifier(Verifier):
@@ -219,6 +197,13 @@ class DHOVVerifier(Verifier):
 
     def generate_constraints_for_net(self):
         m = grp.Model()
+
+        if self.time_limit is not None:
+            m.setParam("TimeLimit", self.time_limit)
+
+        if self.solver_bound is not None:
+            m.setParam("BestObjStop", self.solver_bound)
+
         if not self.print_log:
             m.Params.LogToConsole = 0
 
