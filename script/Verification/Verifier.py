@@ -210,7 +210,6 @@ class DHOVVerifier(Verifier):
                 const = m.addConstrs((W[i] @ in_var + b[i] == out_vars[i] for i in range(len(W))))
 
             if i == len(parameter_list) - 2 - 2 or (not self.with_affine):
-                print("========================================================================= help")
                 self.icnns[i // 2].add_max_output_constraints(m, out_vars, self.icnns[i // 2].calculate_box_bounds(None))
 
             #m.update()
