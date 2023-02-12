@@ -17,11 +17,13 @@ class Verifier(ABC):
         self.print_log = print_log
         self.model = None
         self.output_vars = None
+        self.input_vars = None
 
     @abstractmethod
     def generate_constraints_for_net(self):
         self.model = None
         self.output_vars = None
+        self.input_vars = None
 
 
     def test_feasibility(self, output_sample):
@@ -90,7 +92,7 @@ class SingleNeuronVerifier(Verifier):
 
         input_flattened = input_flattened.cpu().numpy()
 
-        input_var = m.addMVar(input_size, lb=[elem - self.eps for elem in input_flattened],ub=[elem + self.eps for elem in input_flattened], name="in_var")
+        input_var = m.addMVar(input_size, lb=[elem - self.eps for elem in input_flattened], ub=[elem + self.eps for elem in input_flattened], name="in_var")
         m.addConstrs(input_var[i] <= input_flattened[i] + self.eps for i in range(input_size))
         m.addConstrs(input_var[i] >= input_flattened[i] - self.eps for i in range(input_size))
 
@@ -123,6 +125,7 @@ class SingleNeuronVerifier(Verifier):
 
         self.model = m
         self.output_vars = out_vars
+        self.input_vars = input_var
 
 
 class MILPVerifier(Verifier):
@@ -138,22 +141,21 @@ class MILPVerifier(Verifier):
         input_size = input_flattened.size(0)
         bounds = self.net.calculate_box_bounds([input_flattened.add(-self.eps), input_flattened.add(self.eps)], with_relu=True)
 
-        input_flattened = input_flattened.cpu().numpy()
+        input_flattened = input_flattened.numpy()
 
-        input_var = m.addMVar(input_size, lb=[elem - self.eps for elem in input_flattened],
-                              ub=[elem + self.eps for elem in input_flattened], name="in_var")
+        input_var = m.addMVar(input_size, lb=-float("inf"), name="in_var")
         m.addConstrs(input_var[i] <= input_flattened[i] + self.eps for i in range(input_size))
         m.addConstrs(input_var[i] >= input_flattened[i] - self.eps for i in range(input_size))
 
         parameter_list = list(self.net.parameters())
         in_var = input_var
         for i in range(0, len(parameter_list) - 2, 2):
-            lb = bounds[int(i / 2)][0].detach().cpu().numpy()
-            ub = bounds[int(i / 2)][1].detach().cpu().numpy()
-            W, b = parameter_list[i].detach().cpu().numpy(), parameter_list[i + 1].detach().cpu().numpy()
+            lb = bounds[int(i / 2)][0].detach().numpy()
+            ub = bounds[int(i / 2)][1].detach().numpy()
+            W, b = parameter_list[i].detach().numpy(), parameter_list[i + 1].detach().numpy()
 
             out_fet = len(b)
-            out_vars = m.addMVar(out_fet, lb=lb, ub=ub, name="affine_var" + str(i))
+            out_vars = m.addMVar(out_fet, lb=-float("inf"), ub=ub, name="affine_var" + str(i))
             const = m.addConstrs((W[i] @ in_var + b[i] == out_vars[i] for i in range(len(W))))
 
             relu_in_var = out_vars
@@ -161,18 +163,52 @@ class MILPVerifier(Verifier):
             m.update()
             in_var = relu_vars
 
-        lb = bounds[-1][0].detach().cpu().numpy()
-        ub = bounds[-1][1].detach().cpu().numpy()
-        W, b = parameter_list[len(parameter_list) - 2].detach().cpu().numpy(), parameter_list[-1].detach().cpu().numpy()
+        lb = bounds[-1][0].detach().numpy()
+        ub = bounds[-1][1].detach().numpy()
+        W, b = parameter_list[len(parameter_list) - 2].detach().numpy(), parameter_list[-1].detach().numpy()
 
         out_fet = len(b)
-        out_vars = m.addMVar(out_fet, lb=lb, ub=ub, name="last_affine_var")
+        out_vars = m.addMVar(out_fet, lb=-float("inf"), ub=ub, name="last_affine_var")
         const = m.addConstrs((W[i] @ in_var + b[i] == out_vars[i] for i in range(len(W))), name="out_const")
 
         m.update()
 
         self.model = m
         self.output_vars = out_vars
+        self.input_vars = input_var
+
+        m.setParam("BestObjStop", 0.001)
+
+        # lower_diff_bound = [lb - bounds[-1][1][label] for lb in bounds[-1][0]]
+        # upper_diff_bound = [ub - bounds[-1][0][label] for ub in bounds[-1][1]]
+
+        # lower_diff_bound.pop(label)
+        # upper_diff_bound.pop(label)
+
+        output_size = out_fet
+        difference = m.addVars(output_size - 1, lb=-float("inf"))
+        m.addConstrs(difference[i] == out_vars.tolist()[i] - out_vars.tolist()[6] for i in range(0, 6))
+        m.addConstrs(
+            difference[i - 1] == out_vars.tolist()[i] - out_vars.tolist()[6] for i in
+            range(6 + 1, output_size))
+
+        # min_diff_bound = min(lower_diff_bound)
+        # max_diff_bound = max(upper_diff_bound)
+        max_var = m.addVar(lb=-float("inf"))
+        m.addConstr(max_var == grp.max_(difference))
+
+        m.update()
+        m.setObjective(max_var, grp.GRB.MAXIMIZE)
+        m.optimize()
+
+        if m.Status == grp.GRB.OPTIMAL or m.Status == grp.GRB.TIME_LIMIT or m.Status == grp.GRB.USER_OBJ_LIMIT:
+            inp = input_var.getAttr("x")
+            for o in difference.select():
+                print(o.getAttr("x"))
+            print("optimum solution with value \n {}".format(out_vars.getAttr("x")))
+            print("max_var {}".format(max_var.getAttr("x")))
+            test_inp = torch.tensor([inp], dtype=torch.float64)
+            return test_inp
 
 
 class DHOVVerifier(Verifier):
@@ -210,7 +246,7 @@ class DHOVVerifier(Verifier):
                 const = m.addConstrs((W[i] @ in_var + b[i] == out_vars[i] for i in range(len(W))))
 
             if i == len(parameter_list) - 2 - 2 or (not self.with_affine):
-                self.icnns[i // 2].add_max_output_constraints(m, out_vars, self.icnns[i // 2].calculate_box_bounds(None))
+                self.icnns[i // 2].add_max_output_constraints(m, in_var, self.icnns[i // 2].calculate_box_bounds(None))
 
             #m.update()
             in_var = out_vars
@@ -227,3 +263,4 @@ class DHOVVerifier(Verifier):
 
         self.model = m
         self.output_vars = out_vars
+        self.input_vars = input_var

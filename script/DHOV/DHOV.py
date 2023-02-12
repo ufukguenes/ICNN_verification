@@ -55,7 +55,7 @@ def start_verification(nn: SequentialNN, input, icnns, eps=0.001, icnn_batch_siz
     input_flattened = torch.flatten(input)
     eps_bounds = [input_flattened.add(-eps), input_flattened.add(eps)]
     box_bounds = nn.calculate_box_bounds(
-        eps_bounds)  # todo abbrechen, wenn die box bounds schon die eigenschaft erfüllen
+        eps_bounds, with_relu=True)  # todo abbrechen, wenn die box bounds schon die eigenschaft erfüllen
 
     included_space = torch.empty((0, input_flattened.size(0)), dtype=data_type).to(device)
     included_space = ds.samples_uniform_over(included_space, int(sample_count / 2), eps_bounds)
