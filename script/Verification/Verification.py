@@ -144,10 +144,10 @@ def find_minima(icnn, sequential=False, input_bounds=None):
     output_var = m.addMVar(output_size, lb=-float('inf'), name="output_var")
 
     if sequential:
-        bounds = verbas.calculate_box_bounds(icnn, input_bounds)
+        bounds = verbas.calculate_box_bounds(icnn, input_bounds, with_relu=True)
         verbas.add_constr_for_sequential_icnn(m, icnn, input_var, output_var, bounds)
     else:
-        bounds = verbas.calculate_box_bounds(icnn, input_bounds, is_sequential=False)
+        bounds = verbas.calculate_box_bounds(icnn, input_bounds, is_sequential=False, with_relu=True)
         verbas.add_constr_for_non_sequential_icnn(m, icnn, input_var, output_var, bounds)
 
     m.update()

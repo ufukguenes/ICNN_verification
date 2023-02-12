@@ -186,7 +186,7 @@ def net_2d():
                                 sample_over_input_space=False, sample_over_output_space=True, force_inclusion_steps=0,
                                 keep_ambient_space=False, data_grad_descent_steps=0, train_outer=False, preemptive_stop=False,
                                 even_gradient_training=False,
-                                should_plot="none", optimizer="SdLBFGS", init_network=True, adapt_lambda="none")
+                                should_plot="none", optimizer="adam", init_network=True, adapt_lambda="none")
 
     milp_verifier = MILPVerifier(nn, test_image, 1)
     snv_verifier = SingleNeuronVerifier(nn, test_image, 1)

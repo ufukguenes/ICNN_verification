@@ -17,11 +17,13 @@ class Verifier(ABC):
         self.print_log = print_log
         self.model = None
         self.output_vars = None
+        self.input_vars = None
 
     @abstractmethod
     def generate_constraints_for_net(self):
         self.model = None
         self.output_vars = None
+        self.input_vars = None
 
 
     def test_feasibility(self, output_sample):
@@ -81,6 +83,13 @@ class SingleNeuronVerifier(Verifier):
 
     def generate_constraints_for_net(self):
         m = grp.Model()
+
+        if self.time_limit is not None:
+            m.setParam("TimeLimit", self.time_limit)
+
+        if self.solver_bound is not None:
+            m.setParam("BestObjStop", self.solver_bound)
+
         if not self.print_log:
             m.Params.LogToConsole = 0
 
@@ -123,6 +132,7 @@ class SingleNeuronVerifier(Verifier):
 
         self.model = m
         self.output_vars = out_vars
+        self.input_vars = input_var
 
 
 class MILPVerifier(Verifier):
@@ -131,6 +141,13 @@ class MILPVerifier(Verifier):
 
     def generate_constraints_for_net(self):
         m = grp.Model()
+
+        if self.time_limit is not None:
+            m.setParam("TimeLimit", self.time_limit)
+
+        if self.solver_bound is not None:
+            m.setParam("BestObjStop", self.solver_bound)
+
         if not self.print_log:
             m.Params.LogToConsole = 0
 
@@ -158,7 +175,6 @@ class MILPVerifier(Verifier):
 
             relu_in_var = out_vars
             relu_vars = verbas.add_relu_constr(m, relu_in_var, out_fet, lb, ub)
-            m.update()
             in_var = relu_vars
 
         lb = bounds[-1][0].detach().cpu().numpy()
@@ -169,10 +185,9 @@ class MILPVerifier(Verifier):
         out_vars = m.addMVar(out_fet, lb=lb, ub=ub, name="last_affine_var")
         const = m.addConstrs((W[i] @ in_var + b[i] == out_vars[i] for i in range(len(W))), name="out_const")
 
-        m.update()
-
         self.model = m
         self.output_vars = out_vars
+        self.input_vars = input_var
 
 
 class DHOVVerifier(Verifier):
@@ -183,6 +198,13 @@ class DHOVVerifier(Verifier):
 
     def generate_constraints_for_net(self):
         m = grp.Model()
+
+        if self.time_limit is not None:
+            m.setParam("TimeLimit", self.time_limit)
+
+        if self.solver_bound is not None:
+            m.setParam("BestObjStop", self.solver_bound)
+
         if not self.print_log:
             m.Params.LogToConsole = 0
 
@@ -210,7 +232,7 @@ class DHOVVerifier(Verifier):
                 const = m.addConstrs((W[i] @ in_var + b[i] == out_vars[i] for i in range(len(W))))
 
             if i == len(parameter_list) - 2 - 2 or (not self.with_affine):
-                self.icnns[i // 2].add_max_output_constraints(m, out_vars, self.icnns[i // 2].calculate_box_bounds(None))
+                self.icnns[i // 2].add_max_output_constraints(m, in_var, self.icnns[i // 2].calculate_box_bounds(None))
 
             #m.update()
             in_var = out_vars
@@ -227,3 +249,4 @@ class DHOVVerifier(Verifier):
 
         self.model = m
         self.output_vars = out_vars
+        self.input_vars = input_var
