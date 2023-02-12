@@ -60,13 +60,13 @@ def train_icnn(model, train_loader, ambient_loader, epochs=10, optimizer="adam",
                         for p in w.parameters():
                             if len(p.size()) > 1:  # we have a matrix
                                 # only want positive entries
-                                p[:] = torch.maximum(torch.Tensor([0]), p)
+                                p[:] = torch.maximum(torch.Tensor([0]).to(device), p)
             else:
                 with torch.no_grad():
                     for p in model.parameters():
                         if len(p.size()) > 1:  # we have a matrix
                             # only want positive entries
-                            p[:] = torch.maximum(torch.Tensor([0]), p)
+                            p[:] = torch.maximum(torch.Tensor([0]).to(device), p)
 
             if preemptive_stop and abs(loss - last_loss) <= min_loss_change:
                 stop_training = True
@@ -155,13 +155,13 @@ def train_icnn_outer(model, train_loader, ambient_loader, epochs=10, opt=None, r
                         for p in w.parameters():
                             if len(p.size()) > 1:  # we have a matrix
                                 # only want positive entries
-                                p[:] = torch.maximum(torch.Tensor([0]), p)
+                                p[:] = torch.maximum(torch.Tensor([0]).to(device), p)
             else:
                 with torch.no_grad():
                     for p in model.parameters():
                         if len(p.size()) > 1:  # we have a matrix
                             # only want positive entries
-                            p[:] = torch.maximum(torch.Tensor([0]), p)
+                            p[:] = torch.maximum(torch.Tensor([0]).to(device), p)
 
             train_loss += loss.item()
             train_n += 1
@@ -220,7 +220,7 @@ def train_icnn_adversarial(model, adversarial, train_loader, adversarial_loader,
                         for p in w.parameters():
                             if len(p.size()) > 1:  # we have a matrix
                                 # only want positive entries
-                                p[:] = torch.maximum(torch.Tensor([0]), p)
+                                p[:] = torch.maximum(torch.Tensor([0]).to(device), p)
 
             train_loss += loss.item()
             train_n += 1

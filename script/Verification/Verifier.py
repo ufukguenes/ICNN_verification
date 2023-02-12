@@ -88,7 +88,7 @@ class SingleNeuronVerifier(Verifier):
         input_size = input_flattened.size(0)
         bounds = self.net.calculate_box_bounds([input_flattened.add(-self.eps), input_flattened.add(self.eps)], with_relu=True)
 
-        input_flattened = input_flattened.numpy()
+        input_flattened = input_flattened.cpu().numpy()
 
         input_var = m.addMVar(input_size, lb=[elem - self.eps for elem in input_flattened],ub=[elem + self.eps for elem in input_flattened], name="in_var")
         m.addConstrs(input_var[i] <= input_flattened[i] + self.eps for i in range(input_size))
@@ -98,9 +98,9 @@ class SingleNeuronVerifier(Verifier):
         parameter_list = list(self.net.parameters())
         in_var = input_var
         for i in range(0, len(parameter_list) - 2, 2):
-            lb = bounds[int(i / 2)][0].detach().numpy()
-            ub = bounds[int(i / 2)][1].detach().numpy()
-            W, b = parameter_list[i].detach().numpy(), parameter_list[i + 1].detach().numpy()
+            lb = bounds[int(i / 2)][0].detach().cpu().numpy()
+            ub = bounds[int(i / 2)][1].detach().cpu().numpy()
+            W, b = parameter_list[i].detach().cpu().numpy(), parameter_list[i + 1].detach().cpu().numpy()
 
             out_fet = len(b)
             out_vars = m.addMVar(out_fet, lb=lb, ub=ub, name="affine_var" + str(i))
@@ -111,9 +111,9 @@ class SingleNeuronVerifier(Verifier):
             m.update()
             in_var = relu_vars
 
-        lb = bounds[-1][0].detach().numpy()
-        ub = bounds[-1][1].detach().numpy()
-        W, b = parameter_list[len(parameter_list) - 2].detach().numpy(), parameter_list[-1].detach().numpy()
+        lb = bounds[-1][0].detach().cpu().numpy()
+        ub = bounds[-1][1].detach().cpu().numpy()
+        W, b = parameter_list[len(parameter_list) - 2].detach().cpu().numpy(), parameter_list[-1].detach().cpu().numpy()
 
         out_fet = len(b)
         out_vars = m.addMVar(out_fet, lb=lb, ub=ub, name="last_affine_var")
@@ -138,7 +138,7 @@ class MILPVerifier(Verifier):
         input_size = input_flattened.size(0)
         bounds = self.net.calculate_box_bounds([input_flattened.add(-self.eps), input_flattened.add(self.eps)], with_relu=True)
 
-        input_flattened = input_flattened.numpy()
+        input_flattened = input_flattened.cpu().numpy()
 
         input_var = m.addMVar(input_size, lb=[elem - self.eps for elem in input_flattened],
                               ub=[elem + self.eps for elem in input_flattened], name="in_var")
@@ -148,9 +148,9 @@ class MILPVerifier(Verifier):
         parameter_list = list(self.net.parameters())
         in_var = input_var
         for i in range(0, len(parameter_list) - 2, 2):
-            lb = bounds[int(i / 2)][0].detach().numpy()
-            ub = bounds[int(i / 2)][1].detach().numpy()
-            W, b = parameter_list[i].detach().numpy(), parameter_list[i + 1].detach().numpy()
+            lb = bounds[int(i / 2)][0].detach().cpu().numpy()
+            ub = bounds[int(i / 2)][1].detach().cpu().numpy()
+            W, b = parameter_list[i].detach().cpu().numpy(), parameter_list[i + 1].detach().cpu().numpy()
 
             out_fet = len(b)
             out_vars = m.addMVar(out_fet, lb=lb, ub=ub, name="affine_var" + str(i))
@@ -161,9 +161,9 @@ class MILPVerifier(Verifier):
             m.update()
             in_var = relu_vars
 
-        lb = bounds[-1][0].detach().numpy()
-        ub = bounds[-1][1].detach().numpy()
-        W, b = parameter_list[len(parameter_list) - 2].detach().numpy(), parameter_list[-1].detach().numpy()
+        lb = bounds[-1][0].detach().cpu().numpy()
+        ub = bounds[-1][1].detach().cpu().numpy()
+        W, b = parameter_list[len(parameter_list) - 2].detach().cpu().numpy(), parameter_list[-1].detach().cpu().numpy()
 
         out_fet = len(b)
         out_vars = m.addMVar(out_fet, lb=lb, ub=ub, name="last_affine_var")
@@ -190,7 +190,7 @@ class DHOVVerifier(Verifier):
         input_size = input_flattened.size(0)
         bounds = self.net.calculate_box_bounds([input_flattened.add(-self.eps), input_flattened.add(self.eps)], with_relu=True)
 
-        input_flattened = input_flattened.numpy()
+        input_flattened = input_flattened.cpu().numpy()
 
         input_var = m.addMVar(input_size, lb=[elem - self.eps for elem in input_flattened],
                               ub=[elem + self.eps for elem in input_flattened], name="in_var")
@@ -200,9 +200,9 @@ class DHOVVerifier(Verifier):
         parameter_list = list(self.net.parameters())
         in_var = input_var
         for i in range(0, len(parameter_list) - 2, 2):
-            lb = bounds[int(i / 2)][0].detach().numpy()
-            ub = bounds[int(i / 2)][1].detach().numpy()
-            W, b = parameter_list[i].detach().numpy(), parameter_list[i + 1].detach().numpy()
+            lb = bounds[int(i / 2)][0].detach().cpu().numpy()
+            ub = bounds[int(i / 2)][1].detach().cpu().numpy()
+            W, b = parameter_list[i].detach().cpu().numpy(), parameter_list[i + 1].detach().cpu().numpy()
 
             out_fet = len(b)
             out_vars = m.addMVar(out_fet, lb=lb, ub=ub, name="affine_var" + str(i))
@@ -215,9 +215,9 @@ class DHOVVerifier(Verifier):
             #m.update()
             in_var = out_vars
 
-        lb = bounds[-1][0].detach().numpy()
-        ub = bounds[-1][1].detach().numpy()
-        W, b = parameter_list[len(parameter_list) - 2].detach().numpy(), parameter_list[-1].detach().numpy()
+        lb = bounds[-1][0].detach().cpu().numpy()
+        ub = bounds[-1][1].detach().cpu().numpy()
+        W, b = parameter_list[len(parameter_list) - 2].detach().cpu().numpy(), parameter_list[-1].detach().cpu().numpy()
 
         out_fet = len(b)
         out_vars = m.addMVar(out_fet, lb=lb, ub=ub, name="last_affine_var")

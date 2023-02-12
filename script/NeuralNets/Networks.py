@@ -98,9 +98,9 @@ class SequentialNN(nn.Sequential, VerifiableNet):
 
         in_var = input_vars
         for i in range(0, len(parameter_list), 2):
-            lb = bounds[int(i / 2)][0].detach().numpy()
-            ub = bounds[int(i / 2)][1].detach().numpy()
-            W, b = parameter_list[i].detach().numpy(), parameter_list[i + 1].detach().numpy()
+            lb = bounds[int(i / 2)][0].detach().cpu().numpy()
+            ub = bounds[int(i / 2)][1].detach().cpu().numpy()
+            W, b = parameter_list[i].detach().cpu().numpy(), parameter_list[i + 1].detach().cpu().numpy()
 
             out_fet = len(b)
             out_vars = model.addMVar(out_fet, lb=lb, ub=ub, name="affine_var" + str(i))
@@ -295,9 +295,9 @@ class ICNN(nn.Module, VerifiableNet):
 
         in_var = input_vars
         for i in range(0, len(ws), 2):
-            lb = bounds[int(i / 2)][0].detach().numpy()
-            ub = bounds[int(i / 2)][1].detach().numpy()
-            affine_w, affine_b = ws[i].detach().numpy(), ws[i + 1].detach().numpy()
+            lb = bounds[int(i / 2)][0].detach().cpu().numpy()
+            ub = bounds[int(i / 2)][1].detach().cpu().numpy()
+            affine_w, affine_b = ws[i].detach().cpu().numpy(), ws[i + 1].detach().cpu().numpy()
 
             out_fet = len(affine_b)
             affine_var = model.addMVar(out_fet, lb=lb, ub=ub, name="affine_var" + str(i))
@@ -307,7 +307,7 @@ class ICNN(nn.Module, VerifiableNet):
                 affine_w[i] @ in_var + affine_b[i] == affine_var[i] for i in range(len(affine_w)))
             if i != 0:
                 k = math.floor(i / 2) - 1
-                skip_W = torch.clone(us[k]).detach().numpy()  # has no bias
+                skip_W = torch.clone(us[k]).detach().cpu().numpy()  # has no bias
                 skip_var = model.addMVar(out_fet, lb=lb, ub=ub, name="skip_var" + str(k))
                 skip_const = model.addConstrs(skip_W[i] @ input_vars == skip_var[i] for i in range(len(affine_w)))
                 affine_skip_cons = model.addConstrs(
@@ -418,11 +418,11 @@ class ICNNLogical(ICNN):
     def add_max_output_constraints(self, model, input_vars, bounds):
         icnn_output_var = super().add_constraints(model, input_vars, bounds)
         output_of_and = model.addMVar(1, lb=-float('inf'))
-        lb = bounds[-1][0].detach().numpy()
-        ub = bounds[-1][1].detach().numpy()  # todo richtige box bounds anwenden (die vom zu approximierenden Layer)
+        lb = bounds[-1][0].detach().cpu().numpy()
+        ub = bounds[-1][1].detach().cpu().numpy()  # todo richtige box bounds anwenden (die vom zu approximierenden Layer)
         ls = self.ls
 
-        bb_w, bb_b = ls[0].weight.data.detach().numpy(), ls[0].bias.data.detach().numpy()
+        bb_w, bb_b = ls[0].weight.data.detach().cpu().numpy(), ls[0].bias.data.detach().cpu().numpy()
         bb_var = model.addMVar(4, lb=lb, ub=ub, name="skip_var")
         skip_const = model.addConstrs(bb_w[i] @ input_vars + bb_b[i] == bb_var[i] for i in range(len(bb_w)))
         max_var = model.addVar(lb=-float("inf"))
@@ -433,19 +433,19 @@ class ICNNLogical(ICNN):
         model.addConstr(new_in[1] == max_var)
 
         if self.with_two_layers:
-            affine_w = ls[1].weight.data.detach().numpy()
+            affine_w = ls[1].weight.data.detach().cpu().numpy()
             affine_var1 = model.addMVar(4, lb=-float("inf"))
             affine_const = model.addConstrs(
                 affine_w[i] @ new_in == affine_var1[i] for i in range(len(affine_w)))
 
-            affine_W2 = ls[2].weight.data.detach().numpy()
+            affine_W2 = ls[2].weight.data.detach().cpu().numpy()
             affine_var2 = model.addMVar(3, lb=-float("inf"))
             affine_const = model.addConstrs(
                 affine_W2[i] @ affine_var1 == affine_var2[i] for i in range(len(affine_W2)))
             max_var2 = model.addVar(lb=-float("inf"))
             model.addGenConstrMax(max_var2, affine_var2.tolist())
         else:
-            affine_w = ls[1].weight.data.detach().numpy()
+            affine_w = ls[1].weight.data.detach().cpu().numpy()
             affine_var1 = model.addMVar(3, lb=-float("inf"))
             affine_const = model.addConstrs(
                 affine_w[i] @ new_in == affine_var1[i] for i in range(len(affine_w)))
@@ -542,11 +542,11 @@ class ICNNApproxMax(ICNN):
     def add_max_output_constraints(self, model, input_vars, bounds):
         icnn_output_var = super().add_constraints(model, input_vars, bounds)
         output_of_and = model.addMVar(1, lb=-float('inf'))
-        lb = bounds[-1][0].detach().numpy()
-        ub = bounds[-1][1].detach().numpy() # todo richtige box bounds anwenden (die vom zu approximierenden Layer)
+        lb = bounds[-1][0].detach().cpu().numpy()
+        ub = bounds[-1][1].detach().cpu().numpy() # todo richtige box bounds anwenden (die vom zu approximierenden Layer)
         ls = self.ls
 
-        bb_w, bb_b = ls[0].weight.data.detach().numpy(), ls[0].bias.data.detach().numpy()
+        bb_w, bb_b = ls[0].weight.data.detach().cpu().numpy(), ls[0].bias.data.detach().cpu().numpy()
         bb_var = model.addMVar(4, lb=lb, ub=ub, name="skip_var")
         skip_const = model.addConstrs(bb_w[i] @ input_vars + bb_b[i] == bb_var[i] for i in range(len(bb_w)))
         max_var = model.addVar(lb=-float("inf"))

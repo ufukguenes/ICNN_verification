@@ -90,7 +90,7 @@ def samples_uniform_over(data_samples, amount, bounds, keep_samples=True, paddin
     ub = bounds[1] + padding
     shape = data_samples.size(1)
     random_samples = (ub - lb) * torch.rand((amount, shape), dtype=data_type).to(device) + lb
-    if keep_samples:
+    if keep_samples and data_samples.size(0) > 0:
         data_samples = torch.cat([data_samples, random_samples], dim=0)
     else:
         data_samples = random_samples

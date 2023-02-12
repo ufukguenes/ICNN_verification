@@ -229,15 +229,15 @@ def start_verification(nn: SequentialNN, input, icnns, eps=0.001, icnn_batch_siz
         if use_over_approximation:
             if i == 0:
                 adversarial_input, c = ver.verification(current_icnn, has_relu=True,
-                                                        center_eps_w_b=[center.detach().numpy(), eps,
-                                                                        affine_w.detach().numpy(),
-                                                                        affine_b.detach().numpy()])
+                                                        center_eps_w_b=[center.detach().cpu().numpy(), eps,
+                                                                        affine_w.detach().cpu().numpy(),
+                                                                        affine_b.detach().cpu().numpy()])
             else:
                 prev_icnn = icnns[current_layer_index - 1]
-                # prev_W, prev_b = parameter_list[i-2].detach().numpy(), parameter_list[i - 1].detach().numpy()
+                # prev_W, prev_b = parameter_list[i-2].detach().cpu().numpy(), parameter_list[i - 1].detach().cpu().numpy()
                 adversarial_input, c = ver.verification(current_icnn, has_relu=True,
-                                                        icnn_w_b_c=[prev_icnn, affine_w.detach().numpy(),
-                                                                    affine_b.detach().numpy()])
+                                                        icnn_w_b_c=[prev_icnn, affine_w.detach().cpu().numpy(),
+                                                                    affine_b.detach().cpu().numpy()])
 
             current_icnn.apply_enlargement(c)
 
@@ -277,8 +277,8 @@ def start_verification(nn: SequentialNN, input, icnns, eps=0.001, icnn_batch_siz
         included_space = ds.apply_affine_transform(affine_w, affine_b, included_space)
         ambient_space = ds.apply_affine_transform(affine_w, affine_b, ambient_space)
         original_included_space = ds.apply_affine_transform(affine_w, affine_b, original_included_space)
-        plots = Plots_for(0, current_icnn, included_space.detach(), ambient_space.detach(), [-1, 3], [-1, 3],
-                          extr=original_included_space.detach())
+        plots = Plots_for(0, current_icnn, included_space.detach().cpu(), ambient_space.detach().cpu(), [-1, 3], [-1, 3],
+                          extr=original_included_space.detach().cpu())
         plots.plt_initial()
 
     return icnns

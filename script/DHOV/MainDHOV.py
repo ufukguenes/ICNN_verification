@@ -6,6 +6,7 @@ from matplotlib import pyplot as plt
 from torchvision.datasets import CIFAR10
 from torchvision.transforms import Compose, ToTensor, Normalize
 import gurobipy as grp
+import torch
 
 import DataSampling as ds
 import DHOV as dhov
@@ -35,8 +36,8 @@ def last_layer_identity(last_icnn: ICNN, last_c, W, b, A_out, b_out, nn_bounds, 
     verbas.add_constr_for_non_sequential_icnn(m, last_icnn, output_of_penultimate_layer, output_of_icnn, bounds)
     m.addConstr(output_of_icnn[0] <= last_c)
 
-    W = W.detach().numpy()
-    b = b.detach().numpy()
+    W = W.detach().cpu().numpy()
+    b = b.detach().cpu().numpy()
     # output_var = add_affine_constr(m, W, b, output_of_penultimate_layer, -1000, 1000)
 
     # m.addConstrs((W[i] @ output_var >= b[i] for i in range(len(W))))
@@ -91,8 +92,8 @@ def last_layer_picture(last_icnn: ICNN, last_c, W, b, label, nn_bounds, solver_t
     verbas.add_constr_for_non_sequential_icnn(m, last_icnn, output_of_penultimate_layer, output_of_icnn,
                                               nn_bounds[len(nn_bounds) - 2])
 
-    W = W.detach().numpy()
-    b = b.detach().numpy()
+    W = W.detach().cpu().numpy()
+    b = b.detach().cpu().numpy()
     output_var = verbas.add_affine_constr(m, W, b, output_of_penultimate_layer, -1000, 1000)
     m.addConstr(output_of_icnn <= last_c)
 
@@ -181,7 +182,7 @@ def net_2d():
 
 
     icnns = \
-        dhov.start_verification(nn, test_image, icnns, eps=1, icnn_epochs=100, icnn_batch_size=1000, sample_count=1000, sample_new=True, use_over_approximation=True,
+        dhov.start_verification(nn, test_image, icnns, eps=1, icnn_epochs=10, icnn_batch_size=1000, sample_count=1000, sample_new=True, use_over_approximation=True,
                                 sample_over_input_space=False, sample_over_output_space=True, force_inclusion_steps=0,
                                 keep_ambient_space=False, data_grad_descent_steps=0, train_outer=False, preemptive_stop=False,
                                 even_gradient_training=False,
@@ -202,7 +203,7 @@ def net_2d():
     bounds = nn.calculate_box_bounds([input_flattened.add(-1), input_flattened.add(1)], with_relu=True)
 
     test_space = torch.empty((0, input_flattened.size(0)), dtype=data_type).to(device)
-    box_bound_output_space = ds.samples_uniform_over(test_space, 3000, bounds[-1])
+    box_bound_output_space = ds.samples_uniform_over(test_space, 1000, bounds[-1])
 
     in_snv = []
     in_milp = []
@@ -216,10 +217,10 @@ def net_2d():
         in_dhov.append(dhov_verifier.test_feasibility(sample))
         in_dhov_affine.append(dhov_affine_verifier.test_feasibility(sample))
 
-    plt_inc_amb("milp", box_bound_output_space.detach().numpy(), in_milp)
-    plt_inc_amb("snv", box_bound_output_space.detach().numpy(), in_snv)
-    plt_inc_amb("dhov", box_bound_output_space.detach().numpy(), in_dhov)
-    plt_inc_amb("dhov with affine", box_bound_output_space.detach().numpy(), in_dhov_affine)
+    plt_inc_amb("milp", box_bound_output_space.detach().cpu().numpy(), in_milp)
+    plt_inc_amb("snv", box_bound_output_space.detach().cpu().numpy(), in_snv)
+    plt_inc_amb("dhov", box_bound_output_space.detach().cpu().numpy(), in_dhov)
+    plt_inc_amb("dhov with affine", box_bound_output_space.detach().cpu().numpy(), in_dhov_affine)
 
     """A_snv, b_snv = to_A_b(snv_model)
     A_icnn, b_icnn = to_A_b(icnn_model)
@@ -317,6 +318,7 @@ def plt_inc_amb(caption, points, is_true):
     plt.show()
 
 #cifar_net()
+
 net_2d()
 
 

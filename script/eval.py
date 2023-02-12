@@ -34,7 +34,7 @@ class Plots_for():
         self.included_space = inc_space
         self.true_extremal = extr
 
-        self.hull = ConvexHull(self.included_space)
+        self.hull = ConvexHull(self.included_space.cpu())
 
         self.in_convex = []
         self.not_in_convex = []
@@ -49,7 +49,7 @@ class Plots_for():
 
     def _create_plot_convex_hull(self):
         for simplex in self.hull.simplices:
-            plt.plot(self.included_space[simplex, 0], self.included_space[simplex, 1], 'k-')
+            plt.plot(self.included_space[simplex, 0].cpu(), self.included_space[simplex, 1].cpu(), 'k-')
 
     def _create_plot_model(self):
         self.in_convex = []
@@ -73,17 +73,17 @@ class Plots_for():
             bool_val = test_contained(x)
 
             if bool_val:
-                self.in_convex.append(x.numpy())
+                self.in_convex.append(x.cpu().numpy())
             else:
-                self.not_in_convex.append(x.numpy())
+                self.not_in_convex.append(x.cpu().numpy())
 
         for x in self.ambient_space:
             x = torch.unsqueeze(x, 0)
             bool_val = test_contained(x)
             if bool_val:
-                self.in_convex.append(x.numpy())
+                self.in_convex.append(x.cpu().numpy())
             else:
-                self.not_in_convex.append(x.numpy())
+                self.not_in_convex.append(x.cpu().numpy())
 
         self.in_convex = np.asarray(self.in_convex)
         self.not_in_convex = np.asarray(self.not_in_convex)
@@ -138,7 +138,7 @@ class Plots_for():
         xx, yy = np.meshgrid(x, y)
         x_in = torch.tensor(np.c_[xx.ravel(), yy.ravel()], dtype=data_type).to(device)
         y_pred = self.model(x_in)
-        y_pred = np.round(y_pred.detach().numpy(), decimals=5).reshape(xx.shape)
+        y_pred = np.round(y_pred.detach().cpu().numpy(), decimals=5).reshape(xx.shape)
 
         plt.contourf(xx, yy, y_pred, cmap=plt.cm.RdYlBu, alpha=0.7)
 
@@ -197,7 +197,7 @@ class Plots_for():
         x_in = torch.tensor(np.c_[xx.ravel(), yy.ravel()], dtype=data_type).to(device)
 
         y_pred = self.adversarial(x_in)
-        rounded = np.round(y_pred.detach().numpy(), decimals=5)
+        rounded = np.round(y_pred.detach().cpu().numpy(), decimals=5)
         x_s = rounded[:, 0]
         y_s = rounded[:, 1]
 

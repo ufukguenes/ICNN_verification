@@ -1,4 +1,6 @@
 import torch
+import torch_directml
+dml = torch_directml.device()
 
-device = "cpu"
-data_type = torch.float64
+device = dml
+data_type = torch.float32
