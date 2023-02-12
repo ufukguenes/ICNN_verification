@@ -1,14 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="6d238203-6334-43f4-afee-09b5387b5116" name="Changes" comment="comparison of milp snv and dhov">
-      <change beforePath="$PROJECT_DIR$/.idea/DeepHull.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/DeepHull.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/script/Experiments/CIFAR10_MILP_Verification.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/script/Experiments/CIFAR10_MILP_Verification.ipynb" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/script/Verification/Verifier.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/Verification/Verifier.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/script/settings.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/settings.py" afterDir="false" />
-    </list>
+    <list default="true" id="6d238203-6334-43f4-afee-09b5387b5116" name="Changes" comment="comparison of milp snv and dhov" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
