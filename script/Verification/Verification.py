@@ -5,7 +5,7 @@ from gurobipy import Model, GRB, max_
 import script.Verification.VerificationBasics as verbas
 
 from script.Verification.VerificationBasics import add_affine_constr, add_relu_constr
-
+from script.settings import device, data_type
 
 def load(icnn):
     icnn.load_state_dict(torch.load("../convexHullModel.pth"), strict=False)
@@ -93,7 +93,7 @@ def verification(icnn, center_eps_w_b=None, a_b=None, icnn_w_b_c=None, has_relu=
 
     if m.Status == GRB.OPTIMAL:
         inp = input_var.getAttr("x")
-        # inp = torch.tensor([[inp[0], inp[1]]], dtype=torch.float64)
+        # inp = torch.tensor([[inp[0], inp[1]]], dtype=data_type).to(device)
         # true_out = icnn(inp)
         print("optimum solution at: {}, with value {}, true output: {}".format(inp, output_var.getAttr("x"), 0))  #
 
@@ -102,11 +102,11 @@ def verification(icnn, center_eps_w_b=None, a_b=None, icnn_w_b_c=None, has_relu=
             affine_verification_out = affine_out.getAttr("x")
             relu_inp = relu_out.getAttr("x")
             print("input for constraint icnn: {}, affine transform: {}, relu transform: {}".format(input, affine_verification_out, relu_inp))
-            input = torch.tensor([[input[0], input[1]]], dtype=torch.float64)
+            input = torch.tensor([[input[0], input[1]]], dtype=data_type).to(device)
             center = center_eps_W_b[0]
             eps = center_eps_W_b[1]
-            affine_w =  torch.tensor(center_eps_W_b[2], dtype=torch.float64)
-            b =  torch.tensor(center_eps_W_b[3], dtype=torch.float64)
+            affine_w =  torch.tensor(center_eps_W_b[2], dtype=data_type).to(device)
+            b =  torch.tensor(center_eps_W_b[3], dtype=data_type).to(device)
             affine_out = torch.matmul(affine_w, input[0]) + b
             print("affine output = {}".format(affine_out))
 
@@ -116,10 +116,10 @@ def verification(icnn, center_eps_w_b=None, a_b=None, icnn_w_b_c=None, has_relu=
             #relu_inp = relu_out.getAttr("x")
             #print("input for constraint icnn: {}, affine transform: {}, relu transform: {}".format(constraint_icnn_input, affine_inp, relu_inp))
             print("input for constraint icnn: {}".format(constraint_icnn_input))
-            constraint_icnn_input = torch.tensor([[constraint_icnn_input[0], constraint_icnn_input[1]]], dtype=torch.float64)
+            constraint_icnn_input = torch.tensor([[constraint_icnn_input[0], constraint_icnn_input[1]]], dtype=data_type).to(device)
             constraint_icnn = icnn_W_b_c[0]
-            affine_w = torch.tensor(icnn_W_b_c[1], dtype=torch.float64)
-            b = torch.tensor(icnn_W_b_c[2], dtype=torch.float64)
+            affine_w = torch.tensor(icnn_W_b_c[1], dtype=data_type).to(device)
+            b = torch.tensor(icnn_W_b_c[2], dtype=data_type).to(device)
             c = icnn_W_b_c[3]
             cons_out = constraint_icnn(constraint_icnn_input)
             #affine_out = torch.matmul(affine_w, constraint_icnn_input[0]) + b

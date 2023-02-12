@@ -1,5 +1,5 @@
 import torch
-
+from script.settings import device, data_type
 
 def deep_hull_loss(model_output, output_adv, adversarial_output, hyper_lambda=1, use_max_distance=False):
     def l_pos(x):
@@ -29,7 +29,7 @@ def deep_hull_loss(model_output, output_adv, adversarial_output, hyper_lambda=1,
 
     a = l_pos(model_output)
     if use_max_distance:
-        b = torch.tensor([0], dtype=torch.float64)
+        b = torch.tensor([0], dtype=data_type).to(device)
         c = l_generative_max_distance(adversarial_output, output_adv)
     else:
         b = hyper_lambda * l_neg(adversarial_output)
@@ -68,7 +68,7 @@ def deep_hull_simple_loss(model_output, ambient_space, hyper_lambda=1):
 
 
 def deep_hull_outer_loss(output, x_ambient, x_argmin):
-    argmin_tensor = torch.empty_like(x_ambient, dtype=torch.float64)
+    argmin_tensor = torch.empty_like(x_ambient, dtype=data_type).to(device)
     for i, elem in enumerate(argmin_tensor):
         argmin_tensor[i] = torch.tensor(x_argmin)
 

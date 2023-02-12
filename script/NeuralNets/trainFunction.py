@@ -9,7 +9,7 @@ from script.NeuralNets.lossFunction import deep_hull_simple_loss, deep_hull_loss
 from script.NeuralNets.testFunction import test
 from script.Optimizer.sdlbfgs import SdLBFGS
 import script.DHOV.DataOptimization as dop
-
+from script.settings import device, data_type
 
 def train_icnn(model, train_loader, ambient_loader, epochs=10, optimizer="adam", return_history=False,
                sequential=False, adapt_lambda="none",  hyper_lambda=1, preemptive_stop=True, min_loss_change=1e-6):
@@ -143,7 +143,7 @@ def train_icnn_outer(model, train_loader, ambient_loader, epochs=10, opt=None, r
             o_2_new = model(new_2)
             delta_1 = o_1 - o_1_new
             delta_2 = o_2 - o_2_new
-            target = torch.tensor([[0]], dtype=torch.float64)
+            target = torch.tensor([[0]], dtype=data_type).to(device)
             loss = torch.nn.MSELoss()(delta_1 - delta_2, target)
             opt.zero_grad()
             loss.backward()

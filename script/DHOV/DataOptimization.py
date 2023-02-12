@@ -3,15 +3,16 @@ import time
 
 import torch
 from functorch import vmap
+from script.settings import device, data_type
 
 
 def gradient_descent_data_optim(icnn, samples):
-    new_samples = torch.empty_like(samples, dtype=torch.float64)
+    new_samples = torch.empty_like(samples, dtype=data_type).to(device)
     for h, elem in enumerate(samples):
-        new_elem = torch.tensor(elem, dtype=torch.float64, requires_grad=True)
+        new_elem = torch.tensor(elem, dtype=data_type, requires_grad=True).to(device)
         inp = torch.unsqueeze(new_elem, dim=0)
         output = icnn(inp)
-        target = torch.tensor([[0]], dtype=torch.float64)
+        target = torch.tensor([[0]], dtype=data_type).to(device)
         loss = torch.nn.MSELoss()(output, target)
         grad = torch.autograd.grad(loss, inp)
         lr = 0.001
@@ -22,11 +23,11 @@ def gradient_descent_data_optim(icnn, samples):
 
 
 def sgd_data_optim(icnn, samples):
-    samples = [torch.tensor(samples.detach(), dtype=torch.float64, requires_grad=True)]
+    samples = [torch.tensor(samples.detach(), dtype=data_type, requires_grad=True).to(device)]
     optimizer = torch.optim.SGD(samples, lr=0.001)
     for h, elem in enumerate(samples):
         output = icnn(elem)
-        target = torch.zeros_like(output, dtype=torch.float64)
+        target = torch.zeros_like(output, dtype=data_type).to(device)
         loss = torch.nn.MSELoss()(output, target)
         optimizer.zero_grad()
         loss.backward()
@@ -35,11 +36,11 @@ def sgd_data_optim(icnn, samples):
 
 
 def adam_data_optim(icnn, samples):
-    samples = [torch.tensor(samples.detach(), dtype=torch.float64, requires_grad=True)]
+    samples = [torch.tensor(samples.detach(), dtype=data_type, requires_grad=True).to(device)]
     optimizer = torch.optim.Adam(samples)
     for h, elem in enumerate(samples):
         output = icnn(elem)
-        target = torch.zeros_like(output, dtype=torch.float64)
+        target = torch.zeros_like(output, dtype=data_type).to(device)
         loss = torch.nn.MSELoss()(output, target)
         optimizer.zero_grad()
         loss.backward()
@@ -48,7 +49,7 @@ def adam_data_optim(icnn, samples):
 
 
 def test_all(icnn, all_sample, threshold=0.02):
-    avg = torch.zeros(0, dtype=torch.float64)
+    avg = torch.zeros(0, dtype=data_type).to(device)
     num_sample = 10
     # num_sample = len(all_sample)
 
@@ -89,13 +90,13 @@ def even_gradient(icnn, sample, threshold=0.001):
     # return True, ((point_1, new_1), (point_2, new_2))
 
     out = abs(new_out_1 - new_out_2) < threshold
-    loss = torch.nn.MSELoss()(new_out_1 - new_out_2, torch.zeros_like(new_out_1, dtype=torch.float64))
+    loss = torch.nn.MSELoss()(new_out_1 - new_out_2, torch.zeros_like(new_out_1, dtype=data_type).to(device))
     return out, torch.unsqueeze(loss, dim=0)
 
 
 def get_grad_output(icnn, sample):
     output = icnn(sample)
-    target = torch.tensor([[0]], dtype=torch.float64)
+    target = torch.tensor([[0]], dtype=data_type).to(device)
     loss = torch.nn.MSELoss()(output, target)
     grad = torch.autograd.grad(loss, sample)
 

@@ -14,6 +14,7 @@ from script.NeuralNets.Networks import SequentialNN, ICNN, ICNNApproxMax, ICNNLo
 from script.Verification.Verifier import SingleNeuronVerifier, MILPVerifier, DHOVVerifier
 from script.dataInit import Rhombus, ConvexDataset
 import polytope as pc
+from script.settings import device, data_type
 
 
 def last_layer_identity(last_icnn: ICNN, last_c, W, b, A_out, b_out, nn_bounds, solver_time_limit, solver_bound):
@@ -62,7 +63,7 @@ def last_layer_identity(last_icnn: ICNN, last_c, W, b, A_out, b_out, nn_bounds, 
         output = output_var.getAttr("x")
         print("output {}".format(output_var.getAttr("x")))
         sol = output_of_penultimate_layer.getAttr("x")
-        sol = torch.tensor(sol, dtype=torch.float64)
+        sol = torch.tensor(sol, dtype=data_type).to(device)
         sol = torch.unsqueeze(sol, 0)
         out = last_icnn(sol)
         print(out)
@@ -115,7 +116,7 @@ def last_layer_picture(last_icnn: ICNN, last_c, W, b, label, nn_bounds, solver_t
         print("max_var {}".format(max_var.getAttr("x")))
         sol = output_of_penultimate_layer.getAttr("x")
 
-        sol = torch.tensor(sol, dtype=torch.float64)
+        sol = torch.tensor(sol, dtype=data_type).to(device)
         sol = torch.unsqueeze(sol, 0)
         out = last_icnn(sol)
         print(out)
@@ -149,12 +150,12 @@ def net_2d():
 
     with torch.no_grad():
         parameter_list = list(nn.parameters())
-        parameter_list[0].data = torch.tensor([[1, 1], [1, -1]], dtype=torch.float64)
-        parameter_list[1].data = torch.tensor([0, 0], dtype=torch.float64)
-        parameter_list[2].data = torch.tensor([[1, 1], [1, -1]], dtype=torch.float64)
-        parameter_list[3].data = torch.tensor([-0.5, 0], dtype=torch.float64)
-        parameter_list[4].data = torch.tensor([[-1, 1], [1, 1]], dtype=torch.float64)
-        parameter_list[5].data = torch.tensor([3, 0], dtype=torch.float64)
+        parameter_list[0].data = torch.tensor([[1, 1], [1, -1]], dtype=data_type).to(device)
+        parameter_list[1].data = torch.tensor([0, 0], dtype=data_type).to(device)
+        parameter_list[2].data = torch.tensor([[1, 1], [1, -1]], dtype=data_type).to(device)
+        parameter_list[3].data = torch.tensor([-0.5, 0], dtype=data_type).to(device)
+        parameter_list[4].data = torch.tensor([[-1, 1], [1, 1]], dtype=data_type).to(device)
+        parameter_list[5].data = torch.tensor([3, 0], dtype=data_type).to(device)
 
     # nn.load_state_dict(torch.load("nn_2x2.pt"), strict=False)
     # train_sequential_2(nn, train_loader, ambient_loader, epochs=epochs)
@@ -165,7 +166,7 @@ def net_2d():
     # torch.save(nn.state_dict(), "nn_2x2.pt")
 
 
-    test_image = torch.tensor([[0, 0]], dtype=torch.float64)
+    test_image = torch.tensor([[0, 0]], dtype=data_type).to(device)
 
 
     icnns = []
@@ -200,7 +201,7 @@ def net_2d():
     input_size = input_flattened.size(0)
     bounds = nn.calculate_box_bounds([input_flattened.add(-1), input_flattened.add(1)], with_relu=True)
 
-    test_space = torch.empty((0, input_flattened.size(0)), dtype=torch.float64)
+    test_space = torch.empty((0, input_flattened.size(0)), dtype=data_type).to(device)
     box_bound_output_space = ds.samples_uniform_over(test_space, 3000, bounds[-1])
 
     in_snv = []
@@ -255,7 +256,7 @@ def cifar_net():
                             download=True,
                             transform=transform)
     images, labels = training_data.__getitem__(0)
-    testimage, testlabel = torch.unsqueeze(images, 0).to(dtype=torch.float64), torch.unsqueeze(torch.tensor(labels), 0).to(dtype=torch.float64)
+    testimage, testlabel = torch.unsqueeze(images, 0).to(dtype=data_type).to(device), torch.unsqueeze(torch.tensor(labels), 0).to(dtype=data_type).to(device)
 
     nn = SequentialNN([32 * 32 * 3, 1024, 512, 10])
     nn.load_state_dict(torch.load("../../cifar_fc.pth", map_location=torch.device('cpu')), strict=False)

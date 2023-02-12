@@ -7,6 +7,8 @@ from torch.utils.data import DataLoader
 from script.dataInit import ConvexDataset, Rhombus
 from script.NeuralNets.trainFunction import train_icnn_adversarial, train_icnn
 from script.eval import Plots_for
+from script.settings import device, data_type
+
 
 icnn = ICNN([2, 10, 10, 1])
 adversarial = SequentialNN([2, 10, 10, 2])
@@ -35,7 +37,7 @@ if init:
         y = np.random.default_rng().uniform(low=y_range[0], high=y_range[1])
         random_samples.append([[x, y]])
 
-    value = torch.tensor(random_samples, requires_grad=True, dtype=torch.float64)
+    value = torch.tensor(random_samples, requires_grad=True, dtype=data_type).to(device)
     adversarial_set = ConvexDataset(data=value)
     adversarial_loader = DataLoader(adversarial_set, batch_size=batch_size, shuffle=True)
 

@@ -3,7 +3,7 @@ import random
 import numpy as np
 import torch
 import gurobipy as grp
-
+from script.settings import device, data_type
 
 def sample_max_radius(icnn, sample_size):
     m = grp.Model()
@@ -35,8 +35,8 @@ def sample_max_radius(icnn, sample_size):
         m.remove(diff_const)
 
     input_size = len(center_values)
-    included_space = torch.empty(0, dtype=torch.float64)
-    ambient_space = torch.empty(0, dtype=torch.float64)
+    included_space = torch.empty(0, dtype=data_type).to(device)
+    ambient_space = torch.empty(0, dtype=data_type).to(device)
 
     best_upper_bound = []
     best_lower_bound = []
@@ -54,11 +54,11 @@ def sample_max_radius(icnn, sample_size):
         best_upper_bound.append(choice_for_upper_bound[arg_min_upper_bound])
         best_lower_bound.append(choice_for_lower_bound[arg_min_lower_bound])
 
-    best_upper_bound = torch.tensor(best_upper_bound, dtype=torch.float64)
-    best_lower_bound = torch.tensor(best_lower_bound, dtype=torch.float64)
+    best_upper_bound = torch.tensor(best_upper_bound, dtype=data_type).to(device)
+    best_lower_bound = torch.tensor(best_lower_bound, dtype=data_type).to(device)
 
     samples = (best_upper_bound - best_lower_bound) * torch.rand((sample_size, input_size),
-                                                                 dtype=torch.float64) + best_lower_bound
+                                                                 dtype=data_type).to(device) + best_lower_bound
 
     for samp in samples:
         samp = torch.unsqueeze(samp, 0)
@@ -89,7 +89,7 @@ def samples_uniform_over(data_samples, amount, bounds, keep_samples=True, paddin
     lb = bounds[0] - padding
     ub = bounds[1] + padding
     shape = data_samples.size(1)
-    random_samples = (ub - lb) * torch.rand((amount, shape), dtype=torch.float64) + lb
+    random_samples = (ub - lb) * torch.rand((amount, shape), dtype=data_type).to(device) + lb
     if keep_samples:
         data_samples = torch.cat([data_samples, random_samples], dim=0)
     else:
@@ -104,7 +104,7 @@ def sample_uniform_excluding(data_samples, amount, including_bound, excluding_bo
 
     lower = including_bound[0] - padding
     upper = including_bound[1] + padding
-    new_samples = (upper - lower) * torch.rand((amount, input_size), dtype=torch.float64) + lower
+    new_samples = (upper - lower) * torch.rand((amount, input_size), dtype=data_type).to(device) + lower
 
     for i, samp in enumerate(new_samples):
         max_samp = torch.max(samp)
@@ -143,7 +143,7 @@ def sample_uniform_excluding(data_samples, amount, including_bound, excluding_bo
 
 
 def apply_affine_transform(affine_w, affine_b, data_samples):
-    transformed_samples = torch.empty((data_samples.size(0), affine_b.size(0)), dtype=torch.float64)
+    transformed_samples = torch.empty((data_samples.size(0), affine_b.size(0)), dtype=data_type).to(device)
     for i in range(data_samples.shape[0]):
         transformed_samples[i] = torch.matmul(affine_w, data_samples[i]).add(affine_b)
 

@@ -5,7 +5,7 @@ from scipy.spatial import ConvexHull
 
 from script import dataInit
 from script.dataInit import Rhombus
-
+from script.settings import device, data_type
 
 class Plots_for():
     # matplotlib.use('TkAgg')
@@ -43,7 +43,7 @@ class Plots_for():
             self.adversarial = adversarial
 
         if adversarial_values is not None:
-            self.adversarial_values = adversarial_values.to(torch.float64)
+            self.adversarial_values = adversarial_values.to(data_type).to(device)
 
 
 
@@ -136,7 +136,7 @@ class Plots_for():
         x = np.linspace(*self.x_range, 500)
         y = np.linspace(*self.y_range, 500)
         xx, yy = np.meshgrid(x, y)
-        x_in = torch.tensor(np.c_[xx.ravel(), yy.ravel()], dtype=torch.float64)
+        x_in = torch.tensor(np.c_[xx.ravel(), yy.ravel()], dtype=data_type).to(device)
         y_pred = self.model(x_in)
         y_pred = np.round(y_pred.detach().numpy(), decimals=5).reshape(xx.shape)
 
@@ -194,7 +194,7 @@ class Plots_for():
         x = np.linspace(*self.x_range, 100)
         y = np.linspace(*self.y_range, 100)
         xx, yy = np.meshgrid(x, y)
-        x_in = torch.tensor(np.c_[xx.ravel(), yy.ravel()], dtype=torch.float64)
+        x_in = torch.tensor(np.c_[xx.ravel(), yy.ravel()], dtype=data_type).to(device)
 
         y_pred = self.adversarial(x_in)
         rounded = np.round(y_pred.detach().numpy(), decimals=5)

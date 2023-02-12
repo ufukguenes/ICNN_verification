@@ -1,7 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="6d238203-6334-43f4-afee-09b5387b5116" name="Changes" comment="bug fix for using torch tensors as bounds" />
+    <list default="true" id="6d238203-6334-43f4-afee-09b5387b5116" name="Changes" comment="deleting refactored files">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/script/DHOV/DHOV.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/DHOV/DHOV.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/script/DHOV/DataOptimization.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/DHOV/DataOptimization.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/script/DHOV/DataSampling.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/DHOV/DataSampling.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/script/DHOV/MainDHOV.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/DHOV/MainDHOV.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/script/NeuralNets/Networks.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/NeuralNets/Networks.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/script/NeuralNets/lossFunction.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/NeuralNets/lossFunction.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/script/NeuralNets/trainFunction.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/NeuralNets/trainFunction.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/script/Verification/Verification.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/Verification/Verification.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/script/dataInit.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/dataInit.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/script/eval.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/eval.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/script/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/main.py" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -83,6 +96,7 @@
       <workItem from="1675961243138" duration="1260000" />
       <workItem from="1676016432702" duration="21178000" />
       <workItem from="1676119972711" duration="22681000" />
+      <workItem from="1676195679732" duration="1612000" />
     </task>
     <task id="LOCAL-00001" summary="merge conflict resolved">
       <created>1675424657510</created>
@@ -203,7 +217,21 @@
       <option name="project" value="LOCAL" />
       <updated>1676146490320</updated>
     </task>
-    <option name="localTasksCounter" value="18" />
+    <task id="LOCAL-00018" summary="deltining refactored files">
+      <created>1676195968591</created>
+      <option name="number" value="00018" />
+      <option name="presentableId" value="LOCAL-00018" />
+      <option name="project" value="LOCAL" />
+      <updated>1676195968591</updated>
+    </task>
+    <task id="LOCAL-00019" summary="deleting refactored files">
+      <created>1676195991869</created>
+      <option name="number" value="00019" />
+      <option name="presentableId" value="LOCAL-00019" />
+      <option name="project" value="LOCAL" />
+      <updated>1676195991869</updated>
+    </task>
+    <option name="localTasksCounter" value="20" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -270,15 +298,22 @@
     <MESSAGE value="bug fix" />
     <MESSAGE value="refactoring to make object-oriented and allowing testing with precision and recall" />
     <MESSAGE value="bug fix for using torch tensors as bounds" />
-    <option name="LAST_COMMIT_MESSAGE" value="bug fix for using torch tensors as bounds" />
+    <MESSAGE value="deltining refactored files" />
+    <MESSAGE value="deleting refactored files" />
+    <option name="LAST_COMMIT_MESSAGE" value="deleting refactored files" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/script/Verification/Verifier.py</url>
-          <line>213</line>
+          <line>212</line>
           <option name="timeStamp" value="241" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/script/DHOV/MainDHOV.py</url>
+          <line>147</line>
+          <option name="timeStamp" value="242" />
         </line-breakpoint>
       </breakpoints>
       <default-breakpoints>
@@ -304,7 +339,7 @@
     <SUITE FILE_PATH="coverage/DeepHull$main.coverage" NAME="main Coverage Results" MODIFIED="1669233392579" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ICNN_verification$main.coverage" NAME="main Coverage Results" MODIFIED="1670249050825" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ICNN_verification$DHOV.coverage" NAME="DHOV Coverage Results" MODIFIED="1674467903275" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script" />
-    <SUITE FILE_PATH="coverage/ICNN_verification$MainDHOV.coverage" NAME="MainDHOV Coverage Results" MODIFIED="1676146107087" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script/DHOV" />
+    <SUITE FILE_PATH="coverage/ICNN_verification$MainDHOV.coverage" NAME="MainDHOV Coverage Results" MODIFIED="1676197268346" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script/DHOV" />
     <SUITE FILE_PATH="coverage/DeepHull$Verification.coverage" NAME="Verification Coverage Results" MODIFIED="1669122239179" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script" />
     <SUITE FILE_PATH="coverage/ICNN_verification$test.coverage" NAME="test Coverage Results" MODIFIED="1673302337900" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script" />
     <SUITE FILE_PATH="coverage/DeepHull$eval.coverage" NAME="eval Coverage Results" MODIFIED="1668723858367" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />

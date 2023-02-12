@@ -4,7 +4,7 @@ from scipy.spatial import ConvexHull
 
 from torch.utils.data import Dataset
 from abc import ABC, abstractmethod
-
+from script.settings import device, data_type
 
 class Multivariate():
     def get_samples(self, offset, number_of_samples, x_range, y_range):
@@ -50,8 +50,8 @@ class Multivariate():
 
         ambient_space = np.array(ambient)
 
-        included_space = torch.from_numpy(included_space).to(torch.float64)
-        ambient_space = torch.from_numpy(ambient_space).to(torch.float64)
+        included_space = torch.from_numpy(included_space).to(data_type).to(device)
+        ambient_space = torch.from_numpy(ambient_space).to(data_type).to(device)
 
         return included_space, ambient_space
 

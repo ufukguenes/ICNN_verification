@@ -15,6 +15,7 @@ import script.DHOV.DataOptimization as dop
 from script.dataInit import ConvexDataset
 from script.eval import Plots_for
 from script.NeuralNets.trainFunction import train_icnn, train_icnn_outer
+from script.settings import device, data_type
 
 # todo zu Klasse umwandeln
 """
@@ -56,11 +57,11 @@ def start_verification(nn: SequentialNN, input, icnns, eps=0.001, icnn_batch_siz
     box_bounds = nn.calculate_box_bounds(
         eps_bounds)  # todo abbrechen, wenn die box bounds schon die eigenschaft erfüllen
 
-    included_space = torch.empty((0, input_flattened.size(0)), dtype=torch.float64)
+    included_space = torch.empty((0, input_flattened.size(0)), dtype=data_type).to(device)
     included_space = ds.samples_uniform_over(included_space, int(sample_count / 2), eps_bounds)
-    ambient_space = torch.empty((0, input_flattened.size(0)), dtype=torch.float64)
-    original_included_space = torch.empty((0, input_flattened.size(0)), dtype=torch.float64)
-    original_ambient_space = torch.empty((0, input_flattened.size(0)), dtype=torch.float64)
+    ambient_space = torch.empty((0, input_flattened.size(0)), dtype=data_type).to(device)
+    original_included_space = torch.empty((0, input_flattened.size(0)), dtype=data_type).to(device)
+    original_ambient_space = torch.empty((0, input_flattened.size(0)), dtype=data_type).to(device)
 
     if should_plot in valid_should_plot:
         original_included_space, original_ambient_space = included_space, ambient_space
@@ -78,7 +79,7 @@ def start_verification(nn: SequentialNN, input, icnns, eps=0.001, icnn_batch_siz
         affine_w, affine_b = parameter_list[i], parameter_list[i + 1]
 
         if not keep_ambient_space:
-            ambient_space = torch.empty((0, nn.layer_widths[current_layer_index]), dtype=torch.float64)
+            ambient_space = torch.empty((0, nn.layer_widths[current_layer_index]), dtype=data_type).to(device)
 
         if sample_over_input_space:
             if i == 0:

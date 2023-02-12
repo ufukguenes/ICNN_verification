@@ -5,7 +5,7 @@ from torch import nn
 from functorch import vmap
 import script.Verification.VerificationBasics as verbas
 from abc import ABC, abstractmethod
-
+from script.settings import device, data_type
 
 class Flatten(nn.Module):
 
@@ -52,11 +52,11 @@ class SequentialNN(nn.Sequential, VerifiableNet):
         self.layer_widths = layer_widths
         d_in = layer_widths[0]
         for lw in layer_widths[1:len(layer_widths) - 1]:
-            self.append(nn.Linear(d_in, lw, dtype=torch.float64))
+            self.append(nn.Linear(d_in, lw, dtype=data_type).to(device))
             self.append(nn.ReLU())
             d_in = lw
 
-        self.append(nn.Linear(d_in, layer_widths[-1], dtype=torch.float64))
+        self.append(nn.Linear(d_in, layer_widths[-1], dtype=data_type).to(device))
 
     def forward(self, x):
         x = Flatten()(x)
@@ -76,14 +76,14 @@ class SequentialNN(nn.Sequential, VerifiableNet):
         bounds_per_layer = []
         for i in range(0, len(parameter_list), 2):
             W, b = parameter_list[i], parameter_list[i + 1]
-            w_plus = torch.maximum(W, torch.tensor(0, dtype=torch.float64))
-            w_minus = torch.minimum(W, torch.tensor(0, dtype=torch.float64))
+            w_plus = torch.maximum(W, torch.tensor(0, dtype=data_type).to(device))
+            w_minus = torch.minimum(W, torch.tensor(0, dtype=data_type).to(device))
             lb = torch.matmul(w_plus, next_lower_bounds).add(torch.matmul(w_minus, next_upper_bounds)).add(b)
             ub = torch.matmul(w_plus, next_upper_bounds).add(torch.matmul(w_minus, next_lower_bounds)).add(b)
 
             if with_relu and i < len(parameter_list) - 2:
-                next_upper_bounds = torch.maximum(torch.tensor(0, dtype=torch.float64), ub)
-                next_lower_bounds = torch.maximum(torch.tensor(0, dtype=torch.float64), lb)
+                next_upper_bounds = torch.maximum(torch.tensor(0, dtype=data_type).to(device), ub)
+                next_lower_bounds = torch.maximum(torch.tensor(0, dtype=data_type).to(device), lb)
             else:
                 next_upper_bounds = ub
                 next_lower_bounds = lb
@@ -125,13 +125,13 @@ class SequentialNN(nn.Sequential, VerifiableNet):
         if self.init_all_with_zeros:
             for i in range(0, len(self.ws)):
                 ws = list(self.ws[i].parameters())
-                ws[1].data = torch.zeros_like(ws[1], dtype=torch.float64)
-                ws[0].data = torch.zeros_like(ws[0], dtype=torch.float64)
+                ws[1].data = torch.zeros_like(ws[1], dtype=data_type).to(device)
+                ws[0].data = torch.zeros_like(ws[0], dtype=data_type).to(device)
 
             # init non box-bound layer with zeros
             for elem in self.us:
                 w = list(elem.parameters())
-                w[0].data = torch.zeros_like(w[0], dtype=torch.float64)
+                w[0].data = torch.zeros_like(w[0], dtype=data_type).to(device)
 
 
 class ICNN(nn.Module, VerifiableNet):
@@ -164,12 +164,12 @@ class ICNN(nn.Module, VerifiableNet):
         self.ws = nn.ParameterList([])  # positive weights for propagation
         self.us = nn.ParameterList([])  # weights tied to inputs
         self.layer_widths = layer_widths
-        self.ws.append(nn.Linear(layer_widths[0], layer_widths[1], bias=True, dtype=torch.float64))
+        self.ws.append(nn.Linear(layer_widths[0], layer_widths[1], bias=True, dtype=data_type).to(device))
 
         d_in = layer_widths[1]
 
         for lw in layer_widths[2:]:
-            w = nn.Linear(d_in, lw, dtype=torch.float64)
+            w = nn.Linear(d_in, lw, dtype=data_type).to(device)
 
             with torch.no_grad():
                 if force_positive_init:
@@ -178,7 +178,7 @@ class ICNN(nn.Module, VerifiableNet):
                             p[:] = torch.maximum(torch.Tensor([0]), p)
 
             d_in = lw
-            u = nn.Linear(layer_widths[0], lw, bias=False, dtype=torch.float64)
+            u = nn.Linear(layer_widths[0], lw, bias=False, dtype=data_type).to(device)
 
             self.ws.append(w)
             self.us.append(u)
@@ -212,22 +212,22 @@ class ICNN(nn.Module, VerifiableNet):
             if self.init_all_with_zeros:
                 for i in range(0, len(self.ws)):
                     ws = list(self.ws[i].parameters())
-                    ws[1].data = torch.zeros_like(ws[1], dtype=torch.float64)
-                    ws[0].data = torch.zeros_like(ws[0], dtype=torch.float64)
+                    ws[1].data = torch.zeros_like(ws[1], dtype=data_type).to(device)
+                    ws[0].data = torch.zeros_like(ws[0], dtype=data_type).to(device)
 
                 # init non box-bound layer with zeros
                 for elem in self.us:
                     w = list(elem.parameters())
-                    w[0].data = torch.zeros_like(w[0], dtype=torch.float64)
+                    w[0].data = torch.zeros_like(w[0], dtype=data_type).to(device)
             else:
                 third_last_layer = list(self.ws[penultimate_layer_index - 1].parameters())
                 third_last_w = third_last_layer[0]
                 third_last_b = third_last_layer[1]
-                third_last_w.data = torch.zeros_like(third_last_w, dtype=torch.float64)
-                third_last_b.data = torch.zeros_like(third_last_b, dtype=torch.float64)
+                third_last_w.data = torch.zeros_like(third_last_w, dtype=data_type).to(device)
+                third_last_b.data = torch.zeros_like(third_last_b, dtype=data_type).to(device)
 
                 last_us = list(self.us[last_layer_index - 1].parameters())[0]
-                last_us.data = torch.zeros_like(last_us, dtype=torch.float64)
+                last_us.data = torch.zeros_like(last_us, dtype=data_type).to(device)
 
             # bias ist set in W, because U does not have bias
             ws = list(self.ws[penultimate_layer_index].parameters())
@@ -235,8 +235,8 @@ class ICNN(nn.Module, VerifiableNet):
             # us is used to represent Box-Bounds, because values in W are set to 0 when negative
             us = list(self.us[penultimate_layer_index - 1].parameters())
 
-            b = torch.zeros_like(ws[1], dtype=torch.float64)
-            u = torch.zeros_like(us[0], dtype=torch.float64)
+            b = torch.zeros_like(ws[1], dtype=data_type).to(device)
+            u = torch.zeros_like(us[0], dtype=data_type).to(device)
             num_of_bounds = len(lower_bounds)
             for i in range(num_of_bounds):
                 u[2 * i][i] = 1
@@ -248,8 +248,8 @@ class ICNN(nn.Module, VerifiableNet):
 
             # last layer needs to sum the output of the box-bounds after ReLU activation
             last = list(self.ws[last_layer_index].parameters())
-            last[0].data = torch.mul(torch.ones_like(last[0], dtype=torch.float64), self.init_scaling)
-            last[1].data = torch.zeros_like(last[1], dtype=torch.float64)
+            last[0].data = torch.mul(torch.ones_like(last[0], dtype=data_type).to(device), self.init_scaling)
+            last[1].data = torch.zeros_like(last[1], dtype=data_type).to(device)
 
     def calculate_box_bounds(self, input_bounds, with_relu=True):  # todo für andere Netze die Architektur anpassen
         parameter_list = list(self.parameters())
@@ -266,20 +266,20 @@ class ICNN(nn.Module, VerifiableNet):
         bounds_per_layer = []
         for i in range(0, len(parameter_list), 2):
             W, b = parameter_list[i], parameter_list[i + 1]
-            w_plus = torch.maximum(W, torch.tensor(0, dtype=torch.float64))
-            w_minus = torch.minimum(W, torch.tensor(0, dtype=torch.float64))
+            w_plus = torch.maximum(W, torch.tensor(0, dtype=data_type).to(device))
+            w_minus = torch.minimum(W, torch.tensor(0, dtype=data_type).to(device))
             lb = torch.matmul(w_plus, next_lower_bounds).add(torch.matmul(w_minus, next_upper_bounds)).add(b)
             ub = torch.matmul(w_plus, next_upper_bounds).add(torch.matmul(w_minus, next_lower_bounds)).add(b)
             if i != 0:
                 affine_u = self.us[i // 2 - 1]
-                u_plus = torch.maximum(affine_u, torch.tensor(0, dtype=torch.float64))
-                u_minus = torch.minimum(affine_u, torch.tensor(0, dtype=torch.float64))
+                u_plus = torch.maximum(affine_u, torch.tensor(0, dtype=data_type).to(device))
+                u_minus = torch.minimum(affine_u, torch.tensor(0, dtype=data_type).to(device))
                 lb = lb.add(torch.matmul(u_plus, next_lower_bounds).add(torch.matmul(u_minus, next_upper_bounds)))
                 ub = ub.add(torch.matmul(u_plus, next_upper_bounds).add(torch.matmul(u_minus, next_lower_bounds)))
 
             if with_relu and i < len(parameter_list) - 2:
-                next_upper_bounds = torch.maximum(torch.tensor(0, dtype=torch.float64), ub)
-                next_lower_bounds = torch.maximum(torch.tensor(0, dtype=torch.float64), lb)
+                next_upper_bounds = torch.maximum(torch.tensor(0, dtype=data_type).to(device), ub)
+                next_lower_bounds = torch.maximum(torch.tensor(0, dtype=data_type).to(device), lb)
             else:
                 next_upper_bounds = ub
                 next_lower_bounds = lb
@@ -351,12 +351,12 @@ class ICNNLogical(ICNN):
         self.with_two_layers = with_two_layers
         self.ls = []
 
-        self.ls.append(nn.Linear(self.layer_widths[0], 2 * self.layer_widths[0], bias=True, dtype=torch.float64))
+        self.ls.append(nn.Linear(self.layer_widths[0], 2 * self.layer_widths[0], bias=True, dtype=data_type).to(device))
         if self.with_two_layers:
-            self.ls.append(nn.Linear(2, 4, bias=False, dtype=torch.float64))
-            self.ls.append(nn.Linear(4, 3, bias=False, dtype=torch.float64))
+            self.ls.append(nn.Linear(2, 4, bias=False, dtype=data_type).to(device))
+            self.ls.append(nn.Linear(4, 3, bias=False, dtype=data_type).to(device))
         else:
-            self.ls.append(nn.Linear(2, 3, bias=False, dtype=torch.float64))
+            self.ls.append(nn.Linear(2, 3, bias=False, dtype=data_type).to(device))
 
         with torch.no_grad():
             if self.with_two_layers:
@@ -365,12 +365,12 @@ class ICNNLogical(ICNN):
 
                 # diese architektur ist für alle ICNNs gleich da alle genau 2 ausgaben haben eine vom eigentlichen ICNN
                 # und eine von den Box Bounds
-                l1[0].data = torch.tensor([[1, 1], [1, -1], [-1, 1], [-1, -1]], dtype=torch.float64)
-                l2[0].data = torch.tensor([[1, 0, 0, -1], [0, 1, 0, -1], [0, 0, 1, -1]], dtype=torch.float64)
+                l1[0].data = torch.tensor([[1, 1], [1, -1], [-1, 1], [-1, -1]], dtype=data_type).to(device)
+                l2[0].data = torch.tensor([[1, 0, 0, -1], [0, 1, 0, -1], [0, 0, 1, -1]], dtype=data_type).to(device)
             else:
                 # Vereinfachung von der zwei Layer Variante
                 l1 = list(self.ls[1].parameters())
-                l1[0].data = torch.tensor([[2, 2], [2, 0], [0, 2]], dtype=torch.float64)
+                l1[0].data = torch.tensor([[2, 2], [2, 0], [0, 2]], dtype=data_type).to(device)
 
     def forward(self, x):
         icnn_out = super().forward(x)
@@ -393,20 +393,20 @@ class ICNNLogical(ICNN):
             if self.init_all_with_zeros:
                 for i in range(len(self.ws)):
                     ws = list(self.ws[i].parameters())
-                    ws[1].data = torch.zeros_like(ws[1], dtype=torch.float64)
-                    ws[0].data = torch.zeros_like(ws[0], dtype=torch.float64)
+                    ws[1].data = torch.zeros_like(ws[1], dtype=data_type).to(device)
+                    ws[0].data = torch.zeros_like(ws[0], dtype=data_type).to(device)
                 last_ws = list(self.ws[-1].parameters())
                 last_ws[0].data = torch.ones_like(last_ws[0])
                 last_ws[1].data = torch.zeros_like(last_ws[1])
 
                 for i in range(len(self.us)):
                     us = list(self.us[i].parameters())
-                    us[0].data = torch.zeros_like(us[0], dtype=torch.float64)
+                    us[0].data = torch.zeros_like(us[0], dtype=data_type).to(device)
 
             numer_of_bounds = len(lower_bounds)
             bb = list(self.ls[0].parameters())  # us is used because values in ws are set to 0 when negative
-            u = torch.zeros_like(bb[0], dtype=torch.float64)
-            b = torch.zeros_like(bb[1], dtype=torch.float64)
+            u = torch.zeros_like(bb[0], dtype=data_type).to(device)
+            b = torch.zeros_like(bb[1], dtype=data_type).to(device)
             for i in range(numer_of_bounds):
                 u[2 * i][i] = 1
                 u[2 * i + 1][i] = -1
@@ -484,7 +484,7 @@ class ICNNApproxMax(ICNN):
         self.use_training_setup = use_training_setup
         self.ls = []
 
-        self.ls.append(nn.Linear(self.layer_widths[0], 2 * self.layer_widths[0], bias=True, dtype=torch.float64))
+        self.ls.append(nn.Linear(self.layer_widths[0], 2 * self.layer_widths[0], bias=True, dtype=data_type).to(device))
 
     def forward(self, x):
         icnn_out = super().forward(x)
@@ -517,20 +517,20 @@ class ICNNApproxMax(ICNN):
             if self.init_all_with_zeros:
                 for i in range(len(self.ws)):
                     ws = list(self.ws[i].parameters())
-                    ws[1].data = torch.zeros_like(ws[1], dtype=torch.float64)
-                    ws[0].data = torch.zeros_like(ws[0], dtype=torch.float64)
+                    ws[1].data = torch.zeros_like(ws[1], dtype=data_type).to(device)
+                    ws[0].data = torch.zeros_like(ws[0], dtype=data_type).to(device)
                 last_ws = list(self.ws[-1].parameters())
                 last_ws[0].data = torch.ones_like(last_ws[0])
                 last_ws[1].data = torch.zeros_like(last_ws[1])
 
                 for i in range(len(self.us)):
                     us = list(self.us[i].parameters())
-                    us[0].data = torch.zeros_like(us[0], dtype=torch.float64)
+                    us[0].data = torch.zeros_like(us[0], dtype=data_type).to(device)
 
             numer_of_bounds = len(lower_bounds)
             bb = list(self.ls[0].parameters())  # us is used because values in ws are set to 0 when negative
-            u = torch.zeros_like(bb[0], dtype=torch.float64)
-            b = torch.zeros_like(bb[1], dtype=torch.float64)
+            u = torch.zeros_like(bb[0], dtype=data_type).to(device)
+            b = torch.zeros_like(bb[1], dtype=data_type).to(device)
             for i in range(numer_of_bounds):
                 u[2 * i][i] = 1
                 u[2 * i + 1][i] = -1
