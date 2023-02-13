@@ -32,8 +32,10 @@ class Verifier(ABC):
         model = self.model.copy()
         model.setParam("BestObjStop", -0.01)
 
-        out_var_0 = model.getVarByName("last_affine_var[0]")
-        out_var_1 = model.getVarByName("last_affine_var[1]") #todo auf multiple outputs anpassen
+        num_of_out_fet = len(output_sample)
+        out_vars = []
+        for i in range(num_of_out_fet):
+            out_vars.append(model.getVarByName("last_affine_var[{}]".format(i)))
 
         """
         output_size = len(self.output_vars.tolist())
@@ -47,11 +49,10 @@ class Verifier(ABC):
         max_var = model.addVar()
         model.addConstr(max_var == grp.max_(abs_diff))"""
 
-        model.addConstr(out_var_0 == output_sample[0])
-        model.addConstr(out_var_1 == output_sample[1])
+        model.addConstrs(out_vars[i] == output_sample[i] for i in range(num_of_out_fet))
 
         model.update()
-        model.setObjective(out_var_0, grp.GRB.MINIMIZE)
+        model.setObjective(out_vars[0], grp.GRB.MINIMIZE)
 
         #print("constr generateion {}".format(time.time() - t))
         #t = time.time()
@@ -95,13 +96,14 @@ class SingleNeuronVerifier(Verifier):
 
         input_flattened = torch.flatten(self.input_x)
         input_size = input_flattened.size(0)
-        bounds = self.net.calculate_box_bounds([input_flattened.add(-self.eps), input_flattened.add(self.eps)], with_relu=False)
+        #bounds = self.net.calculate_box_bounds([input_flattened.add(-self.eps), input_flattened.add(self.eps)], with_relu=False)
+        bounds = self.net.calculate_box_bounds(None)
 
         input_flattened = input_flattened.cpu().numpy()
 
-        input_var = m.addMVar(input_size, lb=[elem - self.eps for elem in input_flattened], ub=[elem + self.eps for elem in input_flattened], name="in_var")
-        m.addConstrs(input_var[i] <= input_flattened[i] + self.eps for i in range(input_size))
-        m.addConstrs(input_var[i] >= input_flattened[i] - self.eps for i in range(input_size))
+        input_var = m.addMVar(input_size, lb=-float("inf"), name="in_var")
+        m.addConstrs((input_var[i] <= input_flattened[i] + self.eps for i in range(input_size)), name="in_const1")
+        m.addConstrs((input_var[i] >= input_flattened[i] - self.eps for i in range(input_size)), name="in_const1")
 
 
         parameter_list = list(self.net.parameters())
@@ -112,12 +114,11 @@ class SingleNeuronVerifier(Verifier):
             W, b = parameter_list[i].detach().cpu().numpy(), parameter_list[i + 1].detach().cpu().numpy()
 
             out_fet = len(b)
-            out_vars = m.addMVar(out_fet, lb=lb, ub=ub, name="affine_var" + str(i))
-            const = m.addConstrs((W[i] @ in_var + b[i] == out_vars[i] for i in range(len(W))))
+            out_vars = m.addMVar(out_fet, lb=-float("inf"), name="affine_var" + str(i))
+            const = m.addConstrs((W[i] @ in_var + b[i] == out_vars[i] for i in range(len(W))), name="affine_const" + str(i))
 
             relu_in_var = out_vars
             relu_vars = verbas.add_singel_neuron_constr(m, relu_in_var, out_fet, lb, ub, i=i)  # verbas.add_relu_constr(m, relu_in_var, out_fet, lb, ub)
-            m.update()
             in_var = relu_vars
 
         lb = bounds[-1][0].detach().cpu().numpy()
@@ -125,11 +126,9 @@ class SingleNeuronVerifier(Verifier):
         W, b = parameter_list[len(parameter_list) - 2].detach().cpu().numpy(), parameter_list[-1].detach().cpu().numpy()
 
         out_fet = len(b)
-        out_vars = m.addMVar(out_fet, lb=lb, ub=ub, name="last_affine_var")
+        out_vars = m.addMVar(out_fet, lb=-float("inf"), name="last_affine_var")
         const = m.addConstrs((W[i] @ in_var + b[i] == out_vars[i] for i in range(len(W))), name="out_const")
-
         m.update()
-
         self.model = m
         self.output_vars = out_vars
         self.input_vars = input_var
@@ -171,7 +170,7 @@ class MILPVerifier(Verifier):
             W, b = parameter_list[i].detach().numpy(), parameter_list[i + 1].detach().numpy()
 
             out_fet = len(b)
-            out_vars = m.addMVar(out_fet, lb=-float("inf"), ub=ub, name="affine_var" + str(i))
+            out_vars = m.addMVar(out_fet, lb=-float("inf"), name="affine_var" + str(i))
             const = m.addConstrs((W[i] @ in_var + b[i] == out_vars[i] for i in range(len(W))))
 
             relu_in_var = out_vars
@@ -183,9 +182,9 @@ class MILPVerifier(Verifier):
         W, b = parameter_list[len(parameter_list) - 2].detach().numpy(), parameter_list[-1].detach().numpy()
 
         out_fet = len(b)
-        out_vars = m.addMVar(out_fet, lb=-float("inf"), ub=ub, name="last_affine_var")
+        out_vars = m.addMVar(out_fet, lb=-float("inf"), name="last_affine_var")
         const = m.addConstrs((W[i] @ in_var + b[i] == out_vars[i] for i in range(len(W))), name="out_const")
-
+        m.update()
         self.model = m
         self.output_vars = out_vars
         self.input_vars = input_var

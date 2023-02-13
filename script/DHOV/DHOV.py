@@ -26,7 +26,7 @@ adapt_lambda has values: none, high_low, included
 
 
 def start_verification(nn: SequentialNN, input, icnns, eps=0.001, icnn_batch_size=1000, icnn_epochs=100,
-                       sample_count=1000,
+                       sample_count=1000, group_size=-1,
                        keep_ambient_space=False, sample_new=True, use_over_approximation=True,
                        sample_over_input_space=False, sample_over_output_space=True, data_grad_descent_steps=0,
                        train_outer=False, preemptive_stop=True, even_gradient_training=False, force_inclusion_steps=0,

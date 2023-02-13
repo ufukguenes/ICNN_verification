@@ -51,10 +51,10 @@ def add_affine_constr(model, affine_w, b, input_vars, lb, ub, i=0):
     return out_vars
 
 def add_singel_neuron_constr(model, input_vars, number_of_out_features, lb, ub, i=0):
-    relu_vars = model.addMVar(number_of_out_features, lb=lb, ub=ub, name="in_relu"+str(i))
-    model.addConstrs((relu_vars[k] >= 0) for k in range(number_of_out_features))
-    model.addConstrs((relu_vars[k] >= input_vars[k]) for k in range(number_of_out_features))
+    relu_vars = model.addMVar(number_of_out_features, lb=-float("inf"), name="in_relu"+str(i))
+    model.addConstrs(((relu_vars[k] >= 0) for k in range(number_of_out_features)), name="relu_0_lt"+str(i))
+    model.addConstrs(((relu_vars[k] >= input_vars[k]) for k in range(number_of_out_features)), name="relu_var_lt"+str(i))
     div_var = model.addMVar(number_of_out_features, lb=-float("inf"), name="div_var" + str(i))
-    model.addConstrs((div_var[k] * (ub[k] - lb[k]) == 1 for k in range(number_of_out_features)))
-    model.addConstrs(((relu_vars[k] <= (ub[k]) * div_var[k] * (input_vars[k] - lb[k])) for k in range(number_of_out_features)), name="lb_const" + str(i))
+    div_const = model.addConstrs((div_var[k] * (ub[k] - lb[k]) == 1 for k in range(number_of_out_features)), name="div_const"+str(i))
+    model.addConstrs(((relu_vars[k] <= (ub[k] * (input_vars[k] - lb[k])) * div_var[k]) for k in range(number_of_out_features)), name="ub_const" + str(i))
     return relu_vars
