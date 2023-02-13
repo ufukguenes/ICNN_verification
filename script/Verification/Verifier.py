@@ -95,7 +95,7 @@ class SingleNeuronVerifier(Verifier):
 
         input_flattened = torch.flatten(self.input_x)
         input_size = input_flattened.size(0)
-        bounds = self.net.calculate_box_bounds([input_flattened.add(-self.eps), input_flattened.add(self.eps)], with_relu=True)
+        bounds = self.net.calculate_box_bounds([input_flattened.add(-self.eps), input_flattened.add(self.eps)], with_relu=False)
 
         input_flattened = input_flattened.cpu().numpy()
 
@@ -153,7 +153,9 @@ class MILPVerifier(Verifier):
 
         input_flattened = torch.flatten(self.input_x)
         input_size = input_flattened.size(0)
-        bounds = self.net.calculate_box_bounds([input_flattened.add(-self.eps), input_flattened.add(self.eps)], with_relu=True)
+        # todo hier darf with_relu nicht wahr sein, weil man sonst ggf bestimmte abhängigkeiten
+        #  der Neruonen unterbindet, aber möglicherweise kann ich das bei SNV oder DHOV verwenden?
+        bounds = self.net.calculate_box_bounds([input_flattened.add(-self.eps), input_flattened.add(self.eps)], with_relu=False)
 
         input_flattened = input_flattened.numpy()
 
@@ -209,7 +211,7 @@ class DHOVVerifier(Verifier):
 
         input_flattened = torch.flatten(self.input_x)
         input_size = input_flattened.size(0)
-        bounds = self.net.calculate_box_bounds([input_flattened.add(-self.eps), input_flattened.add(self.eps)], with_relu=True)
+        bounds = self.net.calculate_box_bounds([input_flattened.add(-self.eps), input_flattened.add(self.eps)], with_relu=False)
 
         input_flattened = input_flattened.cpu().numpy()
 
