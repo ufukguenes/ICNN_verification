@@ -32,7 +32,7 @@ def add_to_model(verifier, labels):
     # m.addConstrs(difference[i] == output_var.tolist()[i] - output_var.tolist()[label] for i in range(10))
     max_var = m.addVar(lb=-float('inf'), ub=10)
     m.addConstr(max_var == grp.max_(difference))
-    m.addConstr(max_var >= 0)
+    m.addConstr(max_var <= 0)
 
 def net_cifar():
     transform = Compose([ToTensor(),
@@ -81,23 +81,24 @@ def net_cifar():
         if var.IISUB:
             print(var)"""
 
-    eps = 0.001
+    eps_input_space = 0.001
     input_flattened = torch.flatten(testimage)
-    new = input_flattened.add(-eps)
-    new2 = input_flattened.add(eps)
-    bounds = nn.calculate_box_bounds([input_flattened.add(-eps), input_flattened.add(eps)], with_relu=True)
+    new = input_flattened.add(-eps_input_space)
+    new2 = input_flattened.add(eps_input_space)
+    bounds = nn.calculate_box_bounds([input_flattened.add(-eps_input_space), input_flattened.add(eps_input_space)], with_relu=True)
 
-    milp_verifier = MILPVerifier(nn, testimage, eps, print_log=False)
-    snv_verifier = SingleNeuronVerifier(nn, testimage, eps, print_log=False)
+    test_space = torch.empty((1, 10), dtype=data_type).to(device)
+    test_space[0] = pred
+    box_bound_output_space = ds.samples_uniform_over(test_space, 100, bounds[-1])
+
+    milp_verifier = MILPVerifier(nn, testimage, eps_input_space, print_log=False)
+    snv_verifier = SingleNeuronVerifier(nn, testimage, eps_input_space, print_log=False)
 
     milp_verifier.generate_constraints_for_net()
     snv_verifier.generate_constraints_for_net()
 
     add_to_model(milp_verifier, labels)
     add_to_model(snv_verifier, labels)
-
-    test_space = torch.empty((0, 10), dtype=data_type).to(device)
-    box_bound_output_space = ds.samples_uniform_over(test_space, 10, bounds[-1])
 
     in_snv = []
     in_milp = []
@@ -129,7 +130,7 @@ def net_cifar():
     in_not = 0
     in_in = 0
     for i in range(len(in_milp)):
-        if not in_milp and not in_snv:
+        if not in_milp[i] and not in_snv[i]:
             not_not += 1
         elif not in_milp[i] and in_snv[i]:
             not_in += 1
@@ -144,7 +145,7 @@ def net_cifar():
     print("both out     - {}".format(not_not))
     print("both in      - {}".format(in_in))
     print("only in snv (due to over approximation) - {}".format(not_in))
-    print("only in milp (due to false approximation) - {}".format(in_not))
+    print("only in milp (due to incorrect approximation) - {}".format(in_not))
 
 
 
