@@ -72,12 +72,24 @@ def sample_max_radius(icnn, sample_size):
     return included_space, ambient_space
 
 
-def regroup_samples(icnn, included_space, ambient_space, c=0):
+def regroup_samples(icnns, included_space, ambient_space, group_size, c=0):
     moved = 0
     for i, elem in enumerate(ambient_space):
         elem = torch.unsqueeze(elem, 0)
-        output = icnn(elem)
-        if output <= c:
+        is_included = True
+        for group_i, icnn in enumerate(icnns):
+            if group_i == len(icnns) - 1 and len(elem) % group_i > 0:
+                from_to_neurons = [group_size * group_i, group_size * group_i + (group_size % group_i)]
+            else:
+                from_to_neurons = [group_size * group_i, group_size * group_i + group_size]  # upper bound is exclusive
+            index_to_select = torch.tensor(range(from_to_neurons[0], from_to_neurons[1]))
+            reduced_elem = torch.index_select(elem, 1, index_to_select)
+            output = icnn(reduced_elem)
+            if output > c:
+                is_included = False
+                break
+
+        if is_included:
             included_space = torch.cat([included_space, elem], dim=0)
             ambient_space = torch.cat([ambient_space[:i - moved], ambient_space[i + 1 - moved:]])
             moved += 1

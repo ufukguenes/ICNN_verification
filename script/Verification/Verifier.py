@@ -1,3 +1,4 @@
+import math
 import time
 from abc import ABC, abstractmethod
 import gurobipy as grp
@@ -190,10 +191,11 @@ class MILPVerifier(Verifier):
 
 
 class DHOVVerifier(Verifier):
-    def __init__(self, icnns, *args, with_affine=False, **kwargs):
+    def __init__(self, icnns, group_size, *args, with_affine=False, **kwargs):
         super().__init__(*args, **kwargs)
         self.icnns = icnns
         self.with_affine = with_affine
+        self.group_size = group_size
 
     def generate_constraints_for_net(self):
         m = grp.Model()
@@ -231,7 +233,16 @@ class DHOVVerifier(Verifier):
                 const = m.addConstrs((W[i] @ in_var + b[i] == out_vars[i] for i in range(len(W))))
 
             if i == len(parameter_list) - 2 - 2 or (not self.with_affine):
-                self.icnns[i // 2].add_max_output_constraints(m, in_var, self.icnns[i // 2].calculate_box_bounds(None))
+                num_groups = math.ceil(len(b) / self.group_size)
+                for group_i in range(num_groups):
+                    if group_i == num_groups - 1 and len(b) % group_i > 0:
+                        from_neuron = self.group_size * group_i
+                        to_neuron = self.group_size * group_i + self.group_size % group_i  # upper bound is exclusive
+                    else:
+                        from_neuron = self.group_size * group_i
+                        to_neuron = self.group_size * group_i + self.group_size  # upper bound is exclusive
+
+                    self.icnns[i // 2][group_i].add_max_output_constraints(m, in_var[from_neuron:to_neuron], self.icnns[i // 2][group_i].calculate_box_bounds(None))
 
             #m.update()
             in_var = out_vars

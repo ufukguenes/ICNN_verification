@@ -16,6 +16,7 @@ from script.Verification.Verifier import SingleNeuronVerifier, MILPVerifier, DHO
 from script.dataInit import Rhombus, ConvexDataset
 import polytope as pc
 from script.settings import device, data_type
+import MultiDHOV as multidhov
 
 
 def last_layer_identity(last_icnn: ICNN, last_c, W, b, A_out, b_out, nn_bounds, solver_time_limit, solver_bound):
@@ -148,7 +149,6 @@ def net_2d():
 
     nn = SequentialNN([2, 2, 2, 2])
 
-
     with torch.no_grad():
         parameter_list = list(nn.parameters())
         parameter_list[0].data = torch.tensor([[1, 1], [1, -1]], dtype=data_type).to(device)
@@ -161,30 +161,29 @@ def net_2d():
     # nn.load_state_dict(torch.load("nn_2x2.pt"), strict=False)
     # train_sequential_2(nn, train_loader, ambient_loader, epochs=epochs)
 
-
     # matplotlib.use('TkAgg')
 
     # torch.save(nn.state_dict(), "nn_2x2.pt")
 
-
     test_image = torch.tensor([[0, 0]], dtype=data_type).to(device)
-
 
     icnns = []
     for i in range((len(parameter_list) - 2) // 2):
         layer_index = int(i / 2)
         icnn_input_size = nn.layer_widths[layer_index + 1]
-        #next_net = ICNN([icnn_input_size, 10, 10, 10, 2 * icnn_input_size, 1], force_positive_init=False, init_scaling=10, init_all_with_zeros=False)
-        next_net = ICNNLogical([icnn_input_size, 10, 10, 10, 1], force_positive_init=False, with_two_layers=False, init_scaling=10, init_all_with_zeros=False)
-        #next_net = ICNNApproxMax([icnn_input_size, 10, 10, 10, 1], maximum_function="SMU", function_parameter=0.1, force_positive_init=False, init_scaling=10, init_all_with_zeros=False)
+        # next_net = ICNN([icnn_input_size, 10, 10, 10, 2 * icnn_input_size, 1], force_positive_init=False, init_scaling=10, init_all_with_zeros=False)
+        next_net = ICNNLogical([icnn_input_size, 10, 10, 10, 1], force_positive_init=False, with_two_layers=False,
+                               init_scaling=10, init_all_with_zeros=False)
+        # next_net = ICNNApproxMax([icnn_input_size, 10, 10, 10, 1], maximum_function="SMU", function_parameter=0.1, force_positive_init=False, init_scaling=10, init_all_with_zeros=False)
 
         icnns.append(next_net)
 
-
     icnns = \
-        dhov.start_verification(nn, test_image, icnns, eps=1, icnn_epochs=10, icnn_batch_size=1000, sample_count=1000, sample_new=True, use_over_approximation=True,
+        dhov.start_verification(nn, test_image, icnns, eps=1, icnn_epochs=10, icnn_batch_size=1000, sample_count=1000,
+                                sample_new=True, use_over_approximation=True,
                                 sample_over_input_space=False, sample_over_output_space=True, force_inclusion_steps=0,
-                                keep_ambient_space=False, data_grad_descent_steps=0, train_outer=False, preemptive_stop=False,
+                                keep_ambient_space=False, data_grad_descent_steps=0, train_outer=False,
+                                preemptive_stop=False,
                                 even_gradient_training=False,
                                 should_plot="none", optimizer="adam", init_network=True, adapt_lambda="none")
 
@@ -257,11 +256,11 @@ def cifar_net():
                             download=True,
                             transform=transform)
     images, labels = training_data.__getitem__(0)
-    testimage, testlabel = torch.unsqueeze(images, 0).to(dtype=data_type).to(device), torch.unsqueeze(torch.tensor(labels), 0).to(dtype=data_type).to(device)
+    testimage, testlabel = torch.unsqueeze(images, 0).to(dtype=data_type).to(device), torch.unsqueeze(
+        torch.tensor(labels), 0).to(dtype=data_type).to(device)
 
     nn = SequentialNN([32 * 32 * 3, 1024, 512, 10])
     nn.load_state_dict(torch.load("../../cifar_fc.pth", map_location=torch.device('cpu')), strict=False)
-
 
     # matplotlib.use('TkAgg')
 
@@ -272,17 +271,85 @@ def cifar_net():
                                 should_plot="detailed")
 
 
+def multi_net2D():
+    """W1 = [1. 1.; 1. -1.]
+    b1 = [0., 0.]
+    W2 = [1. 1.; 1. -1.]
+    b2 = [-0.5, 0.]
+    W3 = [-1. 1.; 1. 1.]
+    b3 = [3., 0.] """
+
+    nn = SequentialNN([2, 2, 2, 2])
+
+    with torch.no_grad():
+        parameter_list = list(nn.parameters())
+        parameter_list[0].data = torch.tensor([[1, 1], [1, -1]], dtype=data_type).to(device)
+        parameter_list[1].data = torch.tensor([0, 0], dtype=data_type).to(device)
+        parameter_list[2].data = torch.tensor([[1, 1], [1, -1]], dtype=data_type).to(device)
+        parameter_list[3].data = torch.tensor([-0.5, 0], dtype=data_type).to(device)
+        parameter_list[4].data = torch.tensor([[-1, 1], [1, 1]], dtype=data_type).to(device)
+        parameter_list[5].data = torch.tensor([3, 0], dtype=data_type).to(device)
+
+    test_image = torch.tensor([[0, 0]], dtype=data_type).to(device)
+    group_size = 1
+    icnns = []
+    for i in range((len(parameter_list) - 2) // 2):
+        layer_index = int(i / 2)
+        in_size = nn.layer_widths[layer_index + 1]
+        icnns.append([])
+        for k in range(in_size // group_size):
+            next_net = ICNNLogical([group_size, 10, 10, 10, 1], force_positive_init=False, with_two_layers=False, init_scaling=10,
+                                     init_all_with_zeros=False)
+            icnns[i].append(next_net)
+        if in_size % group_size > 0:
+            next_net = ICNNLogical([group_size, 10, 10, 10, 1], force_positive_init=False, with_two_layers=False,
+                                   init_scaling=10,
+                                   init_all_with_zeros=False)
+            icnns[i].append(next_net)
+
+    icnns = \
+        multidhov.start_verification(nn, test_image, icnns, group_size, eps=1, icnn_epochs=100, icnn_batch_size=1000,
+                                     sample_count=1000, sample_new=False, use_over_approximation=True,
+                                     sample_over_input_space=False, sample_over_output_space=True,
+                                     force_inclusion_steps=0, preemptive_stop=False, even_gradient_training=False,
+                                     keep_ambient_space=False, data_grad_descent_steps=0, train_outer=False,
+                                     should_plot="none", optimizer="adam", init_network=True, adapt_lambda="none")
+
+    dhov_verifier = DHOVVerifier(icnns, group_size, nn, test_image, 1)
+    # dhov_affine_verifier = DHOVVerifier(icnns, nn, test_image, 1, with_affine=True)
+
+    dhov_verifier.generate_constraints_for_net()
+    # dhov_affine_verifier.generate_constraints_for_net()
+
+    input_flattened = torch.flatten(test_image)
+    input_size = input_flattened.size(0)
+    bounds = nn.calculate_box_bounds([input_flattened.add(-1), input_flattened.add(1)], with_relu=True)
+
+    test_space = torch.empty((0, input_flattened.size(0)), dtype=data_type).to(device)
+    box_bound_output_space = ds.samples_uniform_over(test_space, 100, bounds[-1])
+
+    in_dhov = []
+    #in_dhov_affine = []
+    for i, sample in enumerate(box_bound_output_space):
+        if i % 10 == 0:
+            print(i)
+        in_dhov.append(dhov_verifier.test_feasibility(sample))
+        #in_dhov_affine.append(dhov_affine_verifier.test_feasibility(sample))
+
+    plt_inc_amb("dhov", box_bound_output_space.detach().cpu().numpy(), in_dhov)
+    #plt_inc_amb("dhov with affine", box_bound_output_space.detach().cpu().numpy(), in_dhov_affine)
+
 def to_A_b(model):
-    #print(model.display())
+    # print(model.display())
     matrix_a = model.getA().toarray()
     constr = model.getConstrs()
     con_by_name = model.getConstrByName("lb_const0[0]")
 
     lhs = []
     rhs = []
-    #print("==============================")
+    # print("==============================")
     for i, elem in enumerate(constr):
-        #print(elem.ConstrName)
+        # print(elem.ConstrName)
         if elem.Sense == "<":
             lhs.append(matrix_a[i])
             rhs.append(elem.RHS)
@@ -295,12 +362,12 @@ def to_A_b(model):
             lhs.append(-1 * matrix_a[i])
             rhs.append(-1 * elem.RHS)
 
-
     lhs = np.array(lhs)
     rhs = np.array(rhs)
     lhs[-0 == lhs] = 0
     rhs[-0 == rhs] = 0
     return lhs, rhs
+
 
 def plt_inc_amb(caption, points, is_true):
     true_points = []
@@ -317,8 +384,9 @@ def plt_inc_amb(caption, points, is_true):
     plt.title(caption)
     plt.show()
 
-#cifar_net()
 
-net_2d()
+# cifar_net()
 
+# net_2d()
 
+multi_net2D()

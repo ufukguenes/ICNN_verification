@@ -11,23 +11,15 @@ def load(icnn):
     icnn.load_state_dict(torch.load("../convexHullModel.pth"), strict=False)
 
 
-def verification(icnn, center_eps_w_b=None, a_b=None, icnn_w_b_c=None, has_relu=False, sequential=False,
-                 use_logical_bound=False):
+def verification(icnn, from_to_neuron, center_eps_w_b=None, a_b=None, icnn_w_b_c=None, has_relu=False):
     m = Model()
-
-    # m.Params.LogToConsole = 0
-
-    input_size = icnn.layer_widths[0]
-    output_size = icnn.layer_widths[-1]
-
-    # A, b = Rhombus().get_A(), Rhombus().get_b()
-    # m.addMConstr(A, input_var, "<=", b)
 
     if center_eps_w_b is not None:
         center = center_eps_w_b[0]
         eps = center_eps_w_b[1]
         affine_w = center_eps_w_b[2]
         b = center_eps_w_b[3]
+        input_size = len(b)
 
         input_to_previous_layer_size = affine_w.shape[1]
         input_to_previous_layer = m.addMVar(input_to_previous_layer_size, lb=-float('inf'))
@@ -53,26 +45,27 @@ def verification(icnn, center_eps_w_b=None, a_b=None, icnn_w_b_c=None, has_relu=
             input_var = affine_out
 
     elif a_b is not None:
-        input_var = m.addMVar(input_size, lb=-float('inf'), name="in_var")
         A = a_b[0]
         b = a_b[1]
+        input_size = len(b)
+        input_var = m.addMVar(input_size, lb=-float('inf'), name="in_var")
         m.addMConstr(A, input_var, "<=", b)
 
     elif icnn_w_b_c is not None:
         constraint_icnn = icnn_w_b_c[0]
-        input_var = m.addMVar(input_size, lb=-float('inf'), name="in_var")
         # affine_w und b bilden die affine Transformation des Layers, dass gerade verifiziert/ vergrößert werden soll
         affine_w = icnn_w_b_c[1]
         b = icnn_w_b_c[2]
+        input_size = len(b)
+        input_var = m.addMVar(input_size, lb=-float('inf'), name="in_var")
 
         # todo wie kann ich hier wiederverwenden, dass ich das constraint_icnn schon mal verifiziert habe?
-        constraint_icnn_input_size = constraint_icnn.layer_widths[0]
+        constraint_icnn_input_size = len(affine_w)
         input_to_previous_layer = m.addMVar(constraint_icnn_input_size, lb=-float('inf'))
-        output_of_layer_approx = m.addMVar(1, lb=-float('inf'))
 
-        bounds = constraint_icnn.calculate_box_bounds(None)
-
-        output_of_layer_approx = constraint_icnn.add_max_output_constraints(m, input_to_previous_layer, bounds)
+        for k in range(len(constraint_icnn)):
+            bounds = constraint_icnn[k].calculate_box_bounds(None)
+            constraint_icnn[k].add_max_output_constraints(m, input_to_previous_layer[from_to_neuron[0]: from_to_neuron[1]], bounds)
 
         if has_relu:
             relu_var = m.addMVar(input_size, lb=-float('inf'), name="in_var")
@@ -83,6 +76,9 @@ def verification(icnn, center_eps_w_b=None, a_b=None, icnn_w_b_c=None, has_relu=
 
     else:
         return
+
+    # todo das kann man optimieren in dem man die constraints, nur für die relevanten neuronen erstellt und nicht für alle
+    input_var = input_var[from_to_neuron[0]: from_to_neuron[1]]
 
     bounds = icnn.calculate_box_bounds(None)
     output_var = icnn.add_constraints(m, input_var, bounds)
