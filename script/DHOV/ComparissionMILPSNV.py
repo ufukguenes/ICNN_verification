@@ -18,6 +18,12 @@ def imshow(img):
     plt.imshow(np.transpose(npimg, (1, 2, 0)))
     plt.show()
 
+def imshow_flattened(img_flattened, shape):
+    img = np.reshape(img_flattened, shape)
+    img = img / 2 + .05  # revert normalization for viewing
+    plt.imshow(np.transpose(img, (1, 2, 0)))
+    plt.show()
+
 
 def add_to_model(verifier, labels):
     output_var = verifier.output_vars
@@ -81,7 +87,7 @@ def net_cifar():
         if var.IISUB:
             print(var)"""
 
-    eps_input_space = 0.001
+    eps_input_space = 0.1
     input_flattened = torch.flatten(testimage)
     new = input_flattened.add(-eps_input_space)
     new2 = input_flattened.add(eps_input_space)
@@ -89,7 +95,13 @@ def net_cifar():
 
     test_space = torch.empty((1, 10), dtype=data_type).to(device)
     test_space[0] = pred
-    box_bound_output_space = ds.samples_uniform_over(test_space, 100, bounds[-1])
+    input_space = torch.empty((1, input_flattened.size(0)), dtype=data_type).to(device)
+    input_space[0] = input_flattened
+    eps_bounds = [input_flattened.add(-eps_input_space), input_flattened.add(eps_input_space)]
+    samples_input = ds.samples_uniform_over(input_space, 100, eps_bounds)
+    output_samples = nn(samples_input)
+
+    imshow_flattened(samples_input[10], shape=(3, 32, 32))
 
     milp_verifier = MILPVerifier(nn, testimage, eps_input_space, print_log=False)
     snv_verifier = SingleNeuronVerifier(nn, testimage, eps_input_space, print_log=False)
@@ -102,10 +114,10 @@ def net_cifar():
 
     in_snv = []
     in_milp = []
-    for i, sample in enumerate(box_bound_output_space):
+    for i, sample in enumerate(output_samples):
         if i % 1 == 0:
             print(i)
-        in_milp.append(milp_verifier.test_feasibility(sample))
+        #in_milp.append(milp_verifier.test_feasibility(sample))
         in_snv.append(snv_verifier.test_feasibility(sample))
 
     num_in_milp = 0
