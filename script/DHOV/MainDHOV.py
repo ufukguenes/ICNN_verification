@@ -199,10 +199,10 @@ def net_2d():
 
     input_flattened = torch.flatten(test_image)
     input_size = input_flattened.size(0)
-    bounds = nn.calculate_box_bounds([input_flattened.add(-1), input_flattened.add(1)], with_relu=True)
+    bounds_affine_out, bounds_layer_out = nn.calculate_box_bounds([input_flattened.add(-1), input_flattened.add(1)])
 
     test_space = torch.empty((0, input_flattened.size(0)), dtype=data_type).to(device)
-    box_bound_output_space = ds.samples_uniform_over(test_space, 1000, bounds[-1])
+    box_bound_output_space = ds.samples_uniform_over(test_space, 1000, bounds_layer_out[-1])
 
     in_snv = []
     in_milp = []
@@ -323,10 +323,10 @@ def multi_net2D():
 
     input_flattened = torch.flatten(test_image)
     input_size = input_flattened.size(0)
-    bounds = nn.calculate_box_bounds([input_flattened.add(-1), input_flattened.add(1)], with_relu=True)
+    bounds_affine_out, bounds_layer_out = nn.calculate_box_bounds([input_flattened.add(-1), input_flattened.add(1)])
 
     test_space = torch.empty((0, input_flattened.size(0)), dtype=data_type).to(device)
-    box_bound_output_space = ds.samples_uniform_over(test_space, 100, bounds[-1])
+    box_bound_output_space = ds.samples_uniform_over(test_space, 100, bounds_layer_out[-1])
 
     in_dhov = []
     #in_dhov_affine = []

@@ -19,15 +19,15 @@ class VerifiableNet(ABC):
         self.ws = None
 
     @abstractmethod
-    def calculate_box_bounds(self, input_bounds, with_relu=True):
+    def calculate_box_bounds(self, input_bounds):
         pass
 
     @abstractmethod
-    def add_constraints(self, model, input_vars, bounds):
+    def add_constraints(self, model, input_vars, bounds_affine_out, bounds_layer_out):
         pass
 
-    def add_max_output_constraints(self, model, input_vars, bounds):
-        output = self.add_constraints(model, input_vars, bounds)
+    def add_max_output_constraints(self, model, input_vars, bounds_affine_out, bounds_layer_out):
+        output = self.add_constraints(model, input_vars, bounds_affine_out, bounds_layer_out)
         model.addConstr(output[0] <= 0)
         return output
 
@@ -62,7 +62,7 @@ class SequentialNN(nn.Sequential, VerifiableNet):
         x = Flatten()(x)
         return super().forward(x)
 
-    def calculate_box_bounds(self, input_bounds, with_relu=True):
+    def calculate_box_bounds(self, input_bounds):
         parameter_list = list(self.parameters())
 
         if input_bounds is None:
@@ -71,44 +71,51 @@ class SequentialNN(nn.Sequential, VerifiableNet):
                                 range(0, len(parameter_list), 2)]
             return bounds_per_layer  # todo None entfernen aus aufrufen und durch sinnvolle eingabe ersetzen
 
-        next_lower_bounds = input_bounds[0]
-        next_upper_bounds = input_bounds[1]
-        bounds_per_layer = []
+        affine_in_lb = input_bounds[0]
+        affine_in_ub = input_bounds[1]
+        affine_out_bounds_per_layer = []
+        layer_out_bounds_per_layer = []
         for i in range(0, len(parameter_list), 2):
             W, b = parameter_list[i], parameter_list[i + 1]
             w_plus = torch.maximum(W, torch.tensor(0, dtype=data_type).to(device))
             w_minus = torch.minimum(W, torch.tensor(0, dtype=data_type).to(device))
-            lb = torch.matmul(w_plus, next_lower_bounds).add(torch.matmul(w_minus, next_upper_bounds)).add(b)
-            ub = torch.matmul(w_plus, next_upper_bounds).add(torch.matmul(w_minus, next_lower_bounds)).add(b)
+            relu_in_lb = torch.matmul(w_plus, affine_in_lb).add(torch.matmul(w_minus, affine_in_ub)).add(b)
+            relu_in_ub = torch.matmul(w_plus, affine_in_ub).add(torch.matmul(w_minus, affine_in_lb)).add(b)
 
-            if with_relu and i < len(parameter_list) - 2:
-                next_upper_bounds = torch.maximum(torch.tensor(0, dtype=data_type).to(device), ub)
-                next_lower_bounds = torch.maximum(torch.tensor(0, dtype=data_type).to(device), lb)
+            affine_out_bounds_per_layer.append([relu_in_lb, relu_in_ub])
+
+            if i < len(parameter_list) - 2:
+                relu_out_lb = torch.maximum(torch.tensor(0, dtype=data_type).to(device), relu_in_lb)
+                relu_out_ub = torch.maximum(torch.tensor(0, dtype=data_type).to(device), relu_in_ub)
+                layer_out_bounds_per_layer.append([relu_out_lb, relu_out_ub])
+
+                affine_in_lb = relu_out_lb
+                affine_in_ub = relu_out_ub
             else:
-                next_upper_bounds = ub
-                next_lower_bounds = lb
+                layer_out_bounds_per_layer.append([relu_in_lb, relu_in_ub])
 
-            bounds_per_layer.append([next_lower_bounds, next_upper_bounds])
+        return affine_out_bounds_per_layer, layer_out_bounds_per_layer
 
-        return bounds_per_layer
-
-    def add_constraints(self, model, input_vars, bounds):
+    def add_constraints(self, model, input_vars, bounds_affine_out, bounds_layer_out):
         parameter_list = list(self.parameters())
         output_vars = model.addMVar(self.layer_widths[-1], lb=-float('inf'))  # todo bounds anpassen
 
         in_var = input_vars
+        out_vars = in_var
         for i in range(0, len(parameter_list), 2):
-            lb = bounds[int(i / 2)][0].detach().cpu().numpy()
-            ub = bounds[int(i / 2)][1].detach().cpu().numpy()
+            affine_lb = bounds_affine_out[int(i / 2)][0].detach().cpu().numpy()
+            affine_ub = bounds_affine_out[int(i / 2)][1].detach().cpu().numpy()
             W, b = parameter_list[i].detach().cpu().numpy(), parameter_list[i + 1].detach().cpu().numpy()
 
             out_fet = len(b)
-            out_vars = model.addMVar(out_fet, lb=lb, ub=ub, name="affine_var" + str(i))
+            out_vars = model.addMVar(out_fet, lb=affine_lb, ub=affine_ub, name="affine_var" + str(i))
             const = model.addConstrs((W[i] @ in_var + b[i] == out_vars[i] for i in range(len(W))))
             in_var = out_vars
 
             if i < len(parameter_list) - 2:
-                relu_vars = verbas.add_relu_constr(model, in_var, out_fet, [-10000 for i in range(len(W))], ub, i)
+                out_lb = bounds_layer_out[int(i / 2) - 1][0]
+                out_ub = bounds_layer_out[int(i / 2) - 1][1]
+                relu_vars = verbas.add_relu_constr(model, in_var, out_fet, affine_lb, affine_ub, out_lb, out_ub, i)
                 in_var = relu_vars
                 out_vars = relu_vars
 
@@ -251,7 +258,7 @@ class ICNN(nn.Module, VerifiableNet):
             last[0].data = torch.mul(torch.ones_like(last[0], dtype=data_type).to(device), self.init_scaling)
             last[1].data = torch.zeros_like(last[1], dtype=data_type).to(device)
 
-    def calculate_box_bounds(self, input_bounds, with_relu=True):  # todo für andere Netze die Architektur anpassen
+    def calculate_box_bounds(self, input_bounds):  # todo für andere Netze die Architektur anpassen
         parameter_list = list(self.parameters())
         # todo for now this only works for sequential nets
 
@@ -261,66 +268,67 @@ class ICNN(nn.Module, VerifiableNet):
                                 range(0, len(parameter_list), 2)]
             return bounds_per_layer  # todo None entfernen aus aufrufen und durch sinnvolle eingabe ersetzen
 
-        next_lower_bounds = input_bounds[0]
-        next_upper_bounds = input_bounds[1]
-        bounds_per_layer = []
+        affine_in_lb = input_bounds[0]
+        affine_in_ub = input_bounds[1]
+        affine_in_bounds_per_layer = []
+        layer_out_bounds_per_layer = []
         for i in range(0, len(parameter_list), 2):
             W, b = parameter_list[i], parameter_list[i + 1]
             w_plus = torch.maximum(W, torch.tensor(0, dtype=data_type).to(device))
             w_minus = torch.minimum(W, torch.tensor(0, dtype=data_type).to(device))
-            lb = torch.matmul(w_plus, next_lower_bounds).add(torch.matmul(w_minus, next_upper_bounds)).add(b)
-            ub = torch.matmul(w_plus, next_upper_bounds).add(torch.matmul(w_minus, next_lower_bounds)).add(b)
+            relu_in_lb = torch.matmul(w_plus, affine_in_lb).add(torch.matmul(w_minus, affine_in_ub)).add(b)
+            relu_in_ub = torch.matmul(w_plus, affine_in_ub).add(torch.matmul(w_minus, affine_in_lb)).add(b)
             if i != 0:
                 affine_u = self.us[i // 2 - 1]
                 u_plus = torch.maximum(affine_u, torch.tensor(0, dtype=data_type).to(device))
                 u_minus = torch.minimum(affine_u, torch.tensor(0, dtype=data_type).to(device))
-                lb = lb.add(torch.matmul(u_plus, next_lower_bounds).add(torch.matmul(u_minus, next_upper_bounds)))
-                ub = ub.add(torch.matmul(u_plus, next_upper_bounds).add(torch.matmul(u_minus, next_lower_bounds)))
+                relu_in_lb = relu_in_lb.add(torch.matmul(u_plus, affine_in_lb).add(torch.matmul(u_minus, affine_in_ub)))
+                relu_in_ub = relu_in_ub.add(torch.matmul(u_plus, affine_in_ub).add(torch.matmul(u_minus, affine_in_lb)))
 
-            if with_relu and i < len(parameter_list) - 2:
-                next_upper_bounds = torch.maximum(torch.tensor(0, dtype=data_type).to(device), ub)
-                next_lower_bounds = torch.maximum(torch.tensor(0, dtype=data_type).to(device), lb)
+            affine_in_bounds_per_layer.append([relu_in_lb, relu_in_ub])
+
+            if i < len(parameter_list) - 2:
+                relu_out_lb = torch.maximum(torch.tensor(0, dtype=data_type).to(device), relu_in_lb)
+                relu_out_ub = torch.maximum(torch.tensor(0, dtype=data_type).to(device), relu_in_ub)
+                layer_out_bounds_per_layer.append([relu_out_lb, relu_out_ub])
+
+                affine_in_lb = relu_out_lb
+                affine_in_ub = relu_out_ub
             else:
-                next_upper_bounds = ub
-                next_lower_bounds = lb
+                layer_out_bounds_per_layer.append([relu_in_lb, relu_in_ub])
 
-            bounds_per_layer.append([next_lower_bounds, next_upper_bounds])
+        return affine_in_bounds_per_layer, layer_out_bounds_per_layer
 
-        return bounds_per_layer
-
-    def add_constraints(self, model, input_vars, bounds):
+    def add_constraints(self, model, input_vars, bounds_affine_out, bounds_layer_out):
         ws = list(self.ws.parameters())
         us = list(self.us.parameters())
         output_vars = model.addMVar(self.layer_widths[-1], lb=-float('inf'))  # todo bounds anpassen
 
         in_var = input_vars
+        out_vars = in_var
         for i in range(0, len(ws), 2):
-            lb = bounds[int(i / 2)][0].detach().cpu().numpy()
-            ub = bounds[int(i / 2)][1].detach().cpu().numpy()
+            affine_lb = bounds_affine_out[int(i / 2)][0].detach().cpu().numpy()
+            affine_ub = bounds_affine_out[int(i / 2)][1].detach().cpu().numpy()
             affine_w, affine_b = ws[i].detach().cpu().numpy(), ws[i + 1].detach().cpu().numpy()
 
             out_fet = len(affine_b)
-            affine_var = model.addMVar(out_fet, lb=lb, ub=ub, name="affine_var" + str(i))
-            out_vars = model.addMVar(out_fet, lb=lb, ub=ub, name="affine_skip_var" + str(i))
+            affine_out_vars = model.addMVar(out_fet, lb=affine_lb, ub=affine_ub, name="affine_skip_var" + str(i))
 
-            affine_const = model.addConstrs(
-                affine_w[i] @ in_var + affine_b[i] == affine_var[i] for i in range(len(affine_w)))
             if i != 0:
                 k = math.floor(i / 2) - 1
                 skip_W = torch.clone(us[k]).detach().cpu().numpy()  # has no bias
-                skip_var = model.addMVar(out_fet, lb=lb, ub=ub, name="skip_var" + str(k))
-                skip_const = model.addConstrs(skip_W[i] @ input_vars == skip_var[i] for i in range(len(affine_w)))
-                affine_skip_cons = model.addConstrs(
-                    affine_var[i] + skip_var[i] == out_vars[i] for i in range(len(affine_w)))
+                skip_var = model.addMVar(out_fet, lb=affine_lb, ub=affine_ub, name="skip_var" + str(k))
+                skip_const = model.addConstrs(affine_w[i] @ in_var + affine_b[i] + skip_W[i] @ input_vars == affine_out_vars[i] for i in range(len(affine_w)))
             else:
-                affine_no_skip_cons = model.addConstrs(affine_var[i] == out_vars[i] for i in range(len(affine_w)))
-
-            in_var = out_vars
+                affine_no_skip_cons = model.addConstrs(affine_w[i] @ in_var + affine_b[i] == affine_out_vars[i] for i in range(len(affine_w)))
+            out_vars = affine_out_vars
+            in_var = affine_out_vars
 
             if i < len(ws) - 2:
-                relu_vars = verbas.add_relu_constr(model, in_var, out_fet, lb, ub, i)
+                out_lb = bounds_layer_out[int(i / 2) - 1][0]
+                out_ub = bounds_layer_out[int(i / 2) - 1][1]
+                relu_vars = verbas.add_relu_constr(model, in_var, out_fet, affine_lb, affine_ub, out_lb, out_ub, i)
                 in_var = relu_vars
-                out_vars = relu_vars
 
         const = model.addConstrs(out_vars[i] == output_vars[i] for i in range(out_fet))
         return output_vars
@@ -415,11 +423,11 @@ class ICNNLogical(ICNN):
             bb[0].data = u
             bb[1].data = b
 
-    def add_max_output_constraints(self, model, input_vars, bounds):
-        icnn_output_var = super().add_constraints(model, input_vars, bounds)
+    def add_max_output_constraints(self, model, input_vars, bounds_affine_out, bounds_layer_out):
+        icnn_output_var = super().add_constraints(model, input_vars, bounds_affine_out, bounds_layer_out)
         output_of_and = model.addMVar(1, lb=-float('inf'))
-        lb = bounds[-1][0].detach().cpu().numpy()
-        ub = bounds[-1][1].detach().cpu().numpy()  # todo richtige box bounds anwenden (die vom zu approximierenden Layer)
+        lb = -float("inf")
+        ub = float("inf")  # todo richtige box bounds anwenden (die vom zu approximierenden Layer)
         ls = self.ls
 
         bb_w, bb_b = ls[0].weight.data.detach().cpu().numpy(), ls[0].bias.data.detach().cpu().numpy()
@@ -539,11 +547,11 @@ class ICNNApproxMax(ICNN):
             bb[0].data = u
             bb[1].data = b
 
-    def add_max_output_constraints(self, model, input_vars, bounds):
-        icnn_output_var = super().add_constraints(model, input_vars, bounds)
+    def add_max_output_constraints(self, model, input_vars, bounds_affine_out, bounds_layer_out):
+        icnn_output_var = super().add_constraints(model, input_vars, bounds_affine_out, bounds_layer_out)
         output_of_and = model.addMVar(1, lb=-float('inf'))
-        lb = bounds[-1][0].detach().cpu().numpy()
-        ub = bounds[-1][1].detach().cpu().numpy() # todo richtige box bounds anwenden (die vom zu approximierenden Layer)
+        lb = - float("inf")
+        ub = float("inf")  # todo richtige box bounds anwenden (die vom zu approximierenden Layer)
         ls = self.ls
 
         bb_w, bb_b = ls[0].weight.data.detach().cpu().numpy(), ls[0].bias.data.detach().cpu().numpy()
@@ -615,6 +623,7 @@ def boltzmann_constraints(model, input_var, output_var, parameter):
     model.addConstr(output_var == mul_var.sum() * divide_var)
 
 
+# todo bounds für die constraints anpassen
 def mellowmax(x, parameter):
     scale = torch.mul(x, parameter)
     exp = torch.exp(scale)

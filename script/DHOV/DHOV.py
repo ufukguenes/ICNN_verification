@@ -54,8 +54,7 @@ def start_verification(nn: SequentialNN, input, icnns, eps=0.001, icnn_batch_siz
 
     input_flattened = torch.flatten(input)
     eps_bounds = [input_flattened.add(-eps), input_flattened.add(eps)]
-    box_bounds = nn.calculate_box_bounds(
-        eps_bounds, with_relu=True)  # todo abbrechen, wenn die box bounds schon die eigenschaft erfüllen
+    bounds_affine_out, bounds_layer_out = nn.calculate_box_bounds(eps_bounds)  # todo abbrechen, wenn die box bounds schon die eigenschaft erfüllen
 
     included_space = torch.empty((0, input_flattened.size(0)), dtype=data_type).to(device)
     included_space = ds.samples_uniform_over(included_space, int(sample_count / 2), eps_bounds)
@@ -88,7 +87,7 @@ def start_verification(nn: SequentialNN, input, icnns, eps=0.001, icnn_batch_siz
             else:
                 # todo test for when lower/upper bound is smaller then eps
                 ambient_space = ds.sample_uniform_excluding(ambient_space, int(sample_count / 2),
-                                                            box_bounds[current_layer_index - 1],
+                                                            bounds_affine_in[current_layer_index - 1],
                                                             icnn=icnns[current_layer_index - 1],
                                                             padding=0.5)
 
@@ -119,10 +118,10 @@ def start_verification(nn: SequentialNN, input, icnns, eps=0.001, icnn_batch_siz
 
         if sample_over_output_space:
             ambient_space = ds.samples_uniform_over(ambient_space, int(sample_count / 2),
-                                                    box_bounds[current_layer_index], padding=0.5)
+                                                    bounds_layer_out[current_layer_index], padding=0.5)
             if should_plot in ["simple", "detailed"]:
                 original_ambient_space = ds.samples_uniform_over(original_ambient_space, int(sample_count / 2),
-                                                                 box_bounds[current_layer_index], padding=0.5)
+                                                                 bounds_layer_out[current_layer_index], padding=0.5)
 
         if should_plot == "detailed":
             plt_inc_amb("enhanced ambient space " + str(i), included_space.tolist(), ambient_space.tolist())
@@ -140,8 +139,8 @@ def start_verification(nn: SequentialNN, input, icnns, eps=0.001, icnn_batch_siz
         ambient_loader = DataLoader(dataset, batch_size=icnn_batch_size)
 
         if init_network:
-            low = box_bounds[current_layer_index][0]
-            up = box_bounds[current_layer_index][1]
+            low = bounds_layer_out[current_layer_index][0]
+            up = bounds_layer_out[current_layer_index][1]
             low = torch.div(torch.add(low, -mean), std)
             up = torch.div(torch.add(up, -mean), std)
             current_icnn.init(low, up)

@@ -11,7 +11,7 @@ def load(icnn):
     icnn.load_state_dict(torch.load("../convexHullModel.pth"), strict=False)
 
 
-def verification(icnn, from_to_neuron, center_eps_w_b=None, a_b=None, icnn_w_b_c=None, has_relu=False):
+def verification(icnn, from_to_neuron, current_layer_index, bounds_affine_out, bounds_layer_out, center_eps_w_b=None, a_b=None, icnn_w_b_c=None, has_relu=False):
     m = Model()
 
     if center_eps_w_b is not None:
@@ -22,24 +22,21 @@ def verification(icnn, from_to_neuron, center_eps_w_b=None, a_b=None, icnn_w_b_c
         input_size = len(b)
 
         input_to_previous_layer_size = affine_w.shape[1]
-        input_to_previous_layer = m.addMVar(input_to_previous_layer_size, lb=-float('inf'))
+        input_to_previous_layer = m.addMVar(input_to_previous_layer_size, lb=[elem - eps for elem in center],
+                              ub=[elem + eps for elem in center])
 
-        lb = [-10000 for i in range(input_to_previous_layer_size)]
-        ub = [10000 for i in range(input_to_previous_layer_size)]  # todo mit boxbounds anpassen
+        m.addConstrs(input_to_previous_layer[i] <= center[i] + eps for i in range(input_to_previous_layer_size))
+        m.addConstrs(input_to_previous_layer[i] >= center[i] - eps for i in range(input_to_previous_layer_size))
 
-        max_vars = m.addVars(input_to_previous_layer_size, lb=-float('inf'))
-        min_vars = m.addVars(input_to_previous_layer_size, lb=-float('inf'))
+        in_lb = bounds_affine_out[current_layer_index - 1][0]
+        in_ub = bounds_affine_out[current_layer_index - 1][1]
+        out_lb = bounds_layer_out[current_layer_index - 1][0]
+        out_ub = bounds_layer_out[current_layer_index - 1][1]
 
-        m.addConstrs(max_vars[i] == center[i] + eps for i in range(input_to_previous_layer_size))
-        m.addConstrs(min_vars[i] == center[i] - eps for i in range(input_to_previous_layer_size))
-
-        m.addConstrs(input_to_previous_layer[i] <= max_vars[i] for i in range(input_to_previous_layer_size))
-        m.addConstrs(input_to_previous_layer[i] >= min_vars[i] for i in range(input_to_previous_layer_size))
-
-        affine_out = add_affine_constr(m, affine_w, b, input_to_previous_layer, lb, ub)
+        affine_out = add_affine_constr(m, affine_w, b, input_to_previous_layer, in_lb, in_ub)
 
         if has_relu:
-            relu_out = add_relu_constr(m, affine_out, input_size, lb, ub)
+            relu_out = add_relu_constr(m, affine_out, input_size, in_lb, in_ub, out_lb, out_ub)
             input_var = relu_out
         else:
             input_var = affine_out
@@ -48,7 +45,7 @@ def verification(icnn, from_to_neuron, center_eps_w_b=None, a_b=None, icnn_w_b_c
         A = a_b[0]
         b = a_b[1]
         input_size = len(b)
-        input_var = m.addMVar(input_size, lb=-float('inf'), name="in_var")
+        input_var = m.addMVar(input_size, lb=-float('inf'), name="in_var") # todo mit boxbounds anpassen
         m.addMConstr(A, input_var, "<=", b)
 
     elif icnn_w_b_c is not None:
@@ -64,8 +61,8 @@ def verification(icnn, from_to_neuron, center_eps_w_b=None, a_b=None, icnn_w_b_c
         input_to_previous_layer = m.addMVar(constraint_icnn_input_size, lb=-float('inf'))
 
         for k in range(len(constraint_icnn)):
-            bounds = constraint_icnn[k].calculate_box_bounds(None)
-            constraint_icnn[k].add_max_output_constraints(m, input_to_previous_layer[from_to_neuron[0]: from_to_neuron[1]], bounds)
+            constraint_icnn_bounds_affine_out, constraint_icnn_bounds_layer_out = constraint_icnn[k].calculate_box_bounds(bounds_layer_out[current_layer_index - 1])
+            constraint_icnn[k].add_max_output_constraints(m, input_to_previous_layer[from_to_neuron[0]: from_to_neuron[1]], constraint_icnn_bounds_affine_out, constraint_icnn_bounds_layer_out)
 
         if has_relu:
             relu_var = m.addMVar(input_size, lb=-float('inf'), name="in_var")
@@ -80,8 +77,8 @@ def verification(icnn, from_to_neuron, center_eps_w_b=None, a_b=None, icnn_w_b_c
     # todo das kann man optimieren in dem man die constraints, nur für die relevanten neuronen erstellt und nicht für alle
     input_var = input_var[from_to_neuron[0]: from_to_neuron[1]]
 
-    bounds = icnn.calculate_box_bounds(None)
-    output_var = icnn.add_constraints(m, input_var, bounds)
+    icnn_bounds_affine_out, icnn_bounds_layer_out = icnn.calculate_box_bounds(bounds_layer_out[current_layer_index])
+    output_var = icnn.add_constraints(m, input_var, icnn_bounds_affine_out, icnn_bounds_layer_out)
 
     m.update()
     m.setObjective(output_var[0], GRB.MAXIMIZE)

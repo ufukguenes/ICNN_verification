@@ -89,9 +89,6 @@ def net_cifar():
 
     eps_input_space = 0.1
     input_flattened = torch.flatten(testimage)
-    new = input_flattened.add(-eps_input_space)
-    new2 = input_flattened.add(eps_input_space)
-    bounds = nn.calculate_box_bounds([input_flattened.add(-eps_input_space), input_flattened.add(eps_input_space)], with_relu=True)
 
     test_space = torch.empty((1, 10), dtype=data_type).to(device)
     test_space[0] = pred

@@ -5,16 +5,15 @@ import torch
 import gurobipy as grp
 from script.settings import device, data_type
 
-def sample_max_radius(icnn, sample_size):
+def sample_max_radius(icnn, sample_size, bounds_affine_out, bounds_layer_out):
     m = grp.Model()
     m.Params.LogToConsole = 0
 
     icnn_input_size = icnn.layer_widths[0]
     input_to_icnn_one = m.addMVar(icnn_input_size, lb=-float('inf'))
     input_to_icnn_two = m.addMVar(icnn_input_size, lb=-float('inf'))
-    bounds = icnn.calculate_box_bounds(None)
-    icnn.add_max_output_constraints(m, input_to_icnn_one, bounds)
-    icnn.add_max_output_constraints(m, input_to_icnn_two, bounds)
+    icnn.add_max_output_constraints(m, input_to_icnn_one, bounds_affine_out, bounds_layer_out)
+    icnn.add_max_output_constraints(m, input_to_icnn_two, bounds_affine_out, bounds_layer_out)
 
     difference = m.addVar(lb=-float('inf'))
 
