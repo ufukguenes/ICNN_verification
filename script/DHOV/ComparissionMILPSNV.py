@@ -25,20 +25,33 @@ def imshow_flattened(img_flattened, shape):
     plt.show()
 
 
-def add_to_model(verifier, labels):
+def add_to_model(verifier, labels, bounds_layer_out):
+    out_lb = bounds_layer_out[-1][0]
+    out_ub = bounds_layer_out[-1][1]
+    difference_lb = out_lb - out_ub[labels]
+    difference_ub = out_ub - out_lb[labels]
+    difference_lb = difference_lb.tolist()
+    difference_ub = difference_ub.tolist()
+    difference_lb.pop(labels)
+    difference_ub.pop(labels)
+    min_diff = min(difference_lb)
+    max_diff = max(difference_ub)
+
     output_var = verifier.output_vars
     m = verifier.model
     input_var = verifier.input_vars
 
-    difference = m.addVars(9, lb=-float('inf'))
+
+    difference = m.addVars(9, lb=difference_lb, ub=difference_ub)
     m.addConstrs(difference[i] == output_var.tolist()[i] - output_var.tolist()[labels] for i in range(0, labels))
     m.addConstrs(
         difference[i - 1] == output_var.tolist()[i] - output_var.tolist()[labels] for i in range(labels + 1, 10))
 
     # m.addConstrs(difference[i] == output_var.tolist()[i] - output_var.tolist()[label] for i in range(10))
-    max_var = m.addVar(lb=-float('inf'), ub=10)
+    max_var = m.addVar(lb=min_diff, ub=max_diff)
     m.addConstr(max_var == grp.max_(difference))
-    m.addConstr(max_var <= 0)
+    m.addConstr(max_var >= 0)
+    m.setObjective(max_var, grp.GRB.MINIMIZE)
 
 def net_cifar():
     transform = Compose([ToTensor(),
@@ -62,7 +75,7 @@ def net_cifar():
     testimage, testlabel = torch.unsqueeze(images, 0).to(torch.float64), torch.unsqueeze(torch.tensor(labels), 0).to(
         torch.float64)
     #imshow(images)
-
+    testimage = torch.load("../test_input.pt")
     print("label is {} with index {}".format(classes[labels], labels))
     pred = nn(testimage)
     print("prediction is {} with output {} ".format(classes[pred.argmax()], pred))
@@ -87,7 +100,8 @@ def net_cifar():
         if var.IISUB:
             print(var)"""
 
-    eps_input_space = 0.1
+    eps_input_space = 0.002
+    sample_num = 10
     input_flattened = torch.flatten(testimage)
 
     test_space = torch.empty((1, 10), dtype=data_type).to(device)
@@ -95,10 +109,11 @@ def net_cifar():
     input_space = torch.empty((1, input_flattened.size(0)), dtype=data_type).to(device)
     input_space[0] = input_flattened
     eps_bounds = [input_flattened.add(-eps_input_space), input_flattened.add(eps_input_space)]
-    samples_input = ds.samples_uniform_over(input_space, 100, eps_bounds)
-    output_samples = nn(samples_input)
+    samples_input = ds.samples_uniform_over(input_space, sample_num, eps_bounds)
+    #output_samples = nn(samples_input)
+    bounds_affine_out, bounds_layer_out = nn.calculate_box_bounds(eps_bounds)
 
-    imshow_flattened(samples_input[10], shape=(3, 32, 32))
+    imshow_flattened(samples_input[sample_num], shape=(3, 32, 32))
 
     milp_verifier = MILPVerifier(nn, testimage, eps_input_space, print_log=False)
     snv_verifier = SingleNeuronVerifier(nn, testimage, eps_input_space, print_log=False)
@@ -106,16 +121,16 @@ def net_cifar():
     milp_verifier.generate_constraints_for_net()
     snv_verifier.generate_constraints_for_net()
 
-    add_to_model(milp_verifier, labels)
-    add_to_model(snv_verifier, labels)
+    add_to_model(milp_verifier, labels, bounds_layer_out)
+    add_to_model(snv_verifier, labels, bounds_layer_out)
 
     in_snv = []
     in_milp = []
-    for i, sample in enumerate(output_samples):
+    for i, sample in enumerate(samples_input):
         if i % 1 == 0:
             print(i)
-        #in_milp.append(milp_verifier.test_feasibility(sample))
-        in_snv.append(snv_verifier.test_feasibility(sample))
+        in_milp.append(not milp_verifier.test_feasibility(sample))
+        in_snv.append(not snv_verifier.test_feasibility(sample))
 
     num_in_milp = 0
     num_out_milp = 0
@@ -153,8 +168,8 @@ def net_cifar():
     print("samples SNV  - in: {}, out: {}".format(num_in_snv, num_out_snv))
     print("both out     - {}".format(not_not))
     print("both in      - {}".format(in_in))
-    print("only in snv (due to over approximation) - {}".format(not_in))
-    print("only in milp (due to incorrect approximation) - {}".format(in_not))
+    print("only in snv (due to incorrect approximation) - {}".format(not_in))
+    print("only in milp (due to over approximation) - {}".format(in_not))
 
 
 

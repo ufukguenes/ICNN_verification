@@ -27,16 +27,17 @@ class Verifier(ABC):
         self.input_vars = None
 
 
-    def test_feasibility(self, output_sample):
+    def test_feasibility(self, input_sample):
         #t = time.time()
 
+        self.model.update()
         model = self.model.copy()
-        model.setParam("BestObjStop", -0.01)
+        model.setParam("BestObjStop", 0.01)
 
-        num_of_out_fet = len(output_sample)
-        out_vars = []
-        for i in range(num_of_out_fet):
-            out_vars.append(model.getVarByName("last_affine_var[{}]".format(i)))
+        input_size = len(input_sample)
+        in_vars = []
+        for i in range(input_size):
+            in_vars.append(model.getVarByName("in_var[{}]".format(i)))
 
         """
         output_size = len(self.output_vars.tolist())
@@ -50,10 +51,9 @@ class Verifier(ABC):
         max_var = model.addVar()
         model.addConstr(max_var == grp.max_(abs_diff))"""
 
-        model.addConstrs(out_vars[i] == output_sample[i] for i in range(num_of_out_fet))
+        model.addConstrs(in_vars[i] == input_sample[i] for i in range(input_size))
 
         model.update()
-        model.setObjective(out_vars[0], grp.GRB.MINIMIZE)
 
         #print("constr generateion {}".format(time.time() - t))
         #t = time.time()
