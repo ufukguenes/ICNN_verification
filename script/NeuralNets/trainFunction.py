@@ -12,7 +12,7 @@ import script.DHOV.DataOptimization as dop
 from script.settings import device, data_type
 
 def train_icnn(model, train_loader, ambient_loader, epochs=10, optimizer="adam", return_history=False,
-               sequential=False, adapt_lambda="none",  hyper_lambda=1, preemptive_stop=True, min_loss_change=1e-6):
+               sequential=False, adapt_lambda="none",  hyper_lambda=1, preemptive_stop=True, min_loss_change=1e-6, verbose=False):
     history = []
 
     params_to_train = model.parameters()
@@ -32,7 +32,8 @@ def train_icnn(model, train_loader, ambient_loader, epochs=10, optimizer="adam",
         if stop_training:
             print("preemptive stop of training")
             break
-        print("=== Epoch: {}===".format(epoch))
+        if verbose:
+            print("=== Epoch: {}===".format(epoch))
         epoch_start_time = time.time()
         for i, (X, X_ambient) in enumerate(zip(train_loader, ambient_loader)):
             if optimizer in ["LBFGS", "SdLBFGS"]:
@@ -77,15 +78,15 @@ def train_icnn(model, train_loader, ambient_loader, epochs=10, optimizer="adam",
 
             if return_history:
                 history.append(train_loss / train_n)
-
-            if i % 100 == 0:
-                print("batch = {}, mean loss = {}".format(i, train_loss / train_n))
+            if verbose:
+                if i % 100 == 0:
+                    print("batch = {}, mean loss = {}".format(i, train_loss / train_n))
 
         if train_n == 0:
             train_n = 1
-
-        print("batch = {}, mean loss = {}".format(len(train_loader), train_loss / train_n))
-        print("time per epoch: {}".format(time.time() - epoch_start_time))
+        if verbose:
+            print("batch = {}, mean loss = {}".format(len(train_loader), train_loss / train_n))
+            print("time per epoch: {}".format(time.time() - epoch_start_time))
 
         if adapt_lambda == "none":
             continue

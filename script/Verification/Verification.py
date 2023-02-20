@@ -1,4 +1,5 @@
 import math
+import time
 
 import torch
 from gurobipy import Model, GRB, max_
@@ -13,6 +14,7 @@ def load(icnn):
 
 def verification(icnn, from_to_neuron, current_layer_index, bounds_affine_out, bounds_layer_out, center_eps_w_b=None, a_b=None, icnn_w_b_c=None, has_relu=False):
     m = Model()
+    m.Params.LogToConsole = 0
 
     if center_eps_w_b is not None:
         center = center_eps_w_b[0]
@@ -54,24 +56,30 @@ def verification(icnn, from_to_neuron, current_layer_index, bounds_affine_out, b
         affine_w = icnn_w_b_c[1]
         b = icnn_w_b_c[2]
         input_size = len(b)
-        input_var = m.addMVar(input_size, lb=-float('inf'), name="in_var")
 
         # todo wie kann ich hier wiederverwenden, dass ich das constraint_icnn schon mal verifiziert habe?
         constraint_icnn_input_size = len(affine_w)
-        input_to_previous_layer = m.addMVar(constraint_icnn_input_size, lb=-float('inf'))
+        lb = bounds_layer_out[current_layer_index - 1][0].detach().cpu().numpy()
+        ub = bounds_layer_out[current_layer_index - 1][1].detach().cpu().numpy()
+        output_of_previous_layer = m.addMVar(constraint_icnn_input_size, lb=lb, ub=ub)
 
         for k in range(len(constraint_icnn)):
             low = bounds_layer_out[current_layer_index - 1][0][from_to_neuron[0]: from_to_neuron[1]]
             up = bounds_layer_out[current_layer_index - 1][1][from_to_neuron[0]: from_to_neuron[1]]
             constraint_icnn_bounds_affine_out, constraint_icnn_bounds_layer_out = constraint_icnn[k].calculate_box_bounds([low, up])
-            constraint_icnn[k].add_max_output_constraints(m, input_to_previous_layer[from_to_neuron[0]: from_to_neuron[1]], constraint_icnn_bounds_affine_out, constraint_icnn_bounds_layer_out)
+            constraint_icnn[k].add_max_output_constraints(m, output_of_previous_layer[from_to_neuron[0]: from_to_neuron[1]], constraint_icnn_bounds_affine_out, constraint_icnn_bounds_layer_out)
 
         if has_relu:
-            relu_var = m.addMVar(input_size, lb=-float('inf'), name="in_var") #todo verwenden von richtigen relu constraints
-            m.addConstrs(affine_w[i] @ input_to_previous_layer + b[i] == relu_var[i] for i in range(len(affine_w)))
-            m.addConstrs(input_var[i] == max_(0, relu_var[i]) for i in range(input_size))
+            in_lb = bounds_affine_out[current_layer_index][0].detach().cpu().numpy()
+            in_ub = bounds_affine_out[current_layer_index][1].detach().cpu().numpy()
+            out_lb = bounds_layer_out[current_layer_index][0].detach().cpu().numpy()
+            out_ub = bounds_layer_out[current_layer_index][1].detach().cpu().numpy()
+            affine_war = verbas.add_affine_constr(m, affine_w, b, output_of_previous_layer, in_lb, in_ub)
+            input_var = verbas.add_relu_constr(m, affine_war, input_size, in_lb, in_ub, out_lb, out_ub)
         else:
-            m.addConstrs(affine_w[i] @ input_to_previous_layer + b[i] == input_var[i] for i in range(len(affine_w)))
+            in_lb = bounds_affine_out[current_layer_index][0].detach().cpu().numpy()
+            in_ub = bounds_affine_out[current_layer_index][1].detach().cpu().numpy()
+            input_var = verbas.add_affine_constr(m, affine_w, b, output_of_previous_layer, in_lb, in_ub)
 
     else:
         return
@@ -86,13 +94,15 @@ def verification(icnn, from_to_neuron, current_layer_index, bounds_affine_out, b
 
     m.update()
     m.setObjective(output_var[0], GRB.MAXIMIZE)
+    t = time.time()
     m.optimize()
 
     if m.Status == GRB.OPTIMAL:
+        print("        actual solving time {}".format(time.time() - t))
         inp = input_var.getAttr("x")
         # inp = torch.tensor([[inp[0], inp[1]]], dtype=data_type).to(device)
         # true_out = icnn(inp)
-        print("optimum solution at: {}, with value {}, true output: {}".format(inp, output_var.getAttr("x"), 0))  #
+        #print("optimum solution at: {}, with value {}, true output: {}".format(inp, output_var.getAttr("x"), 0))  #
 
         """if center_eps_W_b is not None:
             input = input_to_previous_layer.getAttr("x")

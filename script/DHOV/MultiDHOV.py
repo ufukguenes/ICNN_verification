@@ -1,6 +1,7 @@
 # DeepHull Over approximated Verification
 import math
 import random
+import time
 
 from matplotlib import pyplot as plt
 from torch.utils.data import DataLoader
@@ -33,7 +34,7 @@ def start_verification(nn: SequentialNN, input, icnns, group_size, eps=0.001, ic
                        train_outer=False, preemptive_stop=True, even_gradient_training=False, force_inclusion_steps=0,
                        init_network=False, adapt_lambda="none", should_plot='none', optimizer="adam"):
     valid_adapt_lambda = ["none", "high_low", "included"]
-    valid_should_plot = ["none", "simple", "detailed", "verification"]
+    valid_should_plot = ["none", "simple", "detailed", "verification", "output"]
     valid_optimizer = ["adam", "LBFGS", "SdLBFGS"]
 
     parameter_list = list(nn.parameters())
@@ -63,7 +64,7 @@ def start_verification(nn: SequentialNN, input, icnns, group_size, eps=0.001, ic
     original_included_space = torch.empty((0, input_flattened.size(0)), dtype=data_type).to(device)
     original_ambient_space = torch.empty((0, input_flattened.size(0)), dtype=data_type).to(device)
 
-    if should_plot in valid_should_plot:
+    if should_plot in valid_should_plot and should_plot != "none":
         original_included_space, original_ambient_space = included_space, ambient_space
 
     center = input_flattened
@@ -74,6 +75,8 @@ def start_verification(nn: SequentialNN, input, icnns, group_size, eps=0.001, ic
 
     for i in range(0, len(parameter_list) - 2, 2):  # -2 because last layer has no ReLu activation
         current_layer_index = int(i / 2)
+        print("")
+        print("approximation of layer: {}".format(current_layer_index))
 
         affine_w, affine_b = parameter_list[i], parameter_list[i + 1]
 
@@ -98,7 +101,7 @@ def start_verification(nn: SequentialNN, input, icnns, group_size, eps=0.001, ic
         included_space = ds.apply_affine_transform(affine_w, affine_b, included_space)
         ambient_space = ds.apply_affine_transform(affine_w, affine_b, ambient_space)
 
-        if should_plot in valid_should_plot:
+        if should_plot in valid_should_plot and should_plot != "none":
             original_included_space = ds.apply_affine_transform(affine_w, affine_b, original_included_space)
             original_ambient_space = ds.apply_affine_transform(affine_w, affine_b, original_ambient_space)
             if should_plot == "detailed":
@@ -109,7 +112,7 @@ def start_verification(nn: SequentialNN, input, icnns, group_size, eps=0.001, ic
         included_space = ds.apply_relu_transform(included_space)
         ambient_space = ds.apply_relu_transform(ambient_space)
 
-        if should_plot in valid_should_plot:
+        if should_plot in valid_should_plot and should_plot != "none":
             original_included_space = ds.apply_relu_transform(original_included_space)
             original_ambient_space = ds.apply_relu_transform(original_ambient_space)
             if should_plot == "detailed":
@@ -135,6 +138,8 @@ def start_verification(nn: SequentialNN, input, icnns, group_size, eps=0.001, ic
         number_of_groups = math.ceil(number_of_groups)
 
         for group_i in range(number_of_groups):
+            print("layer progress, group {} of {} ".format(group_i, number_of_groups))
+            t = time.time()
             current_icnn = icnns[current_layer_index][group_i]
             if group_i == number_of_groups - 1 and len(affine_b) % group_size > 0:
                 from_to_neurons = [group_size * group_i, group_size * group_i + (len(affine_b) % group_size)]
@@ -229,7 +234,9 @@ def start_verification(nn: SequentialNN, input, icnns, group_size, eps=0.001, ic
 
             current_icnn.use_training_setup = False  # todo richtig integrieren in den code
 
+            print("        time for training: {}".format(time.time() - t))
 
+            t = time.time()
             # verify and enlarge convex approximation
             if use_over_approximation:
                 if i == 0:
@@ -248,6 +255,7 @@ def start_verification(nn: SequentialNN, input, icnns, group_size, eps=0.001, ic
                                                                         affine_b.detach().cpu().numpy()])
 
                 current_icnn.apply_enlargement(c)
+                print("        time for verification: {}".format(time.time() - t))
 
             """
             #visualisation for one single ReLu
@@ -289,7 +297,7 @@ def start_verification(nn: SequentialNN, input, icnns, group_size, eps=0.001, ic
         else:
             included_space, ambient_space = ds.regroup_samples(icnns[current_layer_index], included_space, ambient_space, group_size)
 
-    if should_plot in valid_should_plot:
+    if should_plot in valid_should_plot and should_plot != "none":
         index = len(parameter_list) - 2
         affine_w, affine_b = parameter_list[index], parameter_list[index + 1]
         included_space = ds.apply_affine_transform(affine_w, affine_b, included_space)
