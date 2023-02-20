@@ -288,7 +288,7 @@ def multi_net2D():
         parameter_list[5].data = torch.tensor([3, 0], dtype=data_type).to(device)
 
     test_image = torch.tensor([[0, 0]], dtype=data_type).to(device)
-    group_size = 2
+    group_size = 1
     icnns = []
     for i in range((len(parameter_list) - 2) // 2):
         layer_index = int(i / 2)
@@ -305,13 +305,14 @@ def multi_net2D():
             icnns[i].append(next_net)
 
     icnns = \
-        multidhov.start_verification(nn, test_image, icnns, group_size, eps=1, icnn_epochs=10, icnn_batch_size=1000,
-                                     sample_count=1000, sample_new=False, use_over_approximation=True,
-                                     sample_over_input_space=True, sample_over_output_space=True,
+        multidhov.start_verification(nn, test_image, icnns, group_size, eps=1, icnn_epochs=100, icnn_batch_size=1000,
+                                     sample_count=1000, sample_new=True, use_over_approximation=True,
+                                     sample_over_input_space=False, sample_over_output_space=True,
                                      force_inclusion_steps=0, preemptive_stop=False, even_gradient_training=False,
-                                     keep_ambient_space=False, data_grad_descent_steps=0, train_outer=False,
+                                     keep_ambient_space=True, data_grad_descent_steps=0, train_outer=False,
                                      should_plot="none", optimizer="adam", init_network=True, adapt_lambda="none")
 
+    return
     milp_verifier = MILPVerifier(nn, test_image, 1)
     snv_verifier = SingleNeuronVerifier(nn, test_image, 1)
     dhov_verifier = DHOVVerifier(icnns, group_size, nn, test_image, 1)

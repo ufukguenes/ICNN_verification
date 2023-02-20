@@ -47,8 +47,8 @@ def start_verification(nn: SequentialNN, input, icnns, group_size, eps=0.001, ic
         raise AttributeError("Expected optimizer one of: {}, actual: {}".format(valid_optimizer, optimizer))
     if force_inclusion_steps < 0:
         raise AttributeError("Expected force_inclusion to be:  >= 0 , got: {}".format(force_inclusion_steps))
-    if data_grad_descent_steps < 0:
-        raise AttributeError("Expected force_inclusion to be:  >= 0 , got: {}".format(data_grad_descent_steps))
+    if data_grad_descent_steps < 0 or data_grad_descent_steps > icnn_epochs:
+        raise AttributeError("Expected data_grad_descent_steps to be:  >= {}} , got: {}".format(icnn_epochs, data_grad_descent_steps))
     if len(icnns) != (len(parameter_list) - 2) / 2:
         raise AttributeError("For each layer one ICNN is needed to be trained. "
                              "Amount provided: {}, expected: {}".format(len(icnns), (len(parameter_list) - 2) / 2))
@@ -87,8 +87,9 @@ def start_verification(nn: SequentialNN, input, icnns, group_size, eps=0.001, ic
             else:
                 # todo test for when lower/upper bound is smaller then eps
                 ambient_space = ds.sample_uniform_excluding(ambient_space, int(sample_count / 2),
-                                                            bounds_affine_out[current_layer_index - 1],
-                                                            icnn=icnns[current_layer_index - 1],
+                                                            bounds_layer_out[current_layer_index - 1],
+                                                            icnns=icnns[current_layer_index - 1],
+                                                            layer_index=current_layer_index, group_size=group_size,
                                                             padding=0.5)
 
         if should_plot == "detailed":
@@ -283,7 +284,7 @@ def start_verification(nn: SequentialNN, input, icnns, group_size, eps=0.001, ic
         # oder sample neue punkte
         if sample_new:
             # todo entweder über box bounds sampeln oder über maximum radius
-            included_space, ambient_space = ds.sample_max_radius(icnns[current_layer_index], sample_count, bounds_affine_out, bounds_layer_out)
+            included_space, ambient_space = ds.sample_max_radius(icnns[current_layer_index], sample_count, group_size, current_layer_index, bounds_affine_out, bounds_layer_out)
 
         else:
             included_space, ambient_space = ds.regroup_samples(icnns[current_layer_index], included_space, ambient_space, group_size)
