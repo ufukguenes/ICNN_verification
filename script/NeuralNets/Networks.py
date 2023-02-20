@@ -42,7 +42,7 @@ class VerifiableNet(ABC):
         pass
 
     @abstractmethod
-    def init(self, lower_bounds, upper_bounds):
+    def init_with_box_bounds(self, lower_bounds, upper_bounds):
         pass
 
 
@@ -98,7 +98,6 @@ class SequentialNN(nn.Sequential, VerifiableNet):
 
     def add_constraints(self, model, input_vars, bounds_affine_out, bounds_layer_out):
         parameter_list = list(self.parameters())
-        output_vars = model.addMVar(self.layer_widths[-1], lb=-float('inf'))  # todo bounds anpassen
 
         in_var = input_vars
         out_vars = in_var
@@ -113,14 +112,12 @@ class SequentialNN(nn.Sequential, VerifiableNet):
             in_var = out_vars
 
             if i < len(parameter_list) - 2:
-                out_lb = bounds_layer_out[int(i / 2) - 1][0]
-                out_ub = bounds_layer_out[int(i / 2) - 1][1]
+                out_lb = bounds_layer_out[int(i / 2)][0]
+                out_ub = bounds_layer_out[int(i / 2)][1]
                 relu_vars = verbas.add_relu_constr(model, in_var, out_fet, affine_lb, affine_ub, out_lb, out_ub, i)
                 in_var = relu_vars
-                out_vars = relu_vars
 
-        const = model.addConstrs(out_vars[i] == output_vars[i] for i in range(out_fet))
-        return output_vars
+        return out_vars
 
     def apply_normalisation(self, mean, std):
         with torch.no_grad():
@@ -128,7 +125,7 @@ class SequentialNN(nn.Sequential, VerifiableNet):
             parameter_list[0].data = torch.div(parameter_list[0], std)
             parameter_list[1].data = torch.add(- torch.matmul(parameter_list[0], mean), parameter_list[1])
 
-    def init(self, lower_bounds, upper_bounds):
+    def init_with_box_bounds(self, lower_bounds, upper_bounds):
         if self.init_all_with_zeros:
             for i in range(0, len(self.ws)):
                 ws = list(self.ws[i].parameters())
@@ -201,7 +198,7 @@ class ICNN(nn.Module, VerifiableNet):
         x1 = self.ws[-1](x1) + self.us[-1](x)  # no ReLU in last layer"""
         return x1
 
-    def init(self, lower_bounds, upper_bounds):
+    def init_with_box_bounds(self, lower_bounds, upper_bounds):
         with torch.no_grad():
             num_of_layers = len(self.layer_widths)
             last_layer_index = num_of_layers - 2
@@ -259,7 +256,7 @@ class ICNN(nn.Module, VerifiableNet):
             last[1].data = torch.zeros_like(last[1], dtype=data_type).to(device)
 
     def calculate_box_bounds(self, input_bounds):  # todo für andere Netze die Architektur anpassen
-        parameter_list = list(self.parameters())
+        sequential_weights_biases = list(self.parameters())
         # todo for now this only works for sequential nets
 
         if input_bounds is None:
@@ -272,22 +269,22 @@ class ICNN(nn.Module, VerifiableNet):
         affine_in_ub = input_bounds[1]
         affine_in_bounds_per_layer = []
         layer_out_bounds_per_layer = []
-        for i in range(0, len(parameter_list), 2):
-            W, b = parameter_list[i], parameter_list[i + 1]
+        for i in range(0, len(self.layer_widths) - 1):
+            W, b = self.ws[i].weight, self.ws[i].bias
             w_plus = torch.maximum(W, torch.tensor(0, dtype=data_type).to(device))
             w_minus = torch.minimum(W, torch.tensor(0, dtype=data_type).to(device))
             relu_in_lb = torch.matmul(w_plus, affine_in_lb).add(torch.matmul(w_minus, affine_in_ub)).add(b)
             relu_in_ub = torch.matmul(w_plus, affine_in_ub).add(torch.matmul(w_minus, affine_in_lb)).add(b)
             if i != 0:
-                affine_u = self.us[i // 2 - 1]
+                affine_u = self.us[i - 1].weight
                 u_plus = torch.maximum(affine_u, torch.tensor(0, dtype=data_type).to(device))
                 u_minus = torch.minimum(affine_u, torch.tensor(0, dtype=data_type).to(device))
-                relu_in_lb = relu_in_lb.add(torch.matmul(u_plus, affine_in_lb).add(torch.matmul(u_minus, affine_in_ub)))
-                relu_in_ub = relu_in_ub.add(torch.matmul(u_plus, affine_in_ub).add(torch.matmul(u_minus, affine_in_lb)))
+                relu_in_lb = relu_in_lb.add(torch.matmul(u_plus, input_bounds[0]).add(torch.matmul(u_minus, input_bounds[1])))
+                relu_in_ub = relu_in_ub.add(torch.matmul(u_plus, input_bounds[1]).add(torch.matmul(u_minus, input_bounds[0])))
 
             affine_in_bounds_per_layer.append([relu_in_lb, relu_in_ub])
 
-            if i < len(parameter_list) - 2:
+            if i < len(self.layer_widths) - 2:
                 relu_out_lb = torch.maximum(torch.tensor(0, dtype=data_type).to(device), relu_in_lb)
                 relu_out_ub = torch.maximum(torch.tensor(0, dtype=data_type).to(device), relu_in_ub)
                 layer_out_bounds_per_layer.append([relu_out_lb, relu_out_ub])
@@ -302,7 +299,6 @@ class ICNN(nn.Module, VerifiableNet):
     def add_constraints(self, model, input_vars, bounds_affine_out, bounds_layer_out):
         ws = list(self.ws.parameters())
         us = list(self.us.parameters())
-        output_vars = model.addMVar(self.layer_widths[-1], lb=-float('inf'))  # todo bounds anpassen
 
         in_var = input_vars
         out_vars = in_var
@@ -317,7 +313,6 @@ class ICNN(nn.Module, VerifiableNet):
             if i != 0:
                 k = math.floor(i / 2) - 1
                 skip_W = torch.clone(us[k]).detach().cpu().numpy()  # has no bias
-                skip_var = model.addMVar(out_fet, lb=affine_lb, ub=affine_ub, name="skip_var" + str(k))
                 skip_const = model.addConstrs(affine_w[i] @ in_var + affine_b[i] + skip_W[i] @ input_vars == affine_out_vars[i] for i in range(len(affine_w)))
             else:
                 affine_no_skip_cons = model.addConstrs(affine_w[i] @ in_var + affine_b[i] == affine_out_vars[i] for i in range(len(affine_w)))
@@ -325,13 +320,12 @@ class ICNN(nn.Module, VerifiableNet):
             in_var = affine_out_vars
 
             if i < len(ws) - 2:
-                out_lb = bounds_layer_out[int(i / 2) - 1][0]
-                out_ub = bounds_layer_out[int(i / 2) - 1][1]
+                out_lb = bounds_layer_out[int(i / 2)][0].detach().cpu().numpy()
+                out_ub = bounds_layer_out[int(i / 2)][1].detach().cpu().numpy()
                 relu_vars = verbas.add_relu_constr(model, in_var, out_fet, affine_lb, affine_ub, out_lb, out_ub, i)
                 in_var = relu_vars
 
-        const = model.addConstrs(out_vars[i] == output_vars[i] for i in range(out_fet))
-        return output_vars
+        return out_vars
 
     def apply_normalisation(self, mean, std):
         with torch.no_grad():
@@ -396,7 +390,7 @@ class ICNNLogical(ICNN):
             out = torch.max(x_in, dim=1)[0]
         return out
 
-    def init(self, lower_bounds, upper_bounds):
+    def init_with_box_bounds(self, lower_bounds, upper_bounds):
         with torch.no_grad():
             if self.init_all_with_zeros:
                 for i in range(len(self.ws)):
@@ -425,7 +419,7 @@ class ICNNLogical(ICNN):
 
     def add_max_output_constraints(self, model, input_vars, bounds_affine_out, bounds_layer_out):
         icnn_output_var = super().add_constraints(model, input_vars, bounds_affine_out, bounds_layer_out)
-        output_of_and = model.addMVar(1, lb=-float('inf'))
+
         lb = -float("inf")
         ub = float("inf")  # todo richtige box bounds anwenden (die vom zu approximierenden Layer)
         ls = self.ls
@@ -463,11 +457,9 @@ class ICNNLogical(ICNN):
         max_var2 = model.addVar(lb=-float("inf"))
         model.addGenConstrMax(max_var2, affine_var1.tolist())
 
-        const = model.addConstr(max_var2 == output_of_and.tolist()[0])
+        model.addConstr(max_var2 <= 0)
 
-        model.addConstr(output_of_and.tolist()[0] <= 0)
-
-        return output_of_and
+        return max_var2
 
     def apply_normalisation(self, mean, std):
         super().apply_normalisation(mean, std)
@@ -520,7 +512,7 @@ class ICNNApproxMax(ICNN):
 
         return out
 
-    def init(self, lower_bounds, upper_bounds):
+    def init_with_box_bounds(self, lower_bounds, upper_bounds):
         with torch.no_grad():
             if self.init_all_with_zeros:
                 for i in range(len(self.ws)):

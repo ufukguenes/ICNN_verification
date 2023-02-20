@@ -190,12 +190,10 @@ def net_2d():
     milp_verifier = MILPVerifier(nn, test_image, 1)
     snv_verifier = SingleNeuronVerifier(nn, test_image, 1)
     dhov_verifier = DHOVVerifier(icnns, nn, test_image, 1)
-    dhov_affine_verifier = DHOVVerifier(icnns, nn, test_image, 1, with_affine=True)
 
     milp_verifier.generate_constraints_for_net()
     snv_verifier.generate_constraints_for_net()
     dhov_verifier.generate_constraints_for_net()
-    dhov_affine_verifier.generate_constraints_for_net()
 
     input_flattened = torch.flatten(test_image)
     input_size = input_flattened.size(0)
@@ -214,7 +212,6 @@ def net_2d():
         in_milp.append(milp_verifier.test_feasibility(sample))
         in_snv.append(snv_verifier.test_feasibility(sample))
         in_dhov.append(dhov_verifier.test_feasibility(sample))
-        in_dhov_affine.append(dhov_affine_verifier.test_feasibility(sample))
 
     plt_inc_amb("milp", box_bound_output_space.detach().cpu().numpy(), in_milp)
     plt_inc_amb("snv", box_bound_output_space.detach().cpu().numpy(), in_snv)
@@ -291,7 +288,7 @@ def multi_net2D():
         parameter_list[5].data = torch.tensor([3, 0], dtype=data_type).to(device)
 
     test_image = torch.tensor([[0, 0]], dtype=data_type).to(device)
-    group_size = 1
+    group_size = 2
     icnns = []
     for i in range((len(parameter_list) - 2) // 2):
         layer_index = int(i / 2)
@@ -302,42 +299,47 @@ def multi_net2D():
                                      init_all_with_zeros=False)
             icnns[i].append(next_net)
         if in_size % group_size > 0:
-            next_net = ICNNLogical([group_size, 10, 10, 10, 1], force_positive_init=False, with_two_layers=False,
+            next_net = ICNNLogical([in_size % group_size, 10, 10, 10, 1], force_positive_init=False, with_two_layers=False,
                                    init_scaling=10,
                                    init_all_with_zeros=False)
             icnns[i].append(next_net)
 
     icnns = \
-        multidhov.start_verification(nn, test_image, icnns, group_size, eps=1, icnn_epochs=100, icnn_batch_size=1000,
+        multidhov.start_verification(nn, test_image, icnns, group_size, eps=1, icnn_epochs=10, icnn_batch_size=1000,
                                      sample_count=1000, sample_new=False, use_over_approximation=True,
                                      sample_over_input_space=False, sample_over_output_space=True,
                                      force_inclusion_steps=0, preemptive_stop=False, even_gradient_training=False,
                                      keep_ambient_space=False, data_grad_descent_steps=0, train_outer=False,
                                      should_plot="none", optimizer="adam", init_network=True, adapt_lambda="none")
 
+    milp_verifier = MILPVerifier(nn, test_image, 1)
+    snv_verifier = SingleNeuronVerifier(nn, test_image, 1)
     dhov_verifier = DHOVVerifier(icnns, group_size, nn, test_image, 1)
-    # dhov_affine_verifier = DHOVVerifier(icnns, nn, test_image, 1, with_affine=True)
 
+    milp_verifier.generate_constraints_for_net()
+    snv_verifier.generate_constraints_for_net()
     dhov_verifier.generate_constraints_for_net()
-    # dhov_affine_verifier.generate_constraints_for_net()
 
     input_flattened = torch.flatten(test_image)
     input_size = input_flattened.size(0)
     bounds_affine_out, bounds_layer_out = nn.calculate_box_bounds([input_flattened.add(-1), input_flattened.add(1)])
 
     test_space = torch.empty((0, input_flattened.size(0)), dtype=data_type).to(device)
-    box_bound_output_space = ds.samples_uniform_over(test_space, 100, bounds_layer_out[-1])
+    box_bound_output_space = ds.samples_uniform_over(test_space, 1000, bounds_layer_out[-1])
 
+    in_snv = []
+    in_milp = []
     in_dhov = []
-    #in_dhov_affine = []
     for i, sample in enumerate(box_bound_output_space):
-        if i % 10 == 0:
+        if i % 100 == 0:
             print(i)
+        in_milp.append(milp_verifier.test_feasibility(sample))
+        in_snv.append(snv_verifier.test_feasibility(sample))
         in_dhov.append(dhov_verifier.test_feasibility(sample))
-        #in_dhov_affine.append(dhov_affine_verifier.test_feasibility(sample))
 
+    plt_inc_amb("milp", box_bound_output_space.detach().cpu().numpy(), in_milp)
+    plt_inc_amb("snv", box_bound_output_space.detach().cpu().numpy(), in_snv)
     plt_inc_amb("dhov", box_bound_output_space.detach().cpu().numpy(), in_dhov)
-    #plt_inc_amb("dhov with affine", box_bound_output_space.detach().cpu().numpy(), in_dhov_affine)
 
 def to_A_b(model):
     # print(model.display())

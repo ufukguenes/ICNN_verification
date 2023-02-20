@@ -143,7 +143,7 @@ def start_verification(nn: SequentialNN, input, icnns, eps=0.001, icnn_batch_siz
             up = bounds_layer_out[current_layer_index][1]
             low = torch.div(torch.add(low, -mean), std)
             up = torch.div(torch.add(up, -mean), std)
-            current_icnn.init(low, up)
+            current_icnn.init_with_box_bounds(low, up)
 
         # train icnn
         epochs_per_inclusion = icnn_epochs // force_inclusion_steps

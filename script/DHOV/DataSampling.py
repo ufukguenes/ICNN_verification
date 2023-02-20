@@ -77,8 +77,8 @@ def regroup_samples(icnns, included_space, ambient_space, group_size, c=0):
         elem = torch.unsqueeze(elem, 0)
         is_included = True
         for group_i, icnn in enumerate(icnns):
-            if group_i == len(icnns) - 1 and len(elem) % group_i > 0:
-                from_to_neurons = [group_size * group_i, group_size * group_i + (group_size % group_i)]
+            if group_i == len(icnns) - 1 and elem.size(1) % group_size > 0:
+                from_to_neurons = [group_size * group_i, group_size * group_i + (len(elem) % group_size)]
             else:
                 from_to_neurons = [group_size * group_i, group_size * group_i + group_size]  # upper bound is exclusive
             index_to_select = torch.tensor(range(from_to_neurons[0], from_to_neurons[1]))

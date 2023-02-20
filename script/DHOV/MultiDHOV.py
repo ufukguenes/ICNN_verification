@@ -135,8 +135,8 @@ def start_verification(nn: SequentialNN, input, icnns, group_size, eps=0.001, ic
 
         for group_i in range(number_of_groups):
             current_icnn = icnns[current_layer_index][group_i]
-            if group_i == number_of_groups - 1 and len(affine_b) % group_i > 0 :
-                from_to_neurons = [group_size * group_i, group_size * group_i + (group_size % group_i)]
+            if group_i == number_of_groups - 1 and len(affine_b) % group_size > 0:
+                from_to_neurons = [group_size * group_i, group_size * group_i + (len(affine_b) % group_size)]
             else:
                 from_to_neurons = [group_size * group_i, group_size * group_i + group_size] # upper bound is exclusive
             index_to_select = torch.tensor(range(from_to_neurons[0], from_to_neurons[1]))
@@ -158,7 +158,7 @@ def start_verification(nn: SequentialNN, input, icnns, group_size, eps=0.001, ic
                 up = bounds_layer_out[current_layer_index][1][from_to_neurons[0]: from_to_neurons[1]]
                 low = torch.div(torch.add(low, -mean), std)
                 up = torch.div(torch.add(up, -mean), std)
-                current_icnn.init(low, up)
+                current_icnn.init_with_box_bounds(low, up)
 
             # train icnn
             epochs_per_inclusion = icnn_epochs // force_inclusion_steps
@@ -232,18 +232,23 @@ def start_verification(nn: SequentialNN, input, icnns, group_size, eps=0.001, ic
             # verify and enlarge convex approximation
             if use_over_approximation:
                 if i == 0:
-                    adversarial_input, c = ver.verification(current_icnn, from_to_neurons, has_relu=True,
+                    adversarial_input, c = ver.verification(current_icnn, from_to_neurons, current_layer_index,
+                                                            bounds_affine_out, bounds_layer_out, has_relu=True,
                                                             center_eps_w_b=[center.detach().cpu().numpy(), eps,
                                                                             affine_w.detach().cpu().numpy(),
-                                                                            affine_b.detach().cpu().numpy()])
+                                                                            affine_b.detach().cpu().numpy()],)
+
                 else:
                     prev_icnn = icnns[current_layer_index - 1]
                     # prev_W, prev_b = parameter_list[i-2].detach().cpu().numpy(), parameter_list[i - 1].detach().cpu().numpy()
-                    adversarial_input, c = ver.verification(current_icnn, from_to_neurons, has_relu=True,
+                    adversarial_input, c = ver.verification(current_icnn, from_to_neurons, current_layer_index,
+                                                            bounds_affine_out, bounds_layer_out, has_relu=True,
                                                             icnn_w_b_c=[prev_icnn, affine_w.detach().cpu().numpy(),
                                                                         affine_b.detach().cpu().numpy()])
 
                 current_icnn.apply_enlargement(c)
+
+
 
             # entweder oder:
             # nutze die samples weiter (dafür muss man dann das ReLU layer anwenden), und man muss schauen ob die

@@ -28,10 +28,10 @@ def verification(icnn, from_to_neuron, current_layer_index, bounds_affine_out, b
         m.addConstrs(input_to_previous_layer[i] <= center[i] + eps for i in range(input_to_previous_layer_size))
         m.addConstrs(input_to_previous_layer[i] >= center[i] - eps for i in range(input_to_previous_layer_size))
 
-        in_lb = bounds_affine_out[current_layer_index - 1][0]
-        in_ub = bounds_affine_out[current_layer_index - 1][1]
-        out_lb = bounds_layer_out[current_layer_index - 1][0]
-        out_ub = bounds_layer_out[current_layer_index - 1][1]
+        in_lb = bounds_affine_out[current_layer_index][0].detach().cpu().numpy()
+        in_ub = bounds_affine_out[current_layer_index][1].detach().cpu().numpy()
+        out_lb = bounds_layer_out[current_layer_index][0].detach().cpu().numpy()
+        out_ub = bounds_layer_out[current_layer_index][1].detach().cpu().numpy()
 
         affine_out = add_affine_constr(m, affine_w, b, input_to_previous_layer, in_lb, in_ub)
 
