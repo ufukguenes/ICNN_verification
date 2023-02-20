@@ -305,7 +305,7 @@ def multi_net2D():
             icnns[i].append(next_net)
 
     icnns = \
-        multidhov.start_verification(nn, test_image, icnns, group_size, eps=1, icnn_epochs=10, icnn_batch_size=1000,
+        multidhov.start_verification(nn, test_image, icnns, group_size, eps=1, icnn_epochs=300, icnn_batch_size=1000,
                                      sample_count=1000, sample_new=False, use_over_approximation=True,
                                      sample_over_input_space=False, sample_over_output_space=True,
                                      force_inclusion_steps=0, preemptive_stop=False, even_gradient_training=False,

@@ -61,7 +61,9 @@ def verification(icnn, from_to_neuron, current_layer_index, bounds_affine_out, b
         input_to_previous_layer = m.addMVar(constraint_icnn_input_size, lb=-float('inf'))
 
         for k in range(len(constraint_icnn)):
-            constraint_icnn_bounds_affine_out, constraint_icnn_bounds_layer_out = constraint_icnn[k].calculate_box_bounds(bounds_layer_out[current_layer_index - 1])
+            low = bounds_layer_out[current_layer_index - 1][0][from_to_neuron[0]: from_to_neuron[1]]
+            up = bounds_layer_out[current_layer_index - 1][1][from_to_neuron[0]: from_to_neuron[1]]
+            constraint_icnn_bounds_affine_out, constraint_icnn_bounds_layer_out = constraint_icnn[k].calculate_box_bounds([low, up])
             constraint_icnn[k].add_max_output_constraints(m, input_to_previous_layer[from_to_neuron[0]: from_to_neuron[1]], constraint_icnn_bounds_affine_out, constraint_icnn_bounds_layer_out)
 
         if has_relu:
@@ -77,7 +79,9 @@ def verification(icnn, from_to_neuron, current_layer_index, bounds_affine_out, b
     # todo das kann man optimieren in dem man die constraints, nur für die relevanten neuronen erstellt und nicht für alle
     input_var = input_var[from_to_neuron[0]: from_to_neuron[1]]
 
-    icnn_bounds_affine_out, icnn_bounds_layer_out = icnn.calculate_box_bounds(bounds_layer_out[current_layer_index])
+    low = bounds_layer_out[current_layer_index][0][from_to_neuron[0]: from_to_neuron[1]]
+    up = bounds_layer_out[current_layer_index][1][from_to_neuron[0]: from_to_neuron[1]]
+    icnn_bounds_affine_out, icnn_bounds_layer_out = icnn.calculate_box_bounds([low, up])
     output_var = icnn.add_constraints(m, input_var, icnn_bounds_affine_out, icnn_bounds_layer_out)
 
     m.update()

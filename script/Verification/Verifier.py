@@ -232,14 +232,16 @@ class DHOVVerifier(Verifier):
         num_groups = math.ceil(input_size / self.group_size)
         for group_i in range(num_groups):
             if group_i == num_groups - 1 and input_size % self.group_size > 0:
-                from_neuron = self.group_size * group_i
-                to_neuron = self.group_size * group_i + input_size % self.group_size  # upper bound is exclusive
+                from_to_neurons = [self.group_size * group_i, self.group_size * group_i + (input_size) % self.group_size]
             else:
-                from_neuron = self.group_size * group_i
-                to_neuron = self.group_size * group_i + self.group_size  # upper bound is exclusive
+                from_to_neurons = [self.group_size * group_i, self.group_size * group_i + self.group_size]  # upper bound is exclusive
 
-            constraint_bounds_affine_out, constraint_bounds_layer_out = last_icnn[group_i].calculate_box_bounds(bounds_layer_out[-2])
-            last_icnn[group_i].add_max_output_constraints(m, in_var[from_neuron:to_neuron], constraint_bounds_affine_out, constraint_bounds_layer_out)
+
+
+            low = bounds_layer_out[-2][0][from_to_neurons[0]: from_to_neurons[1]]
+            up = bounds_layer_out[-2][1][from_to_neurons[0]: from_to_neurons[1]]
+            constraint_bounds_affine_out, constraint_bounds_layer_out = last_icnn[group_i].calculate_box_bounds([low, up])
+            last_icnn[group_i].add_max_output_constraints(m, in_var[from_to_neurons[0]: from_to_neurons[1]], constraint_bounds_affine_out, constraint_bounds_layer_out)
 
 
         lb = bounds_affine_out[-1][0].detach().cpu().numpy()
