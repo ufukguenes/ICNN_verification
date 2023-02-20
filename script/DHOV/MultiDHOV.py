@@ -132,20 +132,32 @@ def start_verification(nn: SequentialNN, input, icnns, group_size, eps=0.001, ic
             plt_inc_amb("original enhanced ambient space " + str(i), original_included_space.tolist(),
                         original_ambient_space.tolist())
 
-        number_of_groups = len(affine_b) / group_size
-        if number_of_groups < 0:
-            number_of_groups *= -1
-        number_of_groups = math.ceil(number_of_groups)
+        number_of_groups = get_num_of_groups(len(affine_b), group_size)
+
+        current_from_tos = get_from_tos(len(affine_b), group_size)
+
+        if use_over_approximation:
+            if i == 0:
+                model = ver.generate_model_center_eps(current_layer_index, bounds_affine_out, bounds_layer_out,
+                                                                 center_eps_w_b=[center.detach().cpu().numpy(), eps,
+                                                                                 affine_w.detach().cpu().numpy(),
+                                                                                 affine_b.detach().cpu().numpy()],
+                                                                 has_relu=True)
+            else:
+                past_from_tos = get_from_tos(len(affine_w), group_size)
+                prev_icnn = icnns[current_layer_index - 1]
+                model = ver.generate_model_icnns(past_from_tos, current_layer_index, bounds_affine_out,
+                                                            bounds_layer_out,
+                                                            icnn_w_b_c=[prev_icnn, affine_w.detach().cpu().numpy(),
+                                                                        affine_b.detach().cpu().numpy()], has_relu=True)
+            model.update()
 
         for group_i in range(number_of_groups):
             print("layer progress, group {} of {} ".format(group_i, number_of_groups))
             t = time.time()
             current_icnn = icnns[current_layer_index][group_i]
-            if group_i == number_of_groups - 1 and len(affine_b) % group_size > 0:
-                from_to_neurons = [group_size * group_i, group_size * group_i + (len(affine_b) % group_size)]
-            else:
-                from_to_neurons = [group_size * group_i, group_size * group_i + group_size] # upper bound is exclusive
-            index_to_select = torch.tensor(range(from_to_neurons[0], from_to_neurons[1]))
+
+            index_to_select = torch.tensor(range(current_from_tos[group_i][0], current_from_tos[group_i][1]))
             group_inc_space = torch.index_select(included_space, 1, index_to_select)
             group_amb_space = torch.index_select(ambient_space, 1, index_to_select)
 
@@ -160,8 +172,8 @@ def start_verification(nn: SequentialNN, input, icnns, group_size, eps=0.001, ic
             ambient_loader = DataLoader(dataset, batch_size=icnn_batch_size)
 
             if init_network:
-                low = bounds_layer_out[current_layer_index][0][from_to_neurons[0]: from_to_neurons[1]]
-                up = bounds_layer_out[current_layer_index][1][from_to_neurons[0]: from_to_neurons[1]]
+                low = bounds_layer_out[current_layer_index][0][current_from_tos[group_i][0]: current_from_tos[group_i][1]]
+                up = bounds_layer_out[current_layer_index][1][current_from_tos[group_i][0]: current_from_tos[group_i][1]]
                 low = torch.div(torch.add(low, -mean), std)
                 up = torch.div(torch.add(up, -mean), std)
                 current_icnn.init_with_box_bounds(low, up)
@@ -239,20 +251,9 @@ def start_verification(nn: SequentialNN, input, icnns, group_size, eps=0.001, ic
             t = time.time()
             # verify and enlarge convex approximation
             if use_over_approximation:
-                if i == 0:
-                    adversarial_input, c = ver.verification(current_icnn, from_to_neurons, current_layer_index,
-                                                            bounds_affine_out, bounds_layer_out, has_relu=True,
-                                                            center_eps_w_b=[center.detach().cpu().numpy(), eps,
-                                                                            affine_w.detach().cpu().numpy(),
-                                                                            affine_b.detach().cpu().numpy()],)
-
-                else:
-                    prev_icnn = icnns[current_layer_index - 1]
-                    # prev_W, prev_b = parameter_list[i-2].detach().cpu().numpy(), parameter_list[i - 1].detach().cpu().numpy()
-                    adversarial_input, c = ver.verification(current_icnn, from_to_neurons, current_layer_index,
-                                                            bounds_affine_out, bounds_layer_out, has_relu=True,
-                                                            icnn_w_b_c=[prev_icnn, affine_w.detach().cpu().numpy(),
-                                                                        affine_b.detach().cpu().numpy()])
+                copy_model = model.copy()
+                adversarial_input, c = ver.verification(current_icnn, copy_model, current_from_tos[group_i],
+                                                            current_layer_index, bounds_affine_out, bounds_layer_out)
 
                 current_icnn.apply_enlargement(c)
                 print("        time for verification: {}".format(time.time() - t))
@@ -324,3 +325,23 @@ def plt_inc_amb(caption, inc, amb):
     plt.scatter(list(map(lambda x: x[0], inc)), list(map(lambda x: x[1], inc)), c="#1f77b4")
     plt.title(caption)
     plt.show()
+
+
+def get_from_tos(layer_size, group_size):
+    number_of_groups = get_num_of_groups(layer_size, group_size)
+    all_from_to_neurons = []
+    for group_i in range(number_of_groups):
+        if group_i == number_of_groups - 1 and layer_size % group_size > 0:
+            from_to_neurons = [group_size * group_i, group_size * group_i + (layer_size % group_size)]
+        else:
+            from_to_neurons = [group_size * group_i, group_size * group_i + group_size]  # upper bound is exclusive
+        all_from_to_neurons.append(from_to_neurons)
+    return all_from_to_neurons
+
+
+def get_num_of_groups(layer_size, group_size):
+    number_of_groups = layer_size / group_size
+    if number_of_groups < 0:
+        number_of_groups *= -1
+    number_of_groups = math.ceil(number_of_groups)
+    return number_of_groups

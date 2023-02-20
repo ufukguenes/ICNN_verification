@@ -302,7 +302,7 @@ def multi_net2D():
     nn.load_state_dict(torch.load("../../cifar_fc.pth", map_location=torch.device('cpu')), strict=False)
     parameter_list = list(nn.parameters())
 
-    group_size = 1
+    group_size = 4
     icnns = []
     for i in range((len(parameter_list) - 2) // 2):
         layer_index = int(i / 2)
@@ -319,7 +319,7 @@ def multi_net2D():
             icnns[i].append(next_net)
 
     icnns = \
-        multidhov.start_verification(nn, test_image, icnns, group_size, eps=0.01, icnn_epochs=100, icnn_batch_size=1000,
+        multidhov.start_verification(nn, test_image, icnns, group_size, eps=0.02, icnn_epochs=100, icnn_batch_size=1000,
                                      sample_count=100, sample_new=False, use_over_approximation=True,
                                      sample_over_input_space=False, sample_over_output_space=True,
                                      force_inclusion_steps=0, preemptive_stop=False, even_gradient_training=False,
