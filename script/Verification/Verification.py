@@ -67,7 +67,7 @@ def verification(icnn, from_to_neuron, current_layer_index, bounds_affine_out, b
             constraint_icnn[k].add_max_output_constraints(m, input_to_previous_layer[from_to_neuron[0]: from_to_neuron[1]], constraint_icnn_bounds_affine_out, constraint_icnn_bounds_layer_out)
 
         if has_relu:
-            relu_var = m.addMVar(input_size, lb=-float('inf'), name="in_var")
+            relu_var = m.addMVar(input_size, lb=-float('inf'), name="in_var") #todo verwenden von richtigen relu constraints
             m.addConstrs(affine_w[i] @ input_to_previous_layer + b[i] == relu_var[i] for i in range(len(affine_w)))
             m.addConstrs(input_var[i] == max_(0, relu_var[i]) for i in range(input_size))
         else:

@@ -248,16 +248,39 @@ def start_verification(nn: SequentialNN, input, icnns, group_size, eps=0.001, ic
 
                 current_icnn.apply_enlargement(c)
 
+            """
+            #visualisation for one single ReLu
+            gt0 = []
+            leq0 = []
+            gt_x = []
+            leq_x = []
+            x_in = torch.tensor(x, dtype=data_type).to(device)
+            for k, samp in enumerate(x_in):
+                testsamp = torch.unsqueeze(samp, dim=0)
+                testsamp = torch.unsqueeze(testsamp, dim=0)
+                if current_icnn(testsamp) > 0:
+                    gt0.append(samp)
+                    gt_x.append(current_icnn(testsamp))
+                else:
+                    leq0.append(samp)
+                    leq_x.append(current_icnn(testsamp))
+
+            plt.scatter(list(map(lambda x: x.detach().numpy(), gt0)),
+                        list(map(lambda x: x.detach().numpy(), gt_x)), c="#ff7f0e")
+            plt.scatter(list(map(lambda x: x.detach().numpy(), leq0)),
+                        list(map(lambda x: x.detach().numpy(), leq_x)), c="#1f77b4")
+            plt.title("My ReLU post overapprox")
+            plt.show()"""
 
 
-            # entweder oder:
-            # nutze die samples weiter (dafür muss man dann das ReLU layer anwenden), und man muss schauen ob die
-            # samples jetzt von ambient_space zu included_space gewechselt haben (wegen überapproximation)
-            # damit könnte man gut den Fehler messen, da man ganz genau weiß wie viele elemente aus Ambient space
-            # in Icluded space übergegenagen sind
 
-            # oder sample neue punkte
+        # entweder oder:
+        # nutze die samples weiter (dafür muss man dann das ReLU layer anwenden), und man muss schauen ob die
+        # samples jetzt von ambient_space zu included_space gewechselt haben (wegen überapproximation)
+        # damit könnte man gut den Fehler messen, da man ganz genau weiß wie viele elemente aus Ambient space
+        # in Icluded space übergegenagen sind
 
+        # oder sample neue punkte
         if sample_new:
             # todo entweder über box bounds sampeln oder über maximum radius
             included_space, ambient_space = ds.sample_max_radius(icnns[current_layer_index], sample_count, bounds_affine_out, bounds_layer_out)

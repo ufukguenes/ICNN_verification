@@ -179,7 +179,7 @@ def net_2d():
         icnns.append(next_net)
 
     icnns = \
-        dhov.start_verification(nn, test_image, icnns, eps=1, icnn_epochs=10, icnn_batch_size=1000, sample_count=1000,
+        dhov.start_verification(nn, test_image, icnns, eps=1, icnn_epochs=100, icnn_batch_size=1000, sample_count=1000,
                                 sample_new=True, use_over_approximation=True,
                                 sample_over_input_space=False, sample_over_output_space=True, force_inclusion_steps=0,
                                 keep_ambient_space=False, data_grad_descent_steps=0, train_outer=False,
@@ -305,9 +305,9 @@ def multi_net2D():
             icnns[i].append(next_net)
 
     icnns = \
-        multidhov.start_verification(nn, test_image, icnns, group_size, eps=1, icnn_epochs=300, icnn_batch_size=1000,
+        multidhov.start_verification(nn, test_image, icnns, group_size, eps=1, icnn_epochs=10, icnn_batch_size=1000,
                                      sample_count=1000, sample_new=False, use_over_approximation=True,
-                                     sample_over_input_space=False, sample_over_output_space=True,
+                                     sample_over_input_space=True, sample_over_output_space=True,
                                      force_inclusion_steps=0, preemptive_stop=False, even_gradient_training=False,
                                      keep_ambient_space=False, data_grad_descent_steps=0, train_outer=False,
                                      should_plot="none", optimizer="adam", init_network=True, adapt_lambda="none")
