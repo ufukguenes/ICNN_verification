@@ -69,11 +69,11 @@ def generate_model_A_b(a_matrix, b_vector):
 def verification(icnn, model, affine_w, b, from_to_neuron, current_layer_index, bounds_affine_out, bounds_layer_out, has_relu=False):
 
     input_approx_layer = []
-    for i in range(0, 3072):
+    for i in range(affine_w.shape[1]):
         input_approx_layer.append(model.getVarByName("input_approx_layer"+str(i)))
     input_approx_layer = grp.MVar.fromlist(input_approx_layer)
 
-    rows_to_delete = list(range(0, 1024))
+    rows_to_delete = list(range(affine_w.shape[0]))
     rows_to_delete = rows_to_delete[:from_to_neuron[0]] + rows_to_delete[from_to_neuron[1]:]
     affine_w = np.delete(affine_w, rows_to_delete, axis=0)
     b = np.delete(b, rows_to_delete, axis=0)

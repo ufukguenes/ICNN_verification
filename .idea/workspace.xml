@@ -1,11 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="6d238203-6334-43f4-afee-09b5387b5116" name="Changes" comment="outsource model generation for icnn verification">
+    <list default="true" id="6d238203-6334-43f4-afee-09b5387b5116" name="Changes" comment="making verification of icnns more performant by only considering necessary neurons">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/script/DHOV/MainDHOV.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/DHOV/MainDHOV.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/script/DHOV/MultiDHOV.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/DHOV/MultiDHOV.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/script/Verification/Verification.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/Verification/Verification.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -128,6 +125,7 @@
       <workItem from="1676587223685" duration="8181000" />
       <workItem from="1676607906733" duration="5976000" />
       <workItem from="1676896658638" duration="28424000" />
+      <workItem from="1676978812910" duration="525000" />
     </task>
     <task id="LOCAL-00001" summary="merge conflict resolved">
       <created>1675424657510</created>
@@ -346,7 +344,14 @@
       <option name="project" value="LOCAL" />
       <updated>1676931103836</updated>
     </task>
-    <option name="localTasksCounter" value="32" />
+    <task id="LOCAL-00032" summary="making verification of icnns more performant by only considering necessary neurons">
+      <created>1676937646287</created>
+      <option name="number" value="00032" />
+      <option name="presentableId" value="LOCAL-00032" />
+      <option name="project" value="LOCAL" />
+      <updated>1676937646287</updated>
+    </task>
+    <option name="localTasksCounter" value="33" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -396,7 +401,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="refactored code and made it more object-oriented" />
     <MESSAGE value="adapting DHOV to support object-oriented architecture and fixed minor bugs" />
     <MESSAGE value="adapting DHOV to support object-oriented architecture and fixed minor bugs, deleted some unnecessary functions" />
     <MESSAGE value="including normalisation into network and making SequentialNN implement parent methods" />
@@ -421,7 +425,8 @@
     <MESSAGE value="fixing bug when using sample_new and sample_over_inp" />
     <MESSAGE value="minor adaptations for cifar verification" />
     <MESSAGE value="outsource model generation for icnn verification" />
-    <option name="LAST_COMMIT_MESSAGE" value="outsource model generation for icnn verification" />
+    <MESSAGE value="making verification of icnns more performant by only considering necessary neurons" />
+    <option name="LAST_COMMIT_MESSAGE" value="making verification of icnns more performant by only considering necessary neurons" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
