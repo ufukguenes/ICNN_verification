@@ -138,18 +138,11 @@ def start_verification(nn: SequentialNN, input, icnns, group_size, eps=0.001, ic
 
         if use_over_approximation:
             if i == 0:
-                model = ver.generate_model_center_eps(current_layer_index, bounds_affine_out, bounds_layer_out,
-                                                                 center_eps_w_b=[center.detach().cpu().numpy(), eps,
-                                                                                 affine_w.detach().cpu().numpy(),
-                                                                                 affine_b.detach().cpu().numpy()],
-                                                                 has_relu=True)
+                model = ver.generate_model_center_eps(center.detach().cpu().numpy(), eps)
             else:
                 past_from_tos = get_from_tos(len(affine_w), group_size)
-                prev_icnn = icnns[current_layer_index - 1]
-                model = ver.generate_model_icnns(past_from_tos, current_layer_index, bounds_affine_out,
-                                                            bounds_layer_out,
-                                                            icnn_w_b_c=[prev_icnn, affine_w.detach().cpu().numpy(),
-                                                                        affine_b.detach().cpu().numpy()], has_relu=True)
+                prev_icnns = icnns[current_layer_index - 1]
+                model = ver.generate_model_icnns(prev_icnns, past_from_tos, current_layer_index, bounds_layer_out)
             model.update()
 
         for group_i in range(number_of_groups):
@@ -252,11 +245,13 @@ def start_verification(nn: SequentialNN, input, icnns, group_size, eps=0.001, ic
             # verify and enlarge convex approximation
             if use_over_approximation:
                 copy_model = model.copy()
-                adversarial_input, c = ver.verification(current_icnn, copy_model, current_from_tos[group_i],
-                                                            current_layer_index, bounds_affine_out, bounds_layer_out)
+                adversarial_input, c = ver.verification(current_icnn, copy_model, affine_w.detach().numpy(),
+                                                        affine_b.detach().numpy(), current_from_tos[group_i],
+                                                        current_layer_index, bounds_affine_out, bounds_layer_out,
+                                                        has_relu=True)
 
                 current_icnn.apply_enlargement(c)
-                print("        time for verification: {}".format(time.time() - t))
+            print("        time for verification: {}".format(time.time() - t))
 
             """
             #visualisation for one single ReLu
