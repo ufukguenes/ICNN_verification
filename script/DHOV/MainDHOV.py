@@ -298,14 +298,16 @@ def multi_net2D():
     test_image, test_label = torch.unsqueeze(images, 0).to(dtype=data_type).to(device), torch.unsqueeze(
         torch.tensor(labels), 0).to(dtype=data_type).to(device)
 
-    nn = SequentialNN([32 * 32 * 3, 1024, 512, 10])
-    nn.load_state_dict(torch.load("../../cifar_fc.pth", map_location=torch.device('cpu')), strict=False)
+    #nn = SequentialNN([32 * 32 * 3, 1024, 512, 10])
+    #nn.load_state_dict(torch.load("../../cifar_fc.pth", map_location=torch.device('cpu')), strict=False)
+    nn = SequentialNN([300, 100, 50, 7])
+    test_image = torch.zeros((1, 300), dtype=data_type).to(device)
     parameter_list = list(nn.parameters())
 
     group_size = 6
     icnns = []
     for i in range((len(parameter_list) - 2) // 2):
-        layer_index = int(i / 2)
+        layer_index = i
         in_size = nn.layer_widths[layer_index + 1]
         icnns.append([])
         for k in range(in_size // group_size):

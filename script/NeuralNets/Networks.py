@@ -425,7 +425,7 @@ class ICNNLogical(ICNN):
         ls = self.ls
 
         bb_w, bb_b = ls[0].weight.data.detach().cpu().numpy(), ls[0].bias.data.detach().cpu().numpy()
-        bb_var = model.addMVar(4, lb=lb, ub=ub, name="skip_var")
+        bb_var = model.addMVar(len(bb_b), lb=lb, ub=ub, name="skip_var")
         skip_const = model.addConstrs(bb_w[i] @ input_vars + bb_b[i] == bb_var[i] for i in range(len(bb_w)))
         max_var = model.addVar(lb=-float("inf"))
         model.addGenConstrMax(max_var, bb_var.tolist())

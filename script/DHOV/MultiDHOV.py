@@ -141,7 +141,7 @@ def start_verification(nn: SequentialNN, input, icnns, group_size, eps=0.001, ic
             if i == 0:
                 model = ver.generate_model_center_eps(center.detach().cpu().numpy(), eps)
             else:
-                past_from_tos = get_from_tos(len(affine_w), group_size)
+                past_from_tos = get_from_tos(affine_w.size(1), group_size)
                 prev_icnns = icnns[current_layer_index - 1]
                 model = ver.generate_model_icnns(prev_icnns, past_from_tos, current_layer_index, bounds_layer_out)
             model.update()
@@ -153,7 +153,7 @@ def start_verification(nn: SequentialNN, input, icnns, group_size, eps=0.001, ic
             t = time.time()
             current_icnn = icnns[current_layer_index][group_i]
 
-            index_to_select = torch.tensor(range(current_from_tos[group_i][0], current_from_tos[group_i][1]))
+            index_to_select = torch.tensor(range(current_from_tos[group_i][0], current_from_tos[group_i][1])).to(device)
             group_inc_space = torch.index_select(included_space, 1, index_to_select)
             group_amb_space = torch.index_select(ambient_space, 1, index_to_select)
 
