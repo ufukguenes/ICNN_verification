@@ -34,7 +34,7 @@ def generate_model_icnns(constraint_icnns, all_from_to_neurons, current_layer_in
     m.Params.LogToConsole = 0
 
     # todo wie kann ich hier wiederverwenden, dass ich das constraint_icnn schon mal verifiziert habe?
-    input_size = len(bounds_layer_out[current_layer_index][0])
+    input_size = len(bounds_layer_out[current_layer_index - 1][0])
     lb = bounds_layer_out[current_layer_index - 1][0].detach().cpu().numpy()
     ub = bounds_layer_out[current_layer_index - 1][1].detach().cpu().numpy()
     input_approx_layer = m.addMVar(input_size, lb=lb, ub=ub)

@@ -182,7 +182,7 @@ class MILPVerifier(Verifier):
             relu_in_var = out_vars
             out_lb = bounds_layer_out[int(i / 2)][0].detach().cpu().numpy()
             out_ub = bounds_layer_out[int(i / 2)][1].detach().cpu().numpy()
-            relu_vars = verbas.add_relu_constr(m, relu_in_var, out_fet, in_lb, in_ub, out_lb, out_ub)
+            relu_vars = verbas.add_relu_constr(m, relu_in_var, out_fet, in_lb, in_ub, out_lb, out_ub, i=i)
             in_var = relu_vars
 
         lb = bounds_affine_out[-1][0].detach().numpy()
@@ -235,8 +235,6 @@ class DHOVVerifier(Verifier):
                 from_to_neurons = [self.group_size * group_i, self.group_size * group_i + (input_size) % self.group_size]
             else:
                 from_to_neurons = [self.group_size * group_i, self.group_size * group_i + self.group_size]  # upper bound is exclusive
-
-
 
             low = bounds_layer_out[-2][0][from_to_neurons[0]: from_to_neurons[1]]
             up = bounds_layer_out[-2][1][from_to_neurons[0]: from_to_neurons[1]]

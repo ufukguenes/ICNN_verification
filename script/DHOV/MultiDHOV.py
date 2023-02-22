@@ -28,7 +28,7 @@ adapt_lambda has values: none, high_low, included
 
 
 def start_verification(nn: SequentialNN, input, icnns, group_size, eps=0.001, icnn_batch_size=1000, icnn_epochs=100,
-                       sample_count=1000,
+                       sample_count=1000, break_after=None,
                        keep_ambient_space=False, sample_new=True, use_over_approximation=True,
                        sample_over_input_space=False, sample_over_output_space=True, data_grad_descent_steps=0,
                        train_outer=False, preemptive_stop=True, even_gradient_training=False, force_inclusion_steps=0,
@@ -38,6 +38,7 @@ def start_verification(nn: SequentialNN, input, icnns, group_size, eps=0.001, ic
     valid_optimizer = ["adam", "LBFGS", "SdLBFGS"]
 
     parameter_list = list(nn.parameters())
+    force_break = False
 
     if adapt_lambda not in valid_adapt_lambda:
         raise AttributeError(
@@ -146,6 +147,8 @@ def start_verification(nn: SequentialNN, input, icnns, group_size, eps=0.001, ic
             model.update()
 
         for group_i in range(number_of_groups):
+            if break_after is not None:
+                break_after -= 1
             print("layer progress, group {} of {} ".format(group_i, number_of_groups))
             t = time.time()
             current_icnn = icnns[current_layer_index][group_i]
@@ -276,8 +279,13 @@ def start_verification(nn: SequentialNN, input, icnns, group_size, eps=0.001, ic
                         list(map(lambda x: x.detach().numpy(), leq_x)), c="#1f77b4")
             plt.title("My ReLU post overapprox")
             plt.show()"""
+            if break_after is not None and break_after == 0:
+                force_break = True
+                break
 
-
+        if force_break:
+            print("aborting because of force break")
+            break
 
         # entweder oder:
         # nutze die samples weiter (dafür muss man dann das ReLU layer anwenden), und man muss schauen ob die

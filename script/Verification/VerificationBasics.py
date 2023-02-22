@@ -34,7 +34,7 @@ def add_affine_constr(model, affine_w, b, input_vars, lb, ub, i=0):
 
 
 def add_single_neuron_constr(model, input_vars, number_of_out_features, in_lb, in_ub, out_lb, out_ub, i=0):
-    relu_vars = model.addMVar(number_of_out_features, lb=out_lb, ub=out_ub, name="in_relu"+str(i))
+    relu_vars = model.addMVar(number_of_out_features, lb=out_lb, ub=out_ub, name="relu_var"+str(i))
     for k in range(number_of_out_features):
         if in_ub[k] <= 0:
             model.addConstr(relu_vars[k] == 0, name="relu=0" + str(i)+"k"+str(k))
