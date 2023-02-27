@@ -12,6 +12,7 @@ import numpy as np
 
 import script.DHOV.Normalisation as norm
 import script.Verification.Verification as ver
+import script.Verification.VerificationBasics as verbas
 import script.DHOV.DataSampling as ds
 import script.DHOV.DataOptimization as dop
 from script.dataInit import ConvexDataset
@@ -28,7 +29,7 @@ adapt_lambda has values: none, high_low, included
 
 
 def start_verification(nn: SequentialNN, input, icnns, group_size, eps=0.001, icnn_batch_size=1000, icnn_epochs=100,
-                       sample_count=1000, break_after=None,
+                       sample_count=1000, break_after=None, use_icnn_bounds=False,
                        keep_ambient_space=False, sample_new=True, use_over_approximation=True,
                        sample_over_input_space=False, sample_over_output_space=True, data_grad_descent_steps=0,
                        train_outer=False, preemptive_stop=True, even_gradient_training=False, force_inclusion_steps=0,
@@ -57,7 +58,11 @@ def start_verification(nn: SequentialNN, input, icnns, group_size, eps=0.001, ic
 
     input_flattened = torch.flatten(input)
     eps_bounds = [input_flattened.add(-eps), input_flattened.add(eps)]
-    bounds_affine_out, bounds_layer_out = nn.calculate_box_bounds(eps_bounds)  # todo abbrechen, wenn die box bounds schon die eigenschaft erfüllen
+
+    if use_icnn_bounds:
+        bounds_affine_out, bounds_layer_out = [], []
+    else:
+        bounds_affine_out, bounds_layer_out = nn.calculate_box_bounds(eps_bounds)  # todo abbrechen, wenn die box bounds schon die eigenschaft erfüllen
 
     included_space = torch.empty((0, input_flattened.size(0)), dtype=data_type).to(device)
     included_space = ds.samples_uniform_over(included_space, int(sample_count / 2), eps_bounds)
@@ -69,7 +74,6 @@ def start_verification(nn: SequentialNN, input, icnns, group_size, eps=0.001, ic
         original_included_space, original_ambient_space = included_space, ambient_space
 
     center = input_flattened
-    current_icnn = icnns[0]
 
     force_inclusion_steps += 1
     data_grad_descent_steps += 1
@@ -80,6 +84,15 @@ def start_verification(nn: SequentialNN, input, icnns, group_size, eps=0.001, ic
         print("approximation of layer: {}".format(current_layer_index))
 
         affine_w, affine_b = parameter_list[i], parameter_list[i + 1]
+
+        if use_icnn_bounds:
+            if i == 0:
+                affine_out_lb, affine_out_ub = verbas.calc_affine_out_bound(affine_w, affine_b, eps_bounds[0], eps_bounds[1])
+            else:
+                affine_out_lb, affine_out_ub = verbas.calc_affine_out_bound(affine_w, affine_b, bounds_layer_out[current_layer_index - 1][0], bounds_layer_out[current_layer_index - 1][1])
+            relu_out_lb, relu_out_ub = verbas.calc_relu_out_bound(affine_out_lb, affine_out_ub)
+            bounds_affine_out.append([affine_out_lb, affine_out_ub])
+            bounds_layer_out.append([relu_out_lb, relu_out_ub])
 
         if not keep_ambient_space:
             ambient_space = torch.empty((0, nn.layer_widths[current_layer_index]), dtype=data_type).to(device)
@@ -143,7 +156,7 @@ def start_verification(nn: SequentialNN, input, icnns, group_size, eps=0.001, ic
             else:
                 past_from_tos = get_from_tos(affine_w.size(1), group_size)
                 prev_icnns = icnns[current_layer_index - 1]
-                model = ver.generate_model_icnns(prev_icnns, past_from_tos, current_layer_index, bounds_layer_out)
+                model = ver.generate_model_icnns(prev_icnns, past_from_tos, bounds_layer_out[current_layer_index - 1])
             model.update()
 
         for group_i in range(number_of_groups):
@@ -250,11 +263,12 @@ def start_verification(nn: SequentialNN, input, icnns, group_size, eps=0.001, ic
                 copy_model = model.copy()
                 adversarial_input, c = ver.verification(current_icnn, copy_model, affine_w.detach().numpy(),
                                                         affine_b.detach().numpy(), current_from_tos[group_i],
-                                                        current_layer_index, bounds_affine_out, bounds_layer_out,
+                                                        bounds_affine_out[current_layer_index], bounds_layer_out[current_layer_index],
                                                         has_relu=True)
 
                 current_icnn.apply_enlargement(c)
             print("        time for verification: {}".format(time.time() - t))
+
 
             """
             #visualisation for one single ReLu
@@ -287,6 +301,13 @@ def start_verification(nn: SequentialNN, input, icnns, group_size, eps=0.001, ic
             print("aborting because of force break")
             break
 
+        if use_icnn_bounds:
+            inp_bounds_icnn = bounds_layer_out[current_layer_index]
+            from_to_neurons = get_from_tos(affine_w.size(0), group_size)
+            neuron_min_value, neuron_max_value = ver.min_max_of_icnns(icnns[current_layer_index], inp_bounds_icnn,
+                                                                      from_to_neurons, print_log=True)
+            bounds_layer_out[current_layer_index] = [neuron_min_value, neuron_max_value]
+
         # entweder oder:
         # nutze die samples weiter (dafür muss man dann das ReLU layer anwenden), und man muss schauen ob die
         # samples jetzt von ambient_space zu included_space gewechselt haben (wegen überapproximation)
@@ -296,7 +317,7 @@ def start_verification(nn: SequentialNN, input, icnns, group_size, eps=0.001, ic
         # oder sample neue punkte
         if sample_new:
             # todo entweder über box bounds sampeln oder über maximum radius
-            included_space, ambient_space = ds.sample_max_radius(icnns[current_layer_index], sample_count, group_size, current_layer_index, bounds_affine_out, bounds_layer_out)
+            included_space, ambient_space = ds.sample_max_radius(icnns[current_layer_index], sample_count, group_size, bounds_layer_out[current_layer_index])
 
         else:
             included_space, ambient_space = ds.regroup_samples(icnns[current_layer_index], included_space, ambient_space, group_size)

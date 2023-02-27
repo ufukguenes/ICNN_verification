@@ -5,7 +5,7 @@ import torch
 import gurobipy as grp
 from script.settings import device, data_type
 
-def sample_max_radius(icnns, sample_size, group_size, layer_index, bounds_affine_out, bounds_layer_out):
+def sample_max_radius(icnns, sample_size, group_size, curr_bounds_layer_out):
     center_values = []
     eps_values = []
     for group_i, icnn in enumerate(icnns):
@@ -17,8 +17,8 @@ def sample_max_radius(icnns, sample_size, group_size, layer_index, bounds_affine
 
         input_to_icnn_one = m.addMVar(icnn_input_size, lb=-float('inf'))
         input_to_icnn_two = m.addMVar(icnn_input_size, lb=-float('inf'))
-        low = bounds_layer_out[layer_index][0][from_to_neurons[0]: from_to_neurons[1]]
-        up = bounds_layer_out[layer_index][1][from_to_neurons[0]: from_to_neurons[1]]
+        low = curr_bounds_layer_out[0][from_to_neurons[0]: from_to_neurons[1]]
+        up = curr_bounds_layer_out[1][from_to_neurons[0]: from_to_neurons[1]]
         icnn_bounds_affine_out, icnn_bounds_layer_out = icnn.calculate_box_bounds([low, up])
         icnn.add_max_output_constraints(m, input_to_icnn_one, icnn_bounds_affine_out, icnn_bounds_layer_out)
         icnn.add_max_output_constraints(m, input_to_icnn_two, icnn_bounds_affine_out, icnn_bounds_layer_out)

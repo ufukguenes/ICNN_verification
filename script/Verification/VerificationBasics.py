@@ -3,7 +3,7 @@ import math
 import numpy as np
 import torch
 import gurobipy as grp
-
+from script.settings import data_type, device
 
 def add_relu_constr(model, input_vars, number_of_out_features, in_lb, in_ub, out_lb, out_ub, i=0):
     relu_vars = model.addMVar(number_of_out_features, lb=out_lb, ub=out_ub, name="relu_var" + str(i))
@@ -45,3 +45,15 @@ def add_single_neuron_constr(model, input_vars, number_of_out_features, in_lb, i
             model.addConstr(relu_vars[k] >= input_vars[k], name="relu_var_lt"+str(i)+"k"+str(k))
             model.addConstr(relu_vars[k] <= (in_ub[k] * (input_vars[k] - in_lb[k])) / (in_ub[k] - in_lb[k]), name="ub_const" + str(i)+"k"+str(k))
     return relu_vars
+
+def calc_affine_out_bound(affine_w, affine_b, neuron_min_value, neuron_max_value):
+    w_plus = torch.maximum(affine_w, torch.tensor(0, dtype=data_type).to(device))
+    w_minus = torch.minimum(affine_w, torch.tensor(0, dtype=data_type).to(device))
+    affine_out_lb = torch.matmul(w_plus, neuron_min_value).add(torch.matmul(w_minus, neuron_max_value)).add(affine_b)
+    affine_out_ub = torch.matmul(w_plus, neuron_max_value).add(torch.matmul(w_minus, neuron_min_value)).add(affine_b)
+    return affine_out_lb, affine_out_ub
+
+def calc_relu_out_bound(neuron_min_value, neuron_max_value):
+    relu_out_lb = torch.maximum(torch.tensor(0, dtype=data_type).to(device), neuron_min_value)
+    relu_out_ub = torch.maximum(torch.tensor(0, dtype=data_type).to(device), neuron_max_value)
+    return relu_out_lb, relu_out_ub

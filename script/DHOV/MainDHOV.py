@@ -276,7 +276,7 @@ def multi_net2D():
     W3 = [-1. 1.; 1. 1.]
     b3 = [3., 0.] """
 
-    """nn = SequentialNN([2, 2, 2, 2])
+    nn = SequentialNN([2, 2, 2, 2])
 
     with torch.no_grad():
         parameter_list = list(nn.parameters())
@@ -287,9 +287,9 @@ def multi_net2D():
         parameter_list[4].data = torch.tensor([[-1, 1], [1, 1]], dtype=data_type).to(device)
         parameter_list[5].data = torch.tensor([3, 0], dtype=data_type).to(device)
 
-    test_image = torch.tensor([[0, 0]], dtype=data_type).to(device)"""
+    test_image = torch.tensor([[0, 0]], dtype=data_type).to(device)
 
-    transform = Compose([ToTensor(),
+    """transform = Compose([ToTensor(),
                          Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
                         )
 
@@ -302,9 +302,9 @@ def multi_net2D():
     #nn.load_state_dict(torch.load("../../cifar_fc.pth", map_location=torch.device('cpu')), strict=False)
     nn = SequentialNN([300, 100, 50, 7])
     test_image = torch.zeros((1, 300), dtype=data_type).to(device)
-    parameter_list = list(nn.parameters())
+    parameter_list = list(nn.parameters())"""
 
-    group_size = 6
+    group_size = 2
     icnns = []
     for i in range((len(parameter_list) - 2) // 2):
         layer_index = i
@@ -321,12 +321,12 @@ def multi_net2D():
             icnns[i].append(next_net)
 
     icnns = \
-        multidhov.start_verification(nn, test_image, icnns, group_size, eps=1, icnn_epochs=10, icnn_batch_size=1000,
-                                     sample_count=10, sample_new=False, use_over_approximation=True,
-                                     sample_over_input_space=False, sample_over_output_space=True,
+        multidhov.start_verification(nn, test_image, icnns, group_size, eps=1, icnn_epochs=100, icnn_batch_size=1000,
+                                     sample_count=1000, sample_new=False, use_over_approximation=True,
+                                     sample_over_input_space=False, sample_over_output_space=True, use_icnn_bounds=True,
                                      force_inclusion_steps=0, preemptive_stop=False, even_gradient_training=False,
                                      keep_ambient_space=True, data_grad_descent_steps=0, train_outer=False,
-                                     should_plot="none", optimizer="adam", init_network=True, adapt_lambda="none")
+                                     should_plot="none", optimizer="SdLBFGS", init_network=True, adapt_lambda="none") #todo use_icnn_bounds geht nur, wenn use_over_approximation=True
 
     return
     milp_verifier = MILPVerifier(nn, test_image, 1)
