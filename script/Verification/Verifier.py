@@ -199,13 +199,15 @@ class MILPVerifier(Verifier):
 
 
 class DHOVVerifier(Verifier):
-    def __init__(self, icnns, group_size, last_layer_group_indices, fixed_neuron_last_layer_lower, fixed_neuron_last_layer_upper, *args, **kwargs):
+    def __init__(self, icnns, group_size, last_layer_group_indices, fixed_neuron_last_layer_lower, fixed_neuron_last_layer_upper, bounds_affine_out, bounds_layer_out, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.icnns = icnns
         self.group_size = group_size
         self.fixed_neuron_last_layer_lower = fixed_neuron_last_layer_lower
         self.fixed_neuron_last_layer_upper = fixed_neuron_last_layer_upper
         self.last_layer_group_indices = last_layer_group_indices
+        self.bounds_affine_out = bounds_affine_out
+        self.bounds_layer_out = bounds_layer_out
 
     def generate_constraints_for_net(self):
         m = grp.Model()
@@ -221,41 +223,35 @@ class DHOVVerifier(Verifier):
 
         input_flattened = torch.flatten(self.input_x)
         input_size = input_flattened.size(0)
-        bounds_affine_out, bounds_layer_out = self.net.calculate_box_bounds(
-            [input_flattened.add(-self.eps), input_flattened.add(self.eps)])
 
         parameter_list = list(self.net.parameters())
+        bounds_affine_out_output_layer, bounds_layer_out_output_layer = self.net.calculate_box_bounds(
+            [input_flattened.add(-self.eps), input_flattened.add(self.eps)])
 
+        bounds_affine_out_output_layer, bounds_layer_out_output_layer = bounds_affine_out_output_layer[-1], bounds_layer_out_output_layer[-1]
         # only use the icnn for the last layer
         last_icnn = self.icnns[-1]
         input_size = len(parameter_list[-4])
-        lb = bounds_layer_out[-2][0].detach().cpu().numpy()
-        ub = bounds_layer_out[-2][1].detach().cpu().numpy()
+        lb = self.bounds_layer_out[-1][0].detach().cpu().numpy()
+        ub = self.bounds_layer_out[-1][1].detach().cpu().numpy()
         in_var = m.addMVar(input_size, lb=lb, ub=ub, name="icnn_var")
 
         for group_i, index_to_select in enumerate(self.last_layer_group_indices):
             current_var = [in_var[x] for x in index_to_select]
-            low = torch.index_select(bounds_layer_out[-2][0], 0, index_to_select)
-            up = torch.index_select(bounds_layer_out[-2][1], 0, index_to_select)
+            index_to_select = torch.tensor(index_to_select).to(device)
+            low = torch.index_select(self.bounds_layer_out[-1][0], 0, index_to_select)
+            up = torch.index_select(self.bounds_layer_out[-1][1], 0, index_to_select)
             constraint_bounds_affine_out, constraint_bounds_layer_out = last_icnn[group_i].calculate_box_bounds([low, up])
             last_icnn[group_i].add_max_output_constraints(m, current_var, constraint_bounds_affine_out, constraint_bounds_layer_out)
 
+        for neuron_index in self.fixed_neuron_last_layer_upper:
+            m.addConstr(in_var[neuron_index] == 0)
 
-        num_groups = math.ceil(input_size / self.group_size)
-        for group_i in range(num_groups):
-            if group_i == num_groups - 1 and input_size % self.group_size > 0:
-                from_to_neurons = [self.group_size * group_i, self.group_size * group_i + (input_size) % self.group_size]
-            else:
-                from_to_neurons = [self.group_size * group_i, self.group_size * group_i + self.group_size]  # upper bound is exclusive
+        for neuron_index in self.fixed_neuron_last_layer_lower:
+            m.addConstr(lb[neuron_index] <= in_var[neuron_index] <= ub[neuron_index])
 
-            low = bounds_layer_out[-2][0][from_to_neurons[0]: from_to_neurons[1]]
-            up = bounds_layer_out[-2][1][from_to_neurons[0]: from_to_neurons[1]]
-            constraint_bounds_affine_out, constraint_bounds_layer_out = last_icnn[group_i].calculate_box_bounds([low, up])
-            last_icnn[group_i].add_max_output_constraints(m, in_var[from_to_neurons[0]: from_to_neurons[1]], constraint_bounds_affine_out, constraint_bounds_layer_out)
-
-
-        lb = bounds_affine_out[-1][0].detach().cpu().numpy()
-        ub = bounds_affine_out[-1][1].detach().cpu().numpy()
+        lb = bounds_affine_out_output_layer[0].detach().cpu().numpy()
+        ub = bounds_affine_out_output_layer[1].detach().cpu().numpy()
         W, b = parameter_list[len(parameter_list) - 2].detach().cpu().numpy(), parameter_list[-1].detach().cpu().numpy()
 
         out_fet = len(b)

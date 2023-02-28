@@ -311,17 +311,17 @@ def multi_net2D():
         in_size = nn.layer_widths[layer_index + 1]
         icnns.append([])
         for k in range(in_size // group_size):
-            """next_net = ICNNLogical([group_size, 10, 10, 10, 1], force_positive_init=False, with_two_layers=False, init_scaling=10,
-                                     init_all_with_zeros=False)"""
-            next_net = ICNN([group_size, 10, 10, 10, 2*(group_size), 1])
+            next_net = ICNNLogical([group_size, 10, 10, 10, 1], force_positive_init=False, with_two_layers=False, init_scaling=10,
+                                     init_all_with_zeros=False)
+            #next_net = ICNN([group_size, 10, 10, 10, 2*(group_size), 1])
             icnns[i].append(next_net)
         if in_size % group_size > 0:
-            """next_net = ICNNLogical([in_size % group_size, 10, 10, 10, 1], force_positive_init=False, with_two_layers=False,
-                                   init_scaling=10, init_all_with_zeros=False)"""
-            next_net = ICNN([in_size % group_size, 10, 10, 10, 2*(in_size % group_size), 1])
+            next_net = ICNNLogical([in_size % group_size, 10, 10, 10, 1], force_positive_init=False, with_two_layers=False,
+                                   init_scaling=10, init_all_with_zeros=False)
+            #next_net = ICNN([in_size % group_size, 10, 10, 10, 2*(in_size % group_size), 1])
             icnns[i].append(next_net)
 
-    icnns, last_layer_group_indices, fixed_neuron_last_layer_lower, fixed_neuron_last_layer_upper = \
+    icnns, last_layer_group_indices, fixed_neuron_last_layer_lower, fixed_neuron_last_layer_upper, bounds_affine_out, bounds_layer_out = \
         multidhov.start_verification(nn, test_image, icnns, group_size, eps=1, icnn_epochs=10, icnn_batch_size=1000,
                                      sample_count=1000, sample_new=False, use_over_approximation=True, use_fixed_neurons=True,
                                      sample_over_input_space=False, sample_over_output_space=True, use_icnn_bounds=True,
@@ -329,10 +329,9 @@ def multi_net2D():
                                      keep_ambient_space=True, data_grad_descent_steps=0, train_outer=False,
                                      should_plot="output", optimizer="SdLBFGS", init_network=True, adapt_lambda="none") #todo use_icnn_bounds geht nur, wenn use_over_approximation=True
 
-    return
     milp_verifier = MILPVerifier(nn, test_image, 1)
     snv_verifier = SingleNeuronVerifier(nn, test_image, 1)
-    dhov_verifier = DHOVVerifier(icnns, group_size, nn, test_image, 1)
+    dhov_verifier = DHOVVerifier(icnns, group_size, last_layer_group_indices, fixed_neuron_last_layer_lower, fixed_neuron_last_layer_upper, bounds_affine_out, bounds_layer_out, nn, test_image, 1)
 
     milp_verifier.generate_constraints_for_net()
     snv_verifier.generate_constraints_for_net()

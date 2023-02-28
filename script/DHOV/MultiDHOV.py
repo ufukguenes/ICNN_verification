@@ -355,7 +355,7 @@ def start_verification(nn: SequentialNN, input, icnns, group_size, eps=0.001, ic
                           extr=original_included_space.detach().cpu())
         plots.plt_initial()
 
-    return icnns, all_group_indices[-1], fixed_neuron_per_layer_lower[-1], fixed_neuron_per_layer_upper[-1]
+    return icnns, all_group_indices[-1], fixed_neuron_per_layer_lower[-1], fixed_neuron_per_layer_upper[-1], bounds_affine_out, bounds_layer_out
 
 
 def imshow_flattened(img_flattened, shape):
