@@ -46,6 +46,15 @@ def add_single_neuron_constr(model, input_vars, number_of_out_features, in_lb, i
             model.addConstr(relu_vars[k] <= (in_ub[k] * (input_vars[k] - in_lb[k])) / (in_ub[k] - in_lb[k]), name="ub_const" + str(i)+"k"+str(k))
     return relu_vars
 
+
+def add_relu_as_lp(model, input_vars, number_of_out_features, out_lb, out_ub, i=0):
+    relu_vars = model.addMVar(number_of_out_features, lb=out_lb, ub=out_ub, name="relu_var" + str(i))
+    for k in range(number_of_out_features):
+        r1 = model.addConstr(relu_vars[k] >= 0, name="relu_0_lt" + str(i) + "k" + str(k))
+        r2 = model.addConstr(relu_vars[k] >= input_vars[k], name="relu_var_lt" + str(i) + "k" + str(k))
+
+    return relu_vars
+
 def calc_affine_out_bound(affine_w, affine_b, neuron_min_value, neuron_max_value):
     w_plus = torch.maximum(affine_w, torch.tensor(0, dtype=data_type).to(device))
     w_minus = torch.minimum(affine_w, torch.tensor(0, dtype=data_type).to(device))

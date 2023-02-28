@@ -162,7 +162,7 @@ def min_max_of_icnns(icnns, inp_bounds_icnn, from_to_neurons, print_log=False):
         up = inp_bounds_icnn[1][from_to_neurons[k][0]: from_to_neurons[k][1]]
         input_var = m.addMVar(input_size, lb=low.detach().numpy(), ub=up.detach().numpy(), name="in_var")
         icnn_bounds_affine_out, icnn_bounds_layer_out = icnn.calculate_box_bounds([low, up])
-        output_var = icnn.add_max_output_constraints(m, input_var, icnn_bounds_affine_out, icnn_bounds_layer_out)
+        output_var = icnn.add_max_output_constraints(m, input_var, icnn_bounds_affine_out, icnn_bounds_layer_out, as_lp=True)
         m.update()
 
         for neuron_to_optimize in range(input_size):
@@ -177,8 +177,5 @@ def min_max_of_icnns(icnns, inp_bounds_icnn, from_to_neurons, print_log=False):
             if m.Status == GRB.OPTIMAL:
                 inp = input_var.getAttr("x")
                 neurons_ub.append(inp[neuron_to_optimize])
-
-    print(neurons_lb)
-    print(neurons_ub)
 
     return torch.tensor(neurons_lb, dtype=data_type).to(device), torch.tensor(neurons_ub, dtype=data_type).to(device)

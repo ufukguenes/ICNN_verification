@@ -311,13 +311,14 @@ def multi_net2D():
         in_size = nn.layer_widths[layer_index + 1]
         icnns.append([])
         for k in range(in_size // group_size):
-            next_net = ICNNLogical([group_size, 10, 10, 10, 1], force_positive_init=False, with_two_layers=False, init_scaling=10,
-                                     init_all_with_zeros=False)
+            """next_net = ICNNLogical([group_size, 10, 10, 10, 1], force_positive_init=False, with_two_layers=False, init_scaling=10,
+                                     init_all_with_zeros=False)"""
+            next_net = ICNN([group_size, 10, 10, 10, 2*(group_size), 1])
             icnns[i].append(next_net)
         if in_size % group_size > 0:
-            next_net = ICNNLogical([in_size % group_size, 10, 10, 10, 1], force_positive_init=False, with_two_layers=False,
-                                   init_scaling=10,
-                                   init_all_with_zeros=False)
+            """next_net = ICNNLogical([in_size % group_size, 10, 10, 10, 1], force_positive_init=False, with_two_layers=False,
+                                   init_scaling=10, init_all_with_zeros=False)"""
+            next_net = ICNN([in_size % group_size, 10, 10, 10, 2*(in_size % group_size), 1])
             icnns[i].append(next_net)
 
     icnns = \

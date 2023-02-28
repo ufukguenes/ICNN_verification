@@ -296,7 +296,7 @@ class ICNN(nn.Module, VerifiableNet):
 
         return affine_in_bounds_per_layer, layer_out_bounds_per_layer
 
-    def add_constraints(self, model, input_vars, bounds_affine_out, bounds_layer_out):
+    def add_constraints(self, model, input_vars, bounds_affine_out, bounds_layer_out, as_lp=False):
         ws = list(self.ws.parameters())
         us = list(self.us.parameters())
 
@@ -322,10 +322,18 @@ class ICNN(nn.Module, VerifiableNet):
             if i < len(ws) - 2:
                 out_lb = bounds_layer_out[int(i / 2)][0].detach().cpu().numpy()
                 out_ub = bounds_layer_out[int(i / 2)][1].detach().cpu().numpy()
-                relu_vars = verbas.add_relu_constr(model, in_var, out_fet, affine_lb, affine_ub, out_lb, out_ub, i)
+                if as_lp:
+                    relu_vars = verbas.add_relu_as_lp(model, in_var, out_fet, out_lb, out_ub, i)
+                else:
+                    relu_vars = verbas.add_relu_constr(model, in_var, out_fet, affine_lb, affine_ub, out_lb, out_ub, i)
                 in_var = relu_vars
 
         return out_vars
+
+    def add_max_output_constraints(self, model, input_vars, bounds_affine_out, bounds_layer_out, as_lp=False):
+        output = self.add_constraints(model, input_vars, bounds_affine_out, bounds_layer_out, as_lp=as_lp)
+        model.addConstr(output[0] <= 0)
+        return output
 
     def apply_normalisation(self, mean, std):
         with torch.no_grad():
@@ -417,8 +425,8 @@ class ICNNLogical(ICNN):
             bb[0].data = u
             bb[1].data = b
 
-    def add_max_output_constraints(self, model, input_vars, bounds_affine_out, bounds_layer_out):
-        icnn_output_var = super().add_constraints(model, input_vars, bounds_affine_out, bounds_layer_out)
+    def add_max_output_constraints(self, model, input_vars, bounds_affine_out, bounds_layer_out, as_lp=False):
+        icnn_output_var = super().add_constraints(model, input_vars, bounds_affine_out, bounds_layer_out, as_lp=as_lp)
 
         lb = -float("inf")
         ub = float("inf")  # todo richtige box bounds anwenden (die vom zu approximierenden Layer)
@@ -539,8 +547,8 @@ class ICNNApproxMax(ICNN):
             bb[0].data = u
             bb[1].data = b
 
-    def add_max_output_constraints(self, model, input_vars, bounds_affine_out, bounds_layer_out):
-        icnn_output_var = super().add_constraints(model, input_vars, bounds_affine_out, bounds_layer_out)
+    def add_max_output_constraints(self, model, input_vars, bounds_affine_out, bounds_layer_out, as_lp=False):
+        icnn_output_var = super().add_constraints(model, input_vars, bounds_affine_out, bounds_layer_out, as_lp=as_lp)
         output_of_and = model.addMVar(1, lb=-float('inf'))
         lb = - float("inf")
         ub = float("inf")  # todo richtige box bounds anwenden (die vom zu approximierenden Layer)

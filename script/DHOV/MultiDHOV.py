@@ -305,7 +305,7 @@ def start_verification(nn: SequentialNN, input, icnns, group_size, eps=0.001, ic
             inp_bounds_icnn = bounds_layer_out[current_layer_index]
             from_to_neurons = get_from_tos(affine_w.size(0), group_size)
             neuron_min_value, neuron_max_value = ver.min_max_of_icnns(icnns[current_layer_index], inp_bounds_icnn,
-                                                                      from_to_neurons, print_log=True)
+                                                                      from_to_neurons)
             bounds_layer_out[current_layer_index] = [neuron_min_value, neuron_max_value]
 
         # entweder oder:
