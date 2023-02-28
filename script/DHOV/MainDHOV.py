@@ -321,13 +321,13 @@ def multi_net2D():
             next_net = ICNN([in_size % group_size, 10, 10, 10, 2*(in_size % group_size), 1])
             icnns[i].append(next_net)
 
-    icnns = \
-        multidhov.start_verification(nn, test_image, icnns, group_size, eps=1, icnn_epochs=100, icnn_batch_size=1000,
-                                     sample_count=1000, sample_new=False, use_over_approximation=True,
+    icnns, last_layer_group_indices, fixed_neuron_last_layer_lower, fixed_neuron_last_layer_upper = \
+        multidhov.start_verification(nn, test_image, icnns, group_size, eps=1, icnn_epochs=10, icnn_batch_size=1000,
+                                     sample_count=1000, sample_new=False, use_over_approximation=True, use_fixed_neurons=True,
                                      sample_over_input_space=False, sample_over_output_space=True, use_icnn_bounds=True,
                                      force_inclusion_steps=0, preemptive_stop=False, even_gradient_training=False,
                                      keep_ambient_space=True, data_grad_descent_steps=0, train_outer=False,
-                                     should_plot="none", optimizer="SdLBFGS", init_network=True, adapt_lambda="none") #todo use_icnn_bounds geht nur, wenn use_over_approximation=True
+                                     should_plot="output", optimizer="SdLBFGS", init_network=True, adapt_lambda="none") #todo use_icnn_bounds geht nur, wenn use_over_approximation=True
 
     return
     milp_verifier = MILPVerifier(nn, test_image, 1)

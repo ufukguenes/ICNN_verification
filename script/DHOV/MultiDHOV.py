@@ -29,7 +29,7 @@ adapt_lambda has values: none, high_low, included
 
 
 def start_verification(nn: SequentialNN, input, icnns, group_size, eps=0.001, icnn_batch_size=1000, icnn_epochs=100,
-                       sample_count=1000, break_after=None, use_icnn_bounds=False,
+                       sample_count=1000, break_after=None, use_icnn_bounds=False, use_fixed_neurons=False,
                        keep_ambient_space=False, sample_new=True, use_over_approximation=True,
                        sample_over_input_space=False, sample_over_output_space=True, data_grad_descent_steps=0,
                        train_outer=False, preemptive_stop=True, even_gradient_training=False, force_inclusion_steps=0,
@@ -78,6 +78,13 @@ def start_verification(nn: SequentialNN, input, icnns, group_size, eps=0.001, ic
     force_inclusion_steps += 1
     data_grad_descent_steps += 1
 
+
+    fixed_neuron_per_layer_lower = []
+    fixed_neuron_per_layer_upper = []
+    num_fixed_neurons_layer = []
+    number_of_fixed_neurons = 0
+    all_group_indices = []
+
     for i in range(0, len(parameter_list) - 2, 2):  # -2 because last layer has no ReLu activation
         current_layer_index = int(i / 2)
         print("")
@@ -93,6 +100,20 @@ def start_verification(nn: SequentialNN, input, icnns, group_size, eps=0.001, ic
             relu_out_lb, relu_out_ub = verbas.calc_relu_out_bound(affine_out_lb, affine_out_ub)
             bounds_affine_out.append([affine_out_lb, affine_out_ub])
             bounds_layer_out.append([relu_out_lb, relu_out_ub])
+
+        fix_upper = []
+        fix_lower = []
+        if use_fixed_neurons:
+            for neuron_index, (lb, ub) in enumerate(zip(bounds_affine_out[-1][0], bounds_affine_out[-1][1])):
+                if ub <= 0:
+                    fix_upper.append(neuron_index)
+                    number_of_fixed_neurons += 1
+                elif lb >= 0:
+                    fix_lower.append(neuron_index)
+                    number_of_fixed_neurons += 1
+        fixed_neuron_per_layer_lower.append(fix_lower)
+        fixed_neuron_per_layer_upper.append(fix_upper)
+        num_fixed_neurons_layer.append(len(fix_lower) + len(fix_upper))
 
         if not keep_ambient_space:
             ambient_space = torch.empty((0, nn.layer_widths[current_layer_index]), dtype=data_type).to(device)
@@ -146,18 +167,20 @@ def start_verification(nn: SequentialNN, input, icnns, group_size, eps=0.001, ic
             plt_inc_amb("original enhanced ambient space " + str(i), original_included_space.tolist(),
                         original_ambient_space.tolist())
 
-        number_of_groups = get_num_of_groups(len(affine_b), group_size)
+        number_of_groups = get_num_of_groups(len(affine_b) - num_fixed_neurons_layer[current_layer_index], group_size)
+        group_indices = get_current_group_indices(len(affine_b), group_size, fixed_neuron_per_layer_lower[current_layer_index], fixed_neuron_per_layer_upper[current_layer_index])
 
-        current_from_tos = get_from_tos(len(affine_b), group_size)
+        #current_from_tos = get_from_tos(len(affine_b), group_size)
 
         if use_over_approximation:
             if i == 0:
                 model = ver.generate_model_center_eps(center.detach().cpu().numpy(), eps)
             else:
-                past_from_tos = get_from_tos(affine_w.size(1), group_size)
+                past_group_indices = all_group_indices[-1]
                 prev_icnns = icnns[current_layer_index - 1]
-                model = ver.generate_model_icnns(prev_icnns, past_from_tos, bounds_layer_out[current_layer_index - 1])
+                model = ver.generate_model_icnns(prev_icnns, past_group_indices, bounds_layer_out[current_layer_index - 1])
             model.update()
+            all_group_indices.append(group_indices)
 
         for group_i in range(number_of_groups):
             if break_after is not None:
@@ -166,7 +189,7 @@ def start_verification(nn: SequentialNN, input, icnns, group_size, eps=0.001, ic
             t = time.time()
             current_icnn = icnns[current_layer_index][group_i]
 
-            index_to_select = torch.tensor(range(current_from_tos[group_i][0], current_from_tos[group_i][1])).to(device)
+            index_to_select = torch.tensor(group_indices[group_i]).to(device)
             group_inc_space = torch.index_select(included_space, 1, index_to_select)
             group_amb_space = torch.index_select(ambient_space, 1, index_to_select)
 
@@ -181,8 +204,8 @@ def start_verification(nn: SequentialNN, input, icnns, group_size, eps=0.001, ic
             ambient_loader = DataLoader(dataset, batch_size=icnn_batch_size)
 
             if init_network:
-                low = bounds_layer_out[current_layer_index][0][current_from_tos[group_i][0]: current_from_tos[group_i][1]]
-                up = bounds_layer_out[current_layer_index][1][current_from_tos[group_i][0]: current_from_tos[group_i][1]]
+                low = torch.index_select(bounds_layer_out[current_layer_index][0], 0, index_to_select)
+                up = torch.index_select(bounds_layer_out[current_layer_index][1], 0, index_to_select)
                 low = torch.div(torch.add(low, -mean), std)
                 up = torch.div(torch.add(up, -mean), std)
                 current_icnn.init_with_box_bounds(low, up)
@@ -262,7 +285,7 @@ def start_verification(nn: SequentialNN, input, icnns, group_size, eps=0.001, ic
             if use_over_approximation:
                 copy_model = model.copy()
                 adversarial_input, c = ver.verification(current_icnn, copy_model, affine_w.detach().numpy(),
-                                                        affine_b.detach().numpy(), current_from_tos[group_i],
+                                                        affine_b.detach().numpy(), group_indices[group_i],
                                                         bounds_affine_out[current_layer_index], bounds_layer_out[current_layer_index],
                                                         has_relu=True)
 
@@ -303,9 +326,8 @@ def start_verification(nn: SequentialNN, input, icnns, group_size, eps=0.001, ic
 
         if use_icnn_bounds:
             inp_bounds_icnn = bounds_layer_out[current_layer_index]
-            from_to_neurons = get_from_tos(affine_w.size(0), group_size)
             neuron_min_value, neuron_max_value = ver.min_max_of_icnns(icnns[current_layer_index], inp_bounds_icnn,
-                                                                      from_to_neurons)
+                                                                      group_indices)
             bounds_layer_out[current_layer_index] = [neuron_min_value, neuron_max_value]
 
         # entweder oder:
@@ -333,7 +355,7 @@ def start_verification(nn: SequentialNN, input, icnns, group_size, eps=0.001, ic
                           extr=original_included_space.detach().cpu())
         plots.plt_initial()
 
-    return icnns
+    return icnns, all_group_indices[-1], fixed_neuron_per_layer_lower[-1], fixed_neuron_per_layer_upper[-1]
 
 
 def imshow_flattened(img_flattened, shape):
@@ -369,3 +391,21 @@ def get_num_of_groups(layer_size, group_size):
         number_of_groups *= -1
     number_of_groups = math.ceil(number_of_groups)
     return number_of_groups
+
+
+def get_current_group_indices(num_neurons, group_size, fixed_neurons_lower, fixed_neurons_upper):
+    group_indices = []
+    current_group = []
+    fixed_neuron_index = (fixed_neurons_lower + fixed_neurons_upper)
+    for index in range(num_neurons):
+        if index in fixed_neuron_index:
+            continue
+        else:
+            current_group.append(index)
+            if len(current_group) == group_size:
+                group_indices.append(current_group)
+                current_group = []
+
+    if len(current_group) > 0:
+        group_indices.append(current_group)
+    return group_indices

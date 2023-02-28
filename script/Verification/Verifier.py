@@ -199,10 +199,13 @@ class MILPVerifier(Verifier):
 
 
 class DHOVVerifier(Verifier):
-    def __init__(self, icnns, group_size, *args, **kwargs):
+    def __init__(self, icnns, group_size, last_layer_group_indices, fixed_neuron_last_layer_lower, fixed_neuron_last_layer_upper, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.icnns = icnns
         self.group_size = group_size
+        self.fixed_neuron_last_layer_lower = fixed_neuron_last_layer_lower
+        self.fixed_neuron_last_layer_upper = fixed_neuron_last_layer_upper
+        self.last_layer_group_indices = last_layer_group_indices
 
     def generate_constraints_for_net(self):
         m = grp.Model()
@@ -229,6 +232,15 @@ class DHOVVerifier(Verifier):
         lb = bounds_layer_out[-2][0].detach().cpu().numpy()
         ub = bounds_layer_out[-2][1].detach().cpu().numpy()
         in_var = m.addMVar(input_size, lb=lb, ub=ub, name="icnn_var")
+
+        for group_i, index_to_select in enumerate(self.last_layer_group_indices):
+            current_var = [in_var[x] for x in index_to_select]
+            low = torch.index_select(bounds_layer_out[-2][0], 0, index_to_select)
+            up = torch.index_select(bounds_layer_out[-2][1], 0, index_to_select)
+            constraint_bounds_affine_out, constraint_bounds_layer_out = last_icnn[group_i].calculate_box_bounds([low, up])
+            last_icnn[group_i].add_max_output_constraints(m, current_var, constraint_bounds_affine_out, constraint_bounds_layer_out)
+
+
         num_groups = math.ceil(input_size / self.group_size)
         for group_i in range(num_groups):
             if group_i == num_groups - 1 and input_size % self.group_size > 0:
