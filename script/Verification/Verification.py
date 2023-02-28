@@ -29,7 +29,7 @@ def generate_model_center_eps(center, eps):
     return m
 
 
-def generate_model_icnns(constraint_icnns, group_indices, last_bounds_layer_out):
+def generate_model_icnns(constraint_icnns, group_indices, last_bounds_layer_out, fixed_neuron_lower, fixed_neuron_upper):
     m = Model()
     m.Params.LogToConsole = 0
 
@@ -50,6 +50,12 @@ def generate_model_icnns(constraint_icnns, group_indices, last_bounds_layer_out)
         current_in_vars = [input_approx_layer[x] for x in group_indices[k]]
         constraint_icnns[k].add_max_output_constraints(m, current_in_vars, constraint_icnn_bounds_affine_out,
                                                       constraint_icnn_bounds_layer_out)
+
+    for neuron_index in fixed_neuron_upper:
+        m.addConstr(input_approx_layer[neuron_index] == 0)
+
+    for neuron_index in fixed_neuron_lower:
+        m.addConstr(last_bounds_layer_out[0][neuron_index] <= input_approx_layer[neuron_index] <= last_bounds_layer_out[1][neuron_index])
 
     for i, var in enumerate(input_approx_layer.tolist()):
         var.setAttr("varname", "input_approx_layer" + str(i))
@@ -152,6 +158,7 @@ def verification(icnn, model, affine_w, b, index_to_select, curr_bounds_affine_o
 def min_max_of_icnns(icnns, inp_bounds_icnn, group_indices, print_log=False):
     neurons_lb = []
     neurons_ub = []
+
     for k, icnn in enumerate(icnns):
         m = Model()
         if not print_log:
@@ -173,12 +180,14 @@ def min_max_of_icnns(icnns, inp_bounds_icnn, group_indices, print_log=False):
             m.optimize()
             if m.Status == GRB.OPTIMAL:
                 inp = input_var.getAttr("x")
-                neurons_lb.append(inp[neuron_to_optimize])
+                #neurons_lb.append(inp[neuron_to_optimize])
+                inp_bounds_icnn[0][group_indices[k]][neuron_to_optimize] = inp[neuron_to_optimize]
 
             m.setObjective(input_var[neuron_to_optimize], GRB.MAXIMIZE)
             m.optimize()
             if m.Status == GRB.OPTIMAL:
                 inp = input_var.getAttr("x")
-                neurons_ub.append(inp[neuron_to_optimize])
+                #neurons_ub.append(inp[neuron_to_optimize])
+                inp_bounds_icnn[1][group_indices[k]][neuron_to_optimize] = inp[neuron_to_optimize]
 
-    return torch.tensor(neurons_lb, dtype=data_type).to(device), torch.tensor(neurons_ub, dtype=data_type).to(device)
+    return inp_bounds_icnn

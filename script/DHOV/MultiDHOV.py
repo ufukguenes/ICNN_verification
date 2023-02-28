@@ -114,6 +114,7 @@ def start_verification(nn: SequentialNN, input, icnns, group_size, eps=0.001, ic
         fixed_neuron_per_layer_lower.append(fix_lower)
         fixed_neuron_per_layer_upper.append(fix_upper)
         num_fixed_neurons_layer.append(len(fix_lower) + len(fix_upper))
+        print("number of fixed neurons {}".format(num_fixed_neurons_layer))
 
         if not keep_ambient_space:
             ambient_space = torch.empty((0, nn.layer_widths[current_layer_index]), dtype=data_type).to(device)
@@ -178,7 +179,10 @@ def start_verification(nn: SequentialNN, input, icnns, group_size, eps=0.001, ic
             else:
                 past_group_indices = all_group_indices[-1]
                 prev_icnns = icnns[current_layer_index - 1]
-                model = ver.generate_model_icnns(prev_icnns, past_group_indices, bounds_layer_out[current_layer_index - 1])
+                model = ver.generate_model_icnns(prev_icnns, past_group_indices,
+                                                 bounds_layer_out[current_layer_index - 1],
+                                                 fixed_neuron_per_layer_lower[current_layer_index - 1],
+                                                 fixed_neuron_per_layer_upper[current_layer_index - 1])
             model.update()
             all_group_indices.append(group_indices)
 
@@ -326,9 +330,9 @@ def start_verification(nn: SequentialNN, input, icnns, group_size, eps=0.001, ic
 
         if use_icnn_bounds:
             inp_bounds_icnn = bounds_layer_out[current_layer_index]
-            neuron_min_value, neuron_max_value = ver.min_max_of_icnns(icnns[current_layer_index], inp_bounds_icnn,
+            new_bounds = ver.min_max_of_icnns(icnns[current_layer_index], inp_bounds_icnn,
                                                                       group_indices)
-            bounds_layer_out[current_layer_index] = [neuron_min_value, neuron_max_value]
+            bounds_layer_out[current_layer_index] = new_bounds
 
         # entweder oder:
         # nutze die samples weiter (dafür muss man dann das ReLU layer anwenden), und man muss schauen ob die
