@@ -5,20 +5,22 @@ import torch
 import gurobipy as grp
 from script.settings import device, data_type
 
-def sample_max_radius(icnns, sample_size, group_size, curr_bounds_layer_out):
+def sample_max_radius(icnns, sample_size, group_indices, curr_bounds_layer_out):
     center_values = []
     eps_values = []
     for group_i, icnn in enumerate(icnns):
         icnn_input_size = icnn.layer_widths[0]
-        from_to_neurons = [group_size * group_i, group_size * group_i + icnn_input_size]
+        index_to_select = group_indices[group_i]
 
         m = grp.Model()
         m.Params.LogToConsole = 0
 
         input_to_icnn_one = m.addMVar(icnn_input_size, lb=-float('inf'))
         input_to_icnn_two = m.addMVar(icnn_input_size, lb=-float('inf'))
-        low = curr_bounds_layer_out[0][from_to_neurons[0]: from_to_neurons[1]]
-        up = curr_bounds_layer_out[1][from_to_neurons[0]: from_to_neurons[1]]
+
+        index_to_select = torch.tensor(index_to_select).to(device)
+        low = torch.index_select(curr_bounds_layer_out[0], 0, index_to_select)
+        up = torch.index_select(curr_bounds_layer_out[1], 0, index_to_select)
         icnn_bounds_affine_out, icnn_bounds_layer_out = icnn.calculate_box_bounds([low, up])
         icnn.add_max_output_constraints(m, input_to_icnn_one, icnn_bounds_affine_out, icnn_bounds_layer_out)
         icnn.add_max_output_constraints(m, input_to_icnn_two, icnn_bounds_affine_out, icnn_bounds_layer_out)
@@ -70,11 +72,8 @@ def sample_max_radius(icnns, sample_size, group_size, curr_bounds_layer_out):
         is_included = True
         samp = torch.unsqueeze(samp, 0)
         for group_i, icnn in enumerate(icnns):
-            if group_i == len(icnns) - 1 and samp.size(1) % group_size > 0:
-                from_to_neurons = [group_size * group_i, group_size * group_i + (len(samp) % group_size)]
-            else:
-                from_to_neurons = [group_size * group_i, group_size * group_i + group_size]  # upper bound is exclusive
-            index_to_select = torch.tensor(range(from_to_neurons[0], from_to_neurons[1]))
+            index_to_select = group_indices[group_i]
+            index_to_select = torch.tensor(index_to_select).to(device)
             reduced_elem = torch.index_select(samp, 1, index_to_select)
             output = icnn(reduced_elem)
             if output > 0:
@@ -91,17 +90,14 @@ def sample_max_radius(icnns, sample_size, group_size, curr_bounds_layer_out):
     return included_space, ambient_space
 
 
-def regroup_samples(icnns, included_space, ambient_space, group_size, c=0):
+def regroup_samples(icnns, included_space, ambient_space, group_indices, c=0):
     moved = 0
     for i, elem in enumerate(ambient_space):
         elem = torch.unsqueeze(elem, 0)
         is_included = True
         for group_i, icnn in enumerate(icnns):
-            if group_i == len(icnns) - 1 and elem.size(1) % group_size > 0:
-                from_to_neurons = [group_size * group_i, group_size * group_i + (len(elem) % group_size)]
-            else:
-                from_to_neurons = [group_size * group_i, group_size * group_i + group_size]  # upper bound is exclusive
-            index_to_select = torch.tensor(range(from_to_neurons[0], from_to_neurons[1]))
+            index_to_select = group_indices[group_i]
+            index_to_select = torch.tensor(index_to_select).to(device)
             reduced_elem = torch.index_select(elem, 1, index_to_select)
             output = icnn(reduced_elem)
             if output > c:

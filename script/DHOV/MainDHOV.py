@@ -17,6 +17,7 @@ from script.dataInit import Rhombus, ConvexDataset
 import polytope as pc
 from script.settings import device, data_type
 import MultiDHOV as multidhov
+from script.NeuralNets.ICNNFactory import ICNNFactory
 
 
 def last_layer_identity(last_icnn: ICNN, last_c, W, b, A_out, b_out, nn_bounds, solver_time_limit, solver_bound):
@@ -276,7 +277,7 @@ def multi_net2D():
     W3 = [-1. 1.; 1. 1.]
     b3 = [3., 0.] """
 
-    nn = SequentialNN([2, 2, 2, 2])
+    """nn = SequentialNN([2, 2, 2, 2])
 
     with torch.no_grad():
         parameter_list = list(nn.parameters())
@@ -287,7 +288,7 @@ def multi_net2D():
         parameter_list[4].data = torch.tensor([[-1, 1], [1, 1]], dtype=data_type).to(device)
         parameter_list[5].data = torch.tensor([3, 0], dtype=data_type).to(device)
 
-    test_image = torch.tensor([[0, 0]], dtype=data_type).to(device)
+    test_image = torch.tensor([[0, 0]], dtype=data_type).to(device)"""
 
     """transform = Compose([ToTensor(),
                          Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
@@ -304,31 +305,24 @@ def multi_net2D():
     test_image = torch.zeros((1, 300), dtype=data_type).to(device)
     parameter_list = list(nn.parameters())"""
 
+    nn = SequentialNN([100, 100, 50, 7])
+    test_image = torch.zeros((1, 100), dtype=data_type).to(device)
+    parameter_list = list(nn.parameters())
+
     group_size = 2
-    icnns = []
-    for i in range((len(parameter_list) - 2) // 2):
-        layer_index = i
-        in_size = nn.layer_widths[layer_index + 1]
-        icnns.append([])
-        for k in range(in_size // group_size):
-            next_net = ICNNLogical([group_size, 10, 10, 10, 1], force_positive_init=False, with_two_layers=False, init_scaling=10,
-                                     init_all_with_zeros=False)
-            #next_net = ICNN([group_size, 10, 10, 10, 2*(group_size), 1])
-            icnns[i].append(next_net)
-        if in_size % group_size > 0:
-            next_net = ICNNLogical([in_size % group_size, 10, 10, 10, 1], force_positive_init=False, with_two_layers=False,
-                                   init_scaling=10, init_all_with_zeros=False)
-            #next_net = ICNN([in_size % group_size, 10, 10, 10, 2*(in_size % group_size), 1])
-            icnns[i].append(next_net)
+    icnn_factory = ICNNFactory("logical", [10, 10, 1], force_positive_init=False, with_two_layers=False,
+                               init_scaling=10, init_all_with_zeros=False)
 
     icnns, last_layer_group_indices, fixed_neuron_last_layer_lower, fixed_neuron_last_layer_upper, bounds_affine_out, bounds_layer_out = \
-        multidhov.start_verification(nn, test_image, icnns, group_size, eps=1, icnn_epochs=10, icnn_batch_size=1000,
-                                     sample_count=1000, sample_new=False, use_over_approximation=True, use_fixed_neurons=True,
+        multidhov.start_verification(nn, test_image, icnn_factory, group_size, eps=1, icnn_epochs=10, icnn_batch_size=1000,
+                                     sample_count=10, sample_new=False, use_over_approximation=True, use_fixed_neurons=True,
                                      sample_over_input_space=False, sample_over_output_space=True, use_icnn_bounds=True,
                                      force_inclusion_steps=0, preemptive_stop=False, even_gradient_training=False,
                                      keep_ambient_space=True, data_grad_descent_steps=0, train_outer=False,
-                                     should_plot="output", optimizer="SdLBFGS", init_network=True, adapt_lambda="none") #todo use_icnn_bounds geht nur, wenn use_over_approximation=True
-
+                                     should_plot="output", optimizer="SdLBFGS", init_network=True, adapt_lambda="none")
+    #todo use_icnn_bounds geht nur, wenn use_over_approximation=True
+    #todo use_fixed_neurons sollte nur verwendet werden wenn man use_icnn_bounds verwendet
+    return
     milp_verifier = MILPVerifier(nn, test_image, 1)
     snv_verifier = SingleNeuronVerifier(nn, test_image, 1)
     dhov_verifier = DHOVVerifier(icnns, group_size, last_layer_group_indices, fixed_neuron_last_layer_lower, fixed_neuron_last_layer_upper, bounds_affine_out, bounds_layer_out, nn, test_image, 1)
@@ -341,7 +335,7 @@ def multi_net2D():
     input_size = input_flattened.size(0)
     bounds_affine_out, bounds_layer_out = nn.calculate_box_bounds([input_flattened.add(-1), input_flattened.add(1)])
 
-    test_space = torch.empty((0, input_flattened.size(0)), dtype=data_type).to(device)
+    test_space = torch.empty((0, 2), dtype=data_type).to(device)
     box_bound_output_space = ds.samples_uniform_over(test_space, 1000, bounds_layer_out[-1])
 
     in_snv = []

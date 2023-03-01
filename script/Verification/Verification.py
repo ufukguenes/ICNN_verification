@@ -55,7 +55,8 @@ def generate_model_icnns(constraint_icnns, group_indices, last_bounds_layer_out,
         m.addConstr(input_approx_layer[neuron_index] == 0)
 
     for neuron_index in fixed_neuron_lower:
-        m.addConstr(last_bounds_layer_out[0][neuron_index] <= input_approx_layer[neuron_index] <= last_bounds_layer_out[1][neuron_index])
+        m.addConstr(last_bounds_layer_out[0][neuron_index] <= input_approx_layer[neuron_index])
+        m.addConstr(input_approx_layer[neuron_index] <= last_bounds_layer_out[1][neuron_index])
 
     for i, var in enumerate(input_approx_layer.tolist()):
         var.setAttr("varname", "input_approx_layer" + str(i))
@@ -156,9 +157,6 @@ def verification(icnn, model, affine_w, b, index_to_select, curr_bounds_affine_o
 
 
 def min_max_of_icnns(icnns, inp_bounds_icnn, group_indices, print_log=False):
-    neurons_lb = []
-    neurons_ub = []
-
     for k, icnn in enumerate(icnns):
         m = Model()
         if not print_log:
