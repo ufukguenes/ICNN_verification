@@ -277,7 +277,7 @@ def multi_net2D():
     W3 = [-1. 1.; 1. 1.]
     b3 = [3., 0.] """
 
-    """nn = SequentialNN([2, 2, 2, 2])
+    nn = SequentialNN([2, 2, 2, 2])
 
     with torch.no_grad():
         parameter_list = list(nn.parameters())
@@ -288,7 +288,7 @@ def multi_net2D():
         parameter_list[4].data = torch.tensor([[-1, 1], [1, 1]], dtype=data_type).to(device)
         parameter_list[5].data = torch.tensor([3, 0], dtype=data_type).to(device)
 
-    test_image = torch.tensor([[0, 0]], dtype=data_type).to(device)"""
+    test_image = torch.tensor([[0, 0]], dtype=data_type).to(device)
 
     """transform = Compose([ToTensor(),
                          Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
@@ -305,24 +305,25 @@ def multi_net2D():
     test_image = torch.zeros((1, 300), dtype=data_type).to(device)
     parameter_list = list(nn.parameters())"""
 
-    nn = SequentialNN([100, 100, 50, 7])
-    test_image = torch.zeros((1, 100), dtype=data_type).to(device)
-    parameter_list = list(nn.parameters())
+    """nn = SequentialNN([500, 500, 50, 7])
+    test_image = torch.zeros((1, 500), dtype=data_type).to(device)
+    parameter_list = list(nn.parameters())"""
 
     group_size = 2
-    icnn_factory = ICNNFactory("logical", [10, 10, 1], force_positive_init=False, with_two_layers=False,
+    icnn_factory = ICNNFactory("logical", [5, 1], force_positive_init=False, with_two_layers=False,
                                init_scaling=10, init_all_with_zeros=False)
+    #icnn_factory = ICNNFactory("standard", [10, 10, 1])
 
     icnns, last_layer_group_indices, fixed_neuron_last_layer_lower, fixed_neuron_last_layer_upper, bounds_affine_out, bounds_layer_out = \
-        multidhov.start_verification(nn, test_image, icnn_factory, group_size, eps=1, icnn_epochs=10, icnn_batch_size=1000,
-                                     sample_count=10, sample_new=False, use_over_approximation=True, use_fixed_neurons=True,
+        multidhov.start_verification(nn, test_image, icnn_factory, group_size, eps=1, icnn_epochs=100, icnn_batch_size=1000,
+                                     sample_count=1000, sample_new=False, use_over_approximation=True, use_fixed_neurons=True,
                                      sample_over_input_space=False, sample_over_output_space=True, use_icnn_bounds=True,
                                      force_inclusion_steps=0, preemptive_stop=False, even_gradient_training=False,
                                      keep_ambient_space=True, data_grad_descent_steps=0, train_outer=False,
                                      should_plot="output", optimizer="SdLBFGS", init_network=True, adapt_lambda="none")
     #todo use_icnn_bounds geht nur, wenn use_over_approximation=True
     #todo use_fixed_neurons sollte nur verwendet werden wenn man use_icnn_bounds verwendet
-    return
+
     milp_verifier = MILPVerifier(nn, test_image, 1)
     snv_verifier = SingleNeuronVerifier(nn, test_image, 1)
     dhov_verifier = DHOVVerifier(icnns, group_size, last_layer_group_indices, fixed_neuron_last_layer_lower, fixed_neuron_last_layer_upper, bounds_affine_out, bounds_layer_out, nn, test_image, 1)

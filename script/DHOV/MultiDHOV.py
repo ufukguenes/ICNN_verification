@@ -346,7 +346,7 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
             t = time.time()
             inp_bounds_icnn = bounds_layer_out[current_layer_index]
             new_bounds = ver.min_max_of_icnns(list_of_icnns[current_layer_index], inp_bounds_icnn,
-                                              group_indices)
+                                              group_indices, print_log=False)
             bounds_layer_out[current_layer_index] = new_bounds
             print("    time for icnn_bound calculation: {}".format(time.time() - t))
 

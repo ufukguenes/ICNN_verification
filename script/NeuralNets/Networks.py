@@ -7,6 +7,8 @@ import script.Verification.VerificationBasics as verbas
 from abc import ABC, abstractmethod
 from script.settings import device, data_type
 
+standard_value_for_lp = False
+
 class Flatten(nn.Module):
 
     def forward(self, x):
@@ -296,7 +298,7 @@ class ICNN(nn.Module, VerifiableNet):
 
         return affine_in_bounds_per_layer, layer_out_bounds_per_layer
 
-    def add_constraints(self, model, input_vars, bounds_affine_out, bounds_layer_out, as_lp=False):
+    def add_constraints(self, model, input_vars, bounds_affine_out, bounds_layer_out, as_lp=standard_value_for_lp):
         ws = list(self.ws.parameters())
         us = list(self.us.parameters())
 
@@ -330,7 +332,7 @@ class ICNN(nn.Module, VerifiableNet):
 
         return out_vars
 
-    def add_max_output_constraints(self, model, input_vars, bounds_affine_out, bounds_layer_out, as_lp=False):
+    def add_max_output_constraints(self, model, input_vars, bounds_affine_out, bounds_layer_out, as_lp=standard_value_for_lp):
         output = self.add_constraints(model, input_vars, bounds_affine_out, bounds_layer_out, as_lp=as_lp)
         model.addConstr(output[0] <= 0)
         return output
@@ -425,7 +427,7 @@ class ICNNLogical(ICNN):
             bb[0].data = u
             bb[1].data = b
 
-    def add_max_output_constraints(self, model, input_vars, bounds_affine_out, bounds_layer_out, as_lp=False):
+    def add_max_output_constraints(self, model, input_vars, bounds_affine_out, bounds_layer_out, as_lp=standard_value_for_lp):
         icnn_output_var = super().add_constraints(model, input_vars, bounds_affine_out, bounds_layer_out, as_lp=as_lp)
 
         lb = -float("inf")
@@ -547,7 +549,7 @@ class ICNNApproxMax(ICNN):
             bb[0].data = u
             bb[1].data = b
 
-    def add_max_output_constraints(self, model, input_vars, bounds_affine_out, bounds_layer_out, as_lp=False):
+    def add_max_output_constraints(self, model, input_vars, bounds_affine_out, bounds_layer_out, as_lp=standard_value_for_lp):
         icnn_output_var = super().add_constraints(model, input_vars, bounds_affine_out, bounds_layer_out, as_lp=as_lp)
         output_of_and = model.addMVar(1, lb=-float('inf'))
         lb = - float("inf")

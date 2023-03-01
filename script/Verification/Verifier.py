@@ -249,6 +249,7 @@ class DHOVVerifier(Verifier):
 
         for neuron_index in self.fixed_neuron_last_layer_lower:
             m.addConstr(lb[neuron_index] <= in_var[neuron_index])
+            m.addConstr(lb[neuron_index] <= in_var[neuron_index])
             m.addConstr(in_var[neuron_index] <= ub[neuron_index])
 
         lb = bounds_affine_out_output_layer[0].detach().cpu().numpy()
