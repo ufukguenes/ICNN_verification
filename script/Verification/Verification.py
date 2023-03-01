@@ -35,10 +35,9 @@ def generate_model_icnns(constraint_icnns, group_indices, last_bounds_layer_out,
 
     # todo wie kann ich hier wiederverwenden, dass ich das constraint_icnn schon mal verifiziert habe?
     all_indices = [index for group in group_indices for index in group]
-    input_size = len(all_indices)
-    all_indices = torch.tensor(all_indices).to(device)
-    lb = torch.index_select(last_bounds_layer_out[0], 0, all_indices).detach().cpu().numpy()
-    ub = torch.index_select(last_bounds_layer_out[1], 0, all_indices).detach().cpu().numpy()
+    input_size = len(last_bounds_layer_out[0])
+    lb = last_bounds_layer_out[0].detach().cpu().numpy()
+    ub = last_bounds_layer_out[1].detach().cpu().numpy()
     input_approx_layer = m.addMVar(input_size, lb=lb, ub=ub)
 
     for k in range(len(constraint_icnns)):
