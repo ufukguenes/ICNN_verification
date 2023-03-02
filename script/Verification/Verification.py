@@ -178,13 +178,15 @@ def min_max_of_icnns(icnns, inp_bounds_icnn, group_indices, print_log=False):
             if m.Status == GRB.OPTIMAL:
                 inp = input_var.getAttr("x")
                 #neurons_lb.append(inp[neuron_to_optimize])
-                inp_bounds_icnn[0][group_indices[k]][neuron_to_optimize] = inp[neuron_to_optimize]
+                inp_bounds_icnn[0][group_indices[k][neuron_to_optimize]] = inp[neuron_to_optimize]
+                print("        lower {}".format(inp[neuron_to_optimize]))
 
             m.setObjective(input_var[neuron_to_optimize], GRB.MAXIMIZE)
             m.optimize()
             if m.Status == GRB.OPTIMAL:
                 inp = input_var.getAttr("x")
                 #neurons_ub.append(inp[neuron_to_optimize])
-                inp_bounds_icnn[1][group_indices[k]][neuron_to_optimize] = inp[neuron_to_optimize]
+                inp_bounds_icnn[1][group_indices[k][neuron_to_optimize]] = inp[neuron_to_optimize]
+                print("        upper {}".format(inp[neuron_to_optimize]))
 
     return inp_bounds_icnn

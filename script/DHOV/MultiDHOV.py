@@ -192,7 +192,7 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
                                                  fixed_neuron_per_layer_lower[current_layer_index - 1],
                                                  fixed_neuron_per_layer_upper[current_layer_index - 1])
             model.update()
-            all_group_indices.append(group_indices)
+        all_group_indices.append(group_indices)
 
         list_of_icnns.append([])
         for group_i in range(number_of_groups):
@@ -310,6 +310,9 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
 
                 current_icnn.apply_enlargement(c)
             print("        time for verification: {}".format(time.time() - t))
+
+            inp_bounds_icnn = bounds_layer_out[current_layer_index]
+            ver.min_max_of_icnns([current_icnn], inp_bounds_icnn, [group_indices[group_i]], print_log=False)
 
             """
             #visualisation for one single ReLu
