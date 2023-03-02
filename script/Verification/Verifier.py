@@ -144,7 +144,7 @@ class MILPVerifier(Verifier):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def generate_constraints_for_net(self):
+    def generate_constraints_for_net(self, until_layer_neuron=None):
         m = grp.Model()
 
         if self.time_limit is not None:
@@ -170,7 +170,26 @@ class MILPVerifier(Verifier):
 
         parameter_list = list(self.net.parameters())
         in_var = input_var
+        break_early = False
         for i in range(0, len(parameter_list) - 2, 2):
+            if until_layer_neuron != None and until_layer_neuron[0] == i // 2:
+                neuron_index = until_layer_neuron[1]
+                in_lb = [bounds_affine_out[int(i / 2)][0].detach().numpy()[neuron_index]]
+                in_ub = [bounds_affine_out[int(i / 2)][1].detach().numpy()[neuron_index]]
+                W, b = parameter_list[i].detach().numpy()[neuron_index], parameter_list[i + 1].detach().numpy()[neuron_index]
+
+                out_fet = 1
+                out_vars = m.addMVar(out_fet, lb=in_lb, ub=in_ub)
+                const = m.addConstr(W @ in_var + b == out_vars)
+
+                relu_in_var = out_vars
+                out_lb = [bounds_layer_out[int(i / 2)][0].detach().cpu().numpy()[neuron_index]]
+                out_ub = [bounds_layer_out[int(i / 2)][1].detach().cpu().numpy()[neuron_index]]
+                relu_vars = verbas.add_relu_constr(m, relu_in_var, out_fet, in_lb, in_ub, out_lb, out_ub, i=i)
+                in_var = relu_vars
+                break_early = True
+                break
+
             in_lb = bounds_affine_out[int(i / 2)][0].detach().numpy()
             in_ub = bounds_affine_out[int(i / 2)][1].detach().numpy()
             W, b = parameter_list[i].detach().numpy(), parameter_list[i + 1].detach().numpy()
@@ -185,13 +204,15 @@ class MILPVerifier(Verifier):
             relu_vars = verbas.add_relu_constr(m, relu_in_var, out_fet, in_lb, in_ub, out_lb, out_ub, i=i)
             in_var = relu_vars
 
-        lb = bounds_affine_out[-1][0].detach().numpy()
-        ub = bounds_affine_out[-1][1].detach().numpy()
-        W, b = parameter_list[len(parameter_list) - 2].detach().numpy(), parameter_list[-1].detach().numpy()
+        if not break_early:
+            lb = bounds_affine_out[-1][0].detach().numpy()
+            ub = bounds_affine_out[-1][1].detach().numpy()
+            W, b = parameter_list[len(parameter_list) - 2].detach().numpy(), parameter_list[-1].detach().numpy()
 
-        out_fet = len(b)
-        out_vars = m.addMVar(out_fet, lb=lb, ub=ub, name="last_affine_var")
-        const = m.addConstrs((W[i] @ in_var + b[i] == out_vars[i] for i in range(len(W))), name="out_const")
+            out_fet = len(b)
+            out_vars = m.addMVar(out_fet, lb=lb, ub=ub, name="last_affine_var")
+            const = m.addConstrs((W[i] @ in_var + b[i] == out_vars[i] for i in range(len(W))), name="out_const")
+
         m.update()
         self.model = m
         self.output_vars = out_vars
