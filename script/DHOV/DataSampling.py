@@ -5,9 +5,9 @@ import torch
 import gurobipy as grp
 from script.settings import device, data_type
 
-def sample_max_radius(icnns, sample_size, group_indices, curr_bounds_layer_out):
-    center_values = []
-    eps_values = []
+def sample_max_radius(icnns, sample_size, group_indices, curr_bounds_layer_out, fixed_neuron_lower, fixed_neuron_upper):
+    center_values = torch.zeros(len(curr_bounds_layer_out[0]), dtype=data_type).to(device)
+    eps_values = torch.zeros(len(curr_bounds_layer_out[0]), dtype=data_type).to(device)
     for group_i, icnn in enumerate(icnns):
         icnn_input_size = icnn.layer_widths[0]
         index_to_select = group_indices[group_i]
@@ -38,9 +38,22 @@ def sample_max_radius(icnns, sample_size, group_indices, curr_bounds_layer_out):
                 max_dist = difference.getAttr("x")
                 center_point = (point_one + point_two) / 2
                 eps = max_dist / 2
-                center_values.append(center_point[i])
-                eps_values.append(eps)
+                center_values[group_indices[group_i][i]] = center_point[i]
+                eps_values[group_indices[group_i][i]] = eps
             m.remove(diff_const)
+
+    for neuron_index in fixed_neuron_upper:
+        center_values[neuron_index] = 0
+        eps_values[neuron_index] = 0
+
+    for neuron_index in fixed_neuron_lower:
+        point_one = curr_bounds_layer_out[0][neuron_index]
+        point_two = curr_bounds_layer_out[1][neuron_index]
+        max_dist = point_one - point_two
+        center_point = (point_one + point_two) / 2
+        eps = max_dist / 2
+        center_values[neuron_index] = center_point
+        eps_values[neuron_index] = eps
 
     input_size = len(center_values)
     included_space = torch.empty(0, dtype=data_type).to(device)
@@ -57,6 +70,8 @@ def sample_max_radius(icnns, sample_size, group_indices, curr_bounds_layer_out):
                                     range(len(choice_for_upper_bound))]
         distance_to_center_lower = [abs(center_values[k] - choice_for_lower_bound[i]) for i in
                                     range(len(choice_for_lower_bound))]
+        distance_to_center_lower = [x.detach().cpu().numpy() for x in distance_to_center_lower]
+        distance_to_center_upper = [x.detach().cpu().numpy() for x in distance_to_center_upper]
         arg_min_upper_bound = np.argmin(distance_to_center_upper)
         arg_min_lower_bound = np.argmin(distance_to_center_lower)
         best_upper_bound.append(choice_for_upper_bound[arg_min_upper_bound])
@@ -70,6 +85,14 @@ def sample_max_radius(icnns, sample_size, group_indices, curr_bounds_layer_out):
 
     for samp in samples:
         is_included = True
+        """
+        index_start = 0
+        index_end = 0
+        for group_i, icnn in enumerate(icnns):
+            index_end += len(group_indices[group_i])
+            index_to_select = torch.tensor(range(index_start, index_end)).to(device)
+            index_start = index_end
+        """
         samp = torch.unsqueeze(samp, 0)
         for group_i, icnn in enumerate(icnns):
             index_to_select = group_indices[group_i]

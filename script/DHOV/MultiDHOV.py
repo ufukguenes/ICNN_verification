@@ -128,14 +128,14 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
         if sample_over_input_space:
             if i == 0:
                 ambient_space = ds.sample_uniform_excluding(ambient_space, int(sample_count / 2), eps_bounds,
-                                                            excluding_bound=eps_bounds, padding=0.5)
+                                                            excluding_bound=eps_bounds, padding=0)
             else:
                 # todo test for when lower/upper bound is smaller then eps
                 ambient_space = ds.sample_uniform_excluding(ambient_space, int(sample_count / 2),
                                                             bounds_layer_out[current_layer_index - 1],
                                                             icnns=list_of_icnns[current_layer_index - 1],
                                                             layer_index=current_layer_index, group_size=group_size,
-                                                            padding=0.5)
+                                                            padding=0)
 
         if should_plot == "detailed":
             plt_inc_amb("start " + str(i), included_space.tolist(), ambient_space.tolist())
@@ -164,10 +164,10 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
 
         if sample_over_output_space:
             ambient_space = ds.samples_uniform_over(ambient_space, int(sample_count / 2),
-                                                    bounds_layer_out[current_layer_index], padding=0.5)
+                                                    bounds_layer_out[current_layer_index], padding=0)
             if should_plot in ["simple", "detailed"]:
                 original_ambient_space = ds.samples_uniform_over(original_ambient_space, int(sample_count / 2),
-                                                                 bounds_layer_out[current_layer_index], padding=0.5)
+                                                                 bounds_layer_out[current_layer_index], padding=0)
 
         if should_plot == "detailed":
             plt_inc_amb("enhanced ambient space " + str(i), included_space.tolist(), ambient_space.tolist())
@@ -364,7 +364,9 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
         if sample_new:
             # todo entweder über box bounds sampeln oder über maximum radius
             included_space, ambient_space = ds.sample_max_radius(list_of_icnns[current_layer_index], sample_count,
-                                                                 group_indices, bounds_layer_out[current_layer_index])
+                                                                 group_indices, bounds_layer_out[current_layer_index],
+                                                                 fixed_neuron_per_layer_lower[current_layer_index],
+                                                                 fixed_neuron_per_layer_upper[current_layer_index])
 
         else:
             included_space, ambient_space = ds.regroup_samples(list_of_icnns[current_layer_index], included_space,
