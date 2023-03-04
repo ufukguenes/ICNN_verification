@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="6d238203-6334-43f4-afee-09b5387b5116" name="Changes" comment="fixed bug where icnn min max bounds were not assigned">
+    <list default="true" id="6d238203-6334-43f4-afee-09b5387b5116" name="Changes" comment="fixed bug which didn't generate samples for fixed neurons">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/script/DHOV/DataSampling.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/DHOV/DataSampling.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/script/DHOV/MultiDHOV.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/DHOV/MultiDHOV.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/script/Experiments/NeuronBounds.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/script/Experiments/NeuronBounds.ipynb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/script/Verification/Verification.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/Verification/Verification.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -138,7 +138,8 @@
       <workItem from="1677746203663" duration="7094000" />
       <workItem from="1677760290595" duration="9000" />
       <workItem from="1677771206971" duration="5299000" />
-      <workItem from="1677858128183" duration="1695000" />
+      <workItem from="1677858128183" duration="2495000" />
+      <workItem from="1677937815675" duration="7964000" />
     </task>
     <task id="LOCAL-00001" summary="merge conflict resolved">
       <created>1675424657510</created>
@@ -462,7 +463,14 @@
       <option name="project" value="LOCAL" />
       <updated>1677756784965</updated>
     </task>
-    <option name="localTasksCounter" value="47" />
+    <task id="LOCAL-00047" summary="fixed bug which didn't generate samples for fixed neurons">
+      <created>1677860620862</created>
+      <option name="number" value="00047" />
+      <option name="presentableId" value="LOCAL-00047" />
+      <option name="project" value="LOCAL" />
+      <updated>1677860620862</updated>
+    </task>
+    <option name="localTasksCounter" value="48" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -512,7 +520,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="comparison of milp snv and dhov" />
     <MESSAGE value="adapting tensors to work on GPU" />
     <MESSAGE value="fixing bug in milp and sn verification caused by wrong calculation and use of upper and lower bounds" />
     <MESSAGE value="tests on comparison of milp and snv" />
@@ -537,7 +544,8 @@
     <MESSAGE value="neuron bounds comparison" />
     <MESSAGE value="optimizing when to encode icnn as lp" />
     <MESSAGE value="fixed bug where icnn min max bounds were not assigned" />
-    <option name="LAST_COMMIT_MESSAGE" value="fixed bug where icnn min max bounds were not assigned" />
+    <MESSAGE value="fixed bug which didn't generate samples for fixed neurons" />
+    <option name="LAST_COMMIT_MESSAGE" value="fixed bug which didn't generate samples for fixed neurons" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -553,29 +561,9 @@
           <option name="timeStamp" value="591" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/script/Verification/Verification.py</url>
-          <line>48</line>
-          <option name="timeStamp" value="603" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/script/Verification/Verifier.py</url>
           <line>175</line>
           <option name="timeStamp" value="605" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/script/DHOV/MultiDHOV.py</url>
-          <line>142</line>
-          <option name="timeStamp" value="623" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="jupyter-line">
-          <url>notebook://C:/Users/Ufuk/Documents/Programming/ICNN_verification/script/Experiments/NeuronBounds.ipynb</url>
-          <line>39</line>
-          <option name="timeStamp" value="573" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="jupyter-line">
-          <url>notebook://C:/Users/Ufuk/Documents/Programming/ICNN_verification/script/Experiments/NeuronBounds.ipynb</url>
-          <line>125</line>
-          <option name="timeStamp" value="608" />
         </line-breakpoint>
       </breakpoints>
       <default-breakpoints>

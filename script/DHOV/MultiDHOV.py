@@ -31,7 +31,7 @@ adapt_lambda has values: none, high_low, included
 def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.001, icnn_batch_size=1000,
                        icnn_epochs=100,
                        sample_count=1000, break_after=None, use_icnn_bounds=False, use_fixed_neurons=False,
-                       keep_ambient_space=False, sample_new=True, use_over_approximation=True,
+                       keep_ambient_space=False, sample_new=True, use_over_approximation=True, opt_steps_gd=100,
                        sample_over_input_space=False, sample_over_output_space=True, data_grad_descent_steps=0,
                        train_outer=False, preemptive_stop=True, even_gradient_training=False, force_inclusion_steps=0,
                        init_network=False, adapt_lambda="none", should_plot='none', optimizer="adam"):
@@ -128,14 +128,14 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
         if sample_over_input_space:
             if i == 0:
                 ambient_space = ds.sample_uniform_excluding(ambient_space, int(sample_count / 2), eps_bounds,
-                                                            excluding_bound=eps_bounds, padding=0)
+                                                            excluding_bound=eps_bounds, padding=eps)
             else:
                 # todo test for when lower/upper bound is smaller then eps
                 ambient_space = ds.sample_uniform_excluding(ambient_space, int(sample_count / 2),
                                                             bounds_layer_out[current_layer_index - 1],
                                                             icnns=list_of_icnns[current_layer_index - 1],
                                                             layer_index=current_layer_index, group_size=group_size,
-                                                            padding=0)
+                                                            padding=eps)
 
         if should_plot == "detailed":
             plt_inc_amb("start " + str(i), included_space.tolist(), ambient_space.tolist())
@@ -164,10 +164,10 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
 
         if sample_over_output_space:
             ambient_space = ds.samples_uniform_over(ambient_space, int(sample_count / 2),
-                                                    bounds_layer_out[current_layer_index], padding=0)
+                                                    bounds_layer_out[current_layer_index], padding=eps)
             if should_plot in ["simple", "detailed"]:
                 original_ambient_space = ds.samples_uniform_over(original_ambient_space, int(sample_count / 2),
-                                                                 bounds_layer_out[current_layer_index], padding=0)
+                                                                 bounds_layer_out[current_layer_index], padding=eps)
 
         if should_plot == "detailed":
             plt_inc_amb("enhanced ambient space " + str(i), included_space.tolist(), ambient_space.tolist())
@@ -246,15 +246,15 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
                         plt_inc_amb("without gradient descent", group_norm_included_space.tolist(),
                                     group_norm_ambient_space.tolist())
                     for gd_round in range(data_grad_descent_steps):
-                        optimization_steps = 1000
+                        optimization_steps = opt_steps_gd
 
                         if gd_round == data_grad_descent_steps - 1:
                             epochs_in_run = epochs_per_inclusion % data_grad_descent_steps
                         else:
                             epochs_in_run = epochs_per_inclusion // data_grad_descent_steps
-
+                        print("===== grad descent =====")
                         train_icnn(current_icnn, train_loader, ambient_loader, epochs=epochs_in_run, hyper_lambda=1,
-                                   optimizer=optimizer, adapt_lambda=adapt_lambda, preemptive_stop=preemptive_stop)
+                                   optimizer=optimizer, adapt_lambda=adapt_lambda, preemptive_stop=preemptive_stop, verbose=True)
 
                         for v in range(optimization_steps):
                             # normalized_ambient_space =
@@ -281,7 +281,7 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
 
                 else:
                     train_icnn(current_icnn, train_loader, ambient_loader, epochs=epochs_per_inclusion, hyper_lambda=1,
-                               optimizer=optimizer, adapt_lambda=adapt_lambda, preemptive_stop=preemptive_stop)
+                               optimizer=optimizer, adapt_lambda=adapt_lambda, preemptive_stop=preemptive_stop, verbose=True)
 
             if train_outer:  # todo will ich train outer behalten oder einfach verwerfen?
                 for k in range(icnn_epochs):
@@ -311,8 +311,8 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
                 current_icnn.apply_enlargement(c)
             print("        time for verification: {}".format(time.time() - t))
 
-            inp_bounds_icnn = bounds_layer_out[current_layer_index]
-            ver.min_max_of_icnns([current_icnn], inp_bounds_icnn, [group_indices[group_i]], print_log=False)
+            #inp_bounds_icnn = bounds_layer_out[current_layer_index]
+            #ver.min_max_of_icnns([current_icnn], inp_bounds_icnn, [group_indices[group_i]], print_log=False)
 
             """
             #visualisation for one single ReLu
