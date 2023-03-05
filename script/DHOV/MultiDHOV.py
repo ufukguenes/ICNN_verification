@@ -34,7 +34,7 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
                        keep_ambient_space=False, sample_new=True, use_over_approximation=True, opt_steps_gd=100,
                        sample_over_input_space=False, sample_over_output_space=True, data_grad_descent_steps=0,
                        train_outer=False, preemptive_stop=True, even_gradient_training=False, force_inclusion_steps=0,
-                       init_network=False, adapt_lambda="none", should_plot='none', optimizer="adam"):
+                       init_network=False, adapt_lambda="none", should_plot='none', optimizer="adam", print_training_loss=False):
     valid_adapt_lambda = ["none", "high_low", "included"]
     valid_should_plot = ["none", "simple", "detailed", "verification", "output"]
     valid_optimizer = ["adam", "LBFGS", "SdLBFGS"]
@@ -69,6 +69,10 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
     ambient_space = torch.empty((0, input_flattened.size(0)), dtype=data_type).to(device)
     original_included_space = torch.empty((0, input_flattened.size(0)), dtype=data_type).to(device)
     original_ambient_space = torch.empty((0, input_flattened.size(0)), dtype=data_type).to(device)
+
+    adv_samp = torch.load("adv_samp.pt")
+    included_space[0] = adv_samp
+    plt_inc_amb("help", torch.index_select(included_space, 1, torch.tensor([2, 3])).tolist(), torch.index_select(ambient_space, 1, torch.tensor([2, 3])).tolist())
 
     if should_plot in valid_should_plot and should_plot != "none":
         original_included_space, original_ambient_space = included_space, ambient_space
@@ -143,6 +147,9 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
         included_space = ds.apply_affine_transform(affine_w, affine_b, included_space)
         ambient_space = ds.apply_affine_transform(affine_w, affine_b, ambient_space)
 
+        plt_inc_amb("help", torch.index_select(included_space, 1, torch.tensor([2, 3])).tolist(),
+                    torch.index_select(ambient_space, 1, torch.tensor([2, 3])).tolist())
+
         if should_plot in valid_should_plot and should_plot != "none":
             original_included_space = ds.apply_affine_transform(affine_w, affine_b, original_included_space)
             original_ambient_space = ds.apply_affine_transform(affine_w, affine_b, original_ambient_space)
@@ -153,6 +160,9 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
 
         included_space = ds.apply_relu_transform(included_space)
         ambient_space = ds.apply_relu_transform(ambient_space)
+
+        plt_inc_amb("help", torch.index_select(included_space, 1, torch.tensor([2, 3])).tolist(),
+                    torch.index_select(ambient_space, 1, torch.tensor([2, 3])).tolist())
 
         if should_plot in valid_should_plot and should_plot != "none":
             original_included_space = ds.apply_relu_transform(original_included_space)
@@ -212,9 +222,7 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
             mean = norm.get_mean(group_inc_space, group_amb_space)
             std = norm.get_std(group_inc_space, group_amb_space)
             group_norm_included_space, group_norm_ambient_space = norm.normalize_data(group_inc_space, group_amb_space,
-                                                                                      mean,
-                                                                                      std)
-
+                                                                                      mean, std)
             dataset = ConvexDataset(data=group_norm_included_space)
             train_loader = DataLoader(dataset, batch_size=icnn_batch_size)
             dataset = ConvexDataset(data=group_norm_ambient_space)
@@ -254,7 +262,7 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
                             epochs_in_run = epochs_per_inclusion // data_grad_descent_steps
                         print("===== grad descent =====")
                         train_icnn(current_icnn, train_loader, ambient_loader, epochs=epochs_in_run, hyper_lambda=1,
-                                   optimizer=optimizer, adapt_lambda=adapt_lambda, preemptive_stop=preemptive_stop, verbose=True)
+                                   optimizer=optimizer, adapt_lambda=adapt_lambda, preemptive_stop=preemptive_stop, verbose=print_training_loss)
 
                         for v in range(optimization_steps):
                             # normalized_ambient_space =
@@ -281,7 +289,7 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
 
                 else:
                     train_icnn(current_icnn, train_loader, ambient_loader, epochs=epochs_per_inclusion, hyper_lambda=1,
-                               optimizer=optimizer, adapt_lambda=adapt_lambda, preemptive_stop=preemptive_stop, verbose=True)
+                               optimizer=optimizer, adapt_lambda=adapt_lambda, preemptive_stop=preemptive_stop, verbose=print_training_loss)
 
             if train_outer:  # todo will ich train outer behalten oder einfach verwerfen?
                 for k in range(icnn_epochs):
@@ -300,6 +308,10 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
 
             t = time.time()
             # verify and enlarge convex approximation
+            plots = Plots_for(0, current_icnn, group_inc_space.detach(),
+                                          group_amb_space.detach(),
+                                          [0, 0.35], [0, 0.35])
+            plots.plt_mesh()
             if use_over_approximation:
                 copy_model = model.copy()
                 adversarial_input, c = ver.verification(current_icnn, copy_model, affine_w.detach().numpy(),
@@ -308,7 +320,12 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
                                                         bounds_layer_out[current_layer_index],
                                                         has_relu=True)
 
+
+                torch.save(torch.tensor(adversarial_input, dtype=data_type), "adv_samp.pt")
+
                 current_icnn.apply_enlargement(c)
+
+            plots.plt_mesh()
             print("        time for verification: {}".format(time.time() - t))
 
             #inp_bounds_icnn = bounds_layer_out[current_layer_index]

@@ -100,15 +100,10 @@ def verification(icnn, model, affine_w, b, index_to_select, curr_bounds_affine_o
     low = torch.index_select(curr_bounds_layer_out[0], 0, index_to_select)
     up = torch.index_select(curr_bounds_layer_out[1], 0, index_to_select)
     icnn_bounds_affine_out, icnn_bounds_layer_out = icnn.calculate_box_bounds([low, up])
-    """output_var = icnn.add_constraints(model, input_var, icnn_bounds_affine_out, icnn_bounds_layer_out)
+    output_var = icnn.add_constraints(model, input_var, icnn_bounds_affine_out, icnn_bounds_layer_out)
 
     model.update()
-    model.setObjective(output_var[0], GRB.MAXIMIZE)"""
-
-    output_var = icnn.add_max_output_constraints(model, input_var, icnn_bounds_affine_out, icnn_bounds_layer_out)
-
-    model.update()
-    model.setObjective(output_var, GRB.MAXIMIZE)
+    model.setObjective(output_var[0], GRB.MAXIMIZE)
 
     t = time.time()
     model.optimize()
@@ -153,7 +148,7 @@ def verification(icnn, model, affine_w, b, index_to_select, curr_bounds_affine_o
             inp = m.getAttr("Xn")
             inp = [inp[0], inp[1]]
             print("sub-optimal solution at: {}, with value {}".format(inp, m.getAttr("PoolObjVal")))"""
-        return inp, output_var.X
+        return inp, output_var[0].X
 
 
 def min_max_of_icnns(icnns, inp_bounds_icnn, group_indices, print_log=False):

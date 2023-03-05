@@ -314,7 +314,7 @@ class ICNN(nn.Module, VerifiableNet):
 
             if i != 0:
                 k = math.floor(i / 2) - 1
-                skip_W = torch.clone(us[k]).detach().cpu().numpy()  # has no bias
+                skip_W = us[k].detach().cpu().numpy()  # has no bias
                 skip_const = model.addConstrs(affine_w[i] @ in_var + affine_b[i] + skip_W[i] @ input_vars == affine_out_vars[i] for i in range(len(affine_w)))
             else:
                 affine_no_skip_cons = model.addConstrs(affine_w[i] @ in_var + affine_b[i] == affine_out_vars[i] for i in range(len(affine_w)))
