@@ -29,8 +29,8 @@ adapt_lambda has values: none, high_low, included
 
 
 def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.001, icnn_batch_size=1000,
-                       icnn_epochs=100,
-                       sample_count=1000, break_after=None, use_icnn_bounds=False, use_fixed_neurons=False,
+                       icnn_epochs=100,sample_count=1000, sampling_method="uniform",
+                       break_after=None, use_icnn_bounds=False, use_fixed_neurons=False,
                        keep_ambient_space=False, sample_new=True, use_over_approximation=True, opt_steps_gd=100,
                        sample_over_input_space=False, sample_over_output_space=True, data_grad_descent_steps=0,
                        train_outer=False, preemptive_stop=True, even_gradient_training=False, force_inclusion_steps=0,
@@ -38,6 +38,7 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
     valid_adapt_lambda = ["none", "high_low", "included"]
     valid_should_plot = ["none", "simple", "detailed", "verification", "output"]
     valid_optimizer = ["adam", "LBFGS", "SdLBFGS"]
+    valid_sampling_methods = ["uniform", "linespace"]
 
     parameter_list = list(nn.parameters())
     force_break = False
@@ -54,8 +55,12 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
     if data_grad_descent_steps < 0 or data_grad_descent_steps > icnn_epochs:
         raise AttributeError(
             "Expected data_grad_descent_steps to be:  >= {}} , got: {}".format(icnn_epochs, data_grad_descent_steps))
+    if sampling_method not in valid_sampling_methods:
+        raise AttributeError(
+            "Expected sampling method to be one of: {} , got: {}".format(valid_sampling_methods, sampling_method))
 
     input_flattened = torch.flatten(input)
+    center = input_flattened
     eps_bounds = [input_flattened.add(-eps), input_flattened.add(eps)]
 
     if use_icnn_bounds:
@@ -65,7 +70,12 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
             eps_bounds)  # todo abbrechen, wenn die box bounds schon die eigenschaft erfüllen
 
     included_space = torch.empty((0, input_flattened.size(0)), dtype=data_type).to(device)
-    included_space = ds.samples_uniform_over(included_space, int(sample_count / 2), eps_bounds)
+
+    if sampling_method == "uniform":
+        included_space = ds.samples_uniform_over(included_space, int(sample_count / 2), eps_bounds)
+    elif sampling_method == "linespace":
+        included_space = ds.sample_linspace(included_space, int(sample_count / 2), center, eps)
+
     ambient_space = torch.empty((0, input_flattened.size(0)), dtype=data_type).to(device)
     original_included_space = torch.empty((0, input_flattened.size(0)), dtype=data_type).to(device)
     original_ambient_space = torch.empty((0, input_flattened.size(0)), dtype=data_type).to(device)
@@ -76,8 +86,6 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
 
     if should_plot in valid_should_plot and should_plot != "none":
         original_included_space, original_ambient_space = included_space, ambient_space
-
-    center = input_flattened
 
     force_inclusion_steps += 1
     data_grad_descent_steps += 1

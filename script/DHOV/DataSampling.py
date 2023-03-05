@@ -1,3 +1,4 @@
+import math
 import random
 
 import numpy as np
@@ -145,6 +146,21 @@ def samples_uniform_over(data_samples, amount, bounds, keep_samples=True, paddin
     else:
         data_samples = random_samples
 
+    return data_samples
+
+def sample_linspace(data_samples, amount, center, eps, keep_samples=True):
+    step_number = 1 #math.floor(math.sqrt(amount))
+    xs = torch.linspace(-eps, eps, steps=step_number)
+    """#ys = torch.linspace(-eps, eps, steps=step_number)
+    tens = [xs for i in range(step_number)]
+    grid = torch.meshgrid(*tens)
+    new_samples = torch.add(center, grid)"""
+    mask = torch.combinations(xs, r=data_samples.size(1), with_replacement=True)
+    new_samples = torch.add(center, mask)
+    if keep_samples and data_samples.size(0) > 0:
+        data_samples = torch.cat([data_samples, new_samples], dim=0)
+    else:
+        data_samples = new_samples
     return data_samples
 
 
