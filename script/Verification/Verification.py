@@ -20,12 +20,10 @@ def generate_model_center_eps(center, eps):
 
     input_to_previous_layer_size = len(center)
     input_approx_layer = m.addMVar(input_to_previous_layer_size, lb=[elem - eps for elem in center],
-                                        ub=[elem + eps for elem in center])
+                                        ub=[elem + eps for elem in center], name="input_approx_layer")
     m.addConstrs(input_approx_layer[i] <= center[i] + eps for i in range(input_to_previous_layer_size))
     m.addConstrs(input_approx_layer[i] >= center[i] - eps for i in range(input_to_previous_layer_size))
 
-    for i, var in enumerate(input_approx_layer.tolist()):
-        var.setAttr("varname", "input_approx_layer"+str(i))
     return m
 
 
@@ -38,7 +36,7 @@ def generate_model_icnns(constraint_icnns, group_indices, last_bounds_layer_out,
     input_size = len(last_bounds_layer_out[0])
     lb = last_bounds_layer_out[0].detach().cpu().numpy()
     ub = last_bounds_layer_out[1].detach().cpu().numpy()
-    input_approx_layer = m.addMVar(input_size, lb=lb, ub=ub)
+    input_approx_layer = m.addMVar(input_size, lb=lb, ub=ub, name="input_approx_layer")
 
     for k in range(len(constraint_icnns)):
         index_to_select = torch.tensor(group_indices[k]).to(device)
@@ -66,11 +64,9 @@ def generate_model_A_b(a_matrix, b_vector):
     m = Model()
     m.Params.LogToConsole = 0
     input_size = len(b_vector)
-    input_var = m.addMVar(input_size, lb=-float('inf'), name="in_var")  # todo mit boxbounds anpassen
+    input_var = m.addMVar(input_size, lb=-float('inf'), name="input_approx_layer")  # todo mit boxbounds anpassen
     m.addMConstr(a_matrix, input_var, "<=", b_vector)
 
-    for i, var in enumerate(input_var.tolist()):
-        var.setAttr("varname", "input_approx_layer" + str(i))
     return m
 
 
@@ -78,22 +74,22 @@ def verification(icnn, model, affine_w, b, index_to_select, curr_bounds_affine_o
 
     input_approx_layer = []
     for i in range(affine_w.shape[1]):
-        input_approx_layer.append(model.getVarByName("input_approx_layer"+str(i)))
+        input_approx_layer.append(model.getVarByName("input_approx_layer[{}]".format(i)))
     input_approx_layer = grp.MVar.fromlist(input_approx_layer)
 
     rows_to_delete = list(range(affine_w.shape[0]))
     rows_to_delete = [x for x in rows_to_delete if x not in index_to_select]
-    affine_w = np.delete(affine_w, rows_to_delete, axis=0)
-    b = np.delete(b, rows_to_delete, axis=0)
+    new_w = np.delete(affine_w, rows_to_delete, axis=0)
+    new_b = np.delete(b, rows_to_delete, axis=0)
 
     index_to_select = torch.tensor(index_to_select).to(device)
     in_lb = torch.index_select(curr_bounds_affine_out[0], 0, index_to_select).detach().cpu().numpy()
     in_ub = torch.index_select(curr_bounds_affine_out[1], 0, index_to_select).detach().cpu().numpy()
     out_lb = torch.index_select(curr_bounds_layer_out[0], 0, index_to_select).detach().cpu().numpy()
     out_ub = torch.index_select(curr_bounds_layer_out[1], 0, index_to_select).detach().cpu().numpy()
-    affine_out = verbas.add_affine_constr(model, affine_w, b, input_approx_layer, in_lb, in_ub)
+    affine_out = verbas.add_affine_constr(model, new_w, new_b, input_approx_layer, in_lb, in_ub)
     if has_relu:
-        input_size = len(b)
+        input_size = len(new_b)
         relu_out = verbas.add_relu_constr(model, affine_out, input_size, in_lb, in_ub, out_lb, out_ub)
         # relu_out = verbas.add_single_neuron_constr(m, affine_out, input_size, in_lb, in_ub, out_lb, out_ub)
         input_var = relu_out
@@ -104,17 +100,22 @@ def verification(icnn, model, affine_w, b, index_to_select, curr_bounds_affine_o
     low = torch.index_select(curr_bounds_layer_out[0], 0, index_to_select)
     up = torch.index_select(curr_bounds_layer_out[1], 0, index_to_select)
     icnn_bounds_affine_out, icnn_bounds_layer_out = icnn.calculate_box_bounds([low, up])
-    output_var = icnn.add_constraints(model, input_var, icnn_bounds_affine_out, icnn_bounds_layer_out)
+    """output_var = icnn.add_constraints(model, input_var, icnn_bounds_affine_out, icnn_bounds_layer_out)
 
     model.update()
-    model.setObjective(output_var[0], GRB.MAXIMIZE)
+    model.setObjective(output_var[0], GRB.MAXIMIZE)"""
+
+    output_var = icnn.add_max_output_constraints(model, input_var, icnn_bounds_affine_out, icnn_bounds_layer_out)
+
+    model.update()
+    model.setObjective(output_var, GRB.MAXIMIZE)
 
     t = time.time()
     model.optimize()
 
     if model.Status == GRB.OPTIMAL:
         print("        actual verification time {}".format(time.time() - t))
-        inp = input_var.getAttr("x")
+        inp = input_approx_layer.getAttr("x")
         # inp = torch.tensor([[inp[0], inp[1]]], dtype=data_type).to(device)
         # true_out = icnn(inp)
         # print("optimum solution at: {}, with value {}, true output: {}".format(inp, output_var.getAttr("x"), 0))  #
@@ -152,7 +153,7 @@ def verification(icnn, model, affine_w, b, index_to_select, curr_bounds_affine_o
             inp = m.getAttr("Xn")
             inp = [inp[0], inp[1]]
             print("sub-optimal solution at: {}, with value {}".format(inp, m.getAttr("PoolObjVal")))"""
-        return inp, output_var.X[0]
+        return inp, output_var.X
 
 
 def min_max_of_icnns(icnns, inp_bounds_icnn, group_indices, print_log=False):
