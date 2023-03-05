@@ -24,7 +24,8 @@ class Plots_for():
     adversarial = None
     adversarial_values = None
 
-    def __init__(self, c_val, model_local, inc_space, amb_space, range_x, range_y, extr=None, adversarial=None, adversarial_values=None):
+    def __init__(self, c_val, model_local, inc_space, amb_space, range_x, range_y, extr=None, adversarial=None,
+                 adversarial_values=None, calculate_convex_hull=True):
 
         self.x_range = range_x
         self.y_range = range_y
@@ -33,8 +34,9 @@ class Plots_for():
         self.ambient_space = amb_space
         self.included_space = inc_space
         self.true_extremal = extr
-
-        self.hull = ConvexHull(self.included_space.cpu())
+        self.hull = None
+        if calculate_convex_hull:
+            self.hull = ConvexHull(self.included_space.cpu())
 
         self.in_convex = []
         self.not_in_convex = []
@@ -45,9 +47,9 @@ class Plots_for():
         if adversarial_values is not None:
             self.adversarial_values = adversarial_values.to(data_type).to(device)
 
-
-
     def _create_plot_convex_hull(self):
+        if self.hull is None:
+            return
         for simplex in self.hull.simplices:
             plt.plot(self.included_space[simplex, 0].cpu(), self.included_space[simplex, 1].cpu(), 'k-')
 
