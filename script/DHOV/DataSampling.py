@@ -213,6 +213,39 @@ def sample_random_sum_noise(data_samples, amount, center, eps, keep_samples=True
     return data_samples
 
 
+def sample_min_max_perturbation(data_samples, amount, affine_w, center, eps, keep_samples=True, numer_of_permutation=3):
+    samples_per_neuron = math.ceil(amount / affine_w.size(0))
+    samples_per_bound = samples_per_neuron // 2
+    eps_tensor = torch.zeros((affine_w.size(0), data_samples.size(1)), dtype=data_type).to(device) + eps
+    upper_input = torch.where(affine_w > 0, eps_tensor, - eps_tensor)
+    lower_input = torch.where(affine_w < 0, eps_tensor, - eps_tensor)
+
+    upper_samples = torch.zeros((samples_per_bound, affine_w.size(0), data_samples.size(1)), dtype=data_type).to(device) + upper_input
+    lower_samples = torch.zeros((samples_per_bound, affine_w.size(0), data_samples.size(1)), dtype=data_type).to(device) + lower_input
+
+    upper = eps
+    lower = - eps
+    noise_per_sample = (upper - lower) * torch.rand((samples_per_bound, affine_w.size(0), data_samples.size(1)), dtype=data_type).to(device) + lower
+
+    upper_samples.add_(noise_per_sample)
+    lower_samples.add_(noise_per_sample)
+
+    eps_tensor = torch.zeros_like(upper_samples, dtype=data_type).to(device) + eps
+    upper_samples = torch.where(upper_samples <= eps, upper_samples, eps_tensor)
+    upper_samples = torch.where(upper_samples >= -eps, upper_samples, -eps_tensor)
+
+    lower_samples = torch.where(lower_samples <= eps, lower_samples, eps_tensor)
+    lower_samples = torch.where(lower_samples >= -eps, lower_samples, -eps_tensor)
+
+    upper_samples[0] = upper_input
+    lower_samples[0] = lower_input
+
+    new_samples = torch.cat([upper_samples, lower_samples], dim=0)
+    new_samples.add_(center)
+    new_samples = torch.flatten(new_samples, 0, 1)
+    data_samples = torch.cat([data_samples, new_samples], dim=0)
+    return data_samples
+
 def sample_uniform_excluding(data_samples, amount, including_bound, excluding_bound=None, icnns=None, layer_index=None,
                              group_size=None, keep_samples=True, padding=0):
     input_size = data_samples.size(dim=1)
