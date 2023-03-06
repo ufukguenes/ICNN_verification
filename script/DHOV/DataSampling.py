@@ -164,6 +164,55 @@ def sample_linspace(data_samples, amount, center, eps, keep_samples=True):
     return data_samples
 
 
+def sample_boarder(data_samples, amount, center, eps, keep_samples=True):
+    step_number = 10
+    tensor_center = torch.zeros((step_number, data_samples.size(1)), dtype=data_type).to(device) + center
+    tensor_mask = torch.zeros((data_samples.size(1), step_number, data_samples.size(1)), dtype=data_type).to(device)
+    samples = torch.empty(step_number * data_samples.size(1), data_samples.size(1), dtype=data_type).to(device)
+    xs = torch.linspace(-eps, eps, steps=step_number, dtype=data_type).to(device)
+
+    for i in range(data_samples.size(1)):
+        for k in range(step_number):
+            tensor_mask[i][k][i] = xs[k]
+
+    new_samples = torch.add(tensor_center, tensor_mask)
+    new_samples = torch.flatten(new_samples, 0, 1)
+    if keep_samples and data_samples.size(0) > 0:
+        data_samples = torch.cat([data_samples, new_samples], dim=0)
+    else:
+        data_samples = new_samples
+    return data_samples
+
+def sample_random_sum_noise(data_samples, amount, center, eps, keep_samples=True):
+    upper = data_samples.size(1) * eps
+    lower = - upper
+    random_sums = (upper - lower) * torch.rand((amount, 1), dtype=data_type).to(device) + lower
+    random_divs = random_sums.div(data_samples.size(1))
+    samples = torch.zeros((amount, data_samples.size(1)), dtype=data_type).to(device)
+    samples = samples.add(random_divs)
+
+    upper = torch.zeros((amount, data_samples.size(1)), dtype=data_type).to(device).add(eps).add(- samples)
+    lower = torch.zeros((amount, data_samples.size(1)), dtype=data_type).to(device).add(-eps).add(- samples)
+
+    noise_per_sample = (upper - lower) * torch.rand((amount, data_samples.size(1)), dtype=data_type).to(device) + lower
+    sum_per_sample = torch.sum(noise_per_sample, dim=1)
+    div_sum_per_sample = sum_per_sample.div(data_samples.size(1))
+    for i in range(amount):
+       noise_per_sample[i] = noise_per_sample[i].add(- div_sum_per_sample[i])
+    samples = samples.add(noise_per_sample)
+
+    eps_tensor = torch.zeros_like(samples, dtype=data_type).to(device) + eps
+    samples = torch.where(samples <= eps, samples, eps_tensor)
+    samples = torch.where(samples >= -eps, samples, -eps_tensor)
+
+    new_samples = samples.add(center)
+    if keep_samples and data_samples.size(0) > 0:
+        data_samples = torch.cat([data_samples, new_samples], dim=0)
+    else:
+        data_samples = new_samples
+    return data_samples
+
+
 def sample_uniform_excluding(data_samples, amount, including_bound, excluding_bound=None, icnns=None, layer_index=None,
                              group_size=None, keep_samples=True, padding=0):
     input_size = data_samples.size(dim=1)

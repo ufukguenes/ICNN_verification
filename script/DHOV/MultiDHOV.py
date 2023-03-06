@@ -38,7 +38,7 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
     valid_adapt_lambda = ["none", "high_low", "included"]
     valid_should_plot = ["none", "simple", "detailed", "verification", "output"]
     valid_optimizer = ["adam", "LBFGS", "SdLBFGS"]
-    valid_sampling_methods = ["uniform", "linespace"]
+    valid_sampling_methods = ["uniform", "linespace", "boarder", "sum_noise"]
 
     parameter_list = list(nn.parameters())
     force_break = False
@@ -75,14 +75,20 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
         included_space = ds.samples_uniform_over(included_space, int(sample_count / 2), eps_bounds)
     elif sampling_method == "linespace":
         included_space = ds.sample_linspace(included_space, int(sample_count / 2), center, eps)
+    elif sampling_method == "boarder":
+        included_space = ds.sample_boarder(included_space, int(sample_count / 2), center, eps)
+    elif sampling_method == "sum_noise":
+        included_space = ds.sample_random_sum_noise(included_space, int(sample_count), center, eps)
+
+    #included_space = ds.samples_uniform_over(included_space, int(sample_count / 2), eps_bounds, keep_samples=True)
 
     ambient_space = torch.empty((0, input_flattened.size(0)), dtype=data_type).to(device)
     original_included_space = torch.empty((0, input_flattened.size(0)), dtype=data_type).to(device)
     original_ambient_space = torch.empty((0, input_flattened.size(0)), dtype=data_type).to(device)
 
-    adv_samp = torch.load("adv_samp.pt")
+    adv_samp = torch.load("adv_samp.pt") #todo rauslöschen
     included_space[0] = adv_samp
-    plt_inc_amb("help", torch.index_select(included_space, 1, torch.tensor([2, 3])).tolist(), torch.index_select(ambient_space, 1, torch.tensor([2, 3])).tolist())
+    #plt_inc_amb("help", torch.index_select(included_space, 1, torch.tensor([2, 3])).tolist(), torch.index_select(ambient_space, 1, torch.tensor([2, 3])).tolist())
 
     if should_plot in valid_should_plot and should_plot != "none":
         original_included_space, original_ambient_space = included_space, ambient_space
@@ -155,8 +161,9 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
         included_space = ds.apply_affine_transform(affine_w, affine_b, included_space)
         ambient_space = ds.apply_affine_transform(affine_w, affine_b, ambient_space)
 
-        plt_inc_amb("help", torch.index_select(included_space, 1, torch.tensor([2, 3])).tolist(),
+        plt_inc_amb("second layer output of neuron 2, 3 / number of samples {}".format(sample_count), torch.index_select(included_space, 1, torch.tensor([2, 3])).tolist(),
                     torch.index_select(ambient_space, 1, torch.tensor([2, 3])).tolist())
+        return
 
         if should_plot in valid_should_plot and should_plot != "none":
             original_included_space = ds.apply_affine_transform(affine_w, affine_b, original_included_space)
@@ -169,7 +176,7 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
         included_space = ds.apply_relu_transform(included_space)
         ambient_space = ds.apply_relu_transform(ambient_space)
 
-        plt_inc_amb("help", torch.index_select(included_space, 1, torch.tensor([2, 3])).tolist(),
+        plt_inc_amb("second layer output of neuron 2, 3", torch.index_select(included_space, 1, torch.tensor([2, 3])).tolist(),
                     torch.index_select(ambient_space, 1, torch.tensor([2, 3])).tolist())
 
         if should_plot in valid_should_plot and should_plot != "none":
