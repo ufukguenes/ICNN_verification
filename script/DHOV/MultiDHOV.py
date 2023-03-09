@@ -241,12 +241,23 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
 
             if sampling_method == "per_group_sampling":
                 included_space = torch.empty((0, affine_w.size(1)), dtype=data_type).to(device)
-                included_space = ds.sample_per_group(included_space, sample_count // 2, parameter_list[0], center, eps, index_to_select)
                 ambient_space = torch.empty((0, affine_w.size(1)), dtype=data_type).to(device)
 
+                if i == 0:
+                    included_space = ds.sample_per_group(included_space, sample_count // 2, parameter_list[0], center,
+                                                         eps, index_to_select)
+                else:
+                    included_space = ds.sample_per_group(included_space, sample_count // 2, parameter_list[0], center,
+                                                         eps, index_to_select)
+
+                included_space = ds.sample_min_max_perturbation(included_space, sample_count // 2, affine_w, center, eps, keep_samples=True, swap_probability=0.2)
+                included_space = ds.sample_per_group(included_space, sample_count // 2, parameter_list[0], center, eps, index_to_select, with_noise=True, with_sign_swap=True)
+                included_space = ds.sample_per_group(included_space, sample_count // 2, parameter_list[0], center, eps, index_to_select, with_noise=False, with_sign_swap=True)
+                included_space = ds.sample_per_group(included_space, sample_count // 2, parameter_list[0], center, eps, index_to_select, with_noise=True, with_sign_swap=False)
+
                 plt_inc_amb("layer output ",
-                            torch.index_select(included_space, 1, torch.tensor([1, 23])).tolist(),
-                            torch.index_select(ambient_space, 1, torch.tensor([1, 23])).tolist())
+                            torch.index_select(included_space, 1, index_to_select).tolist(),
+                            torch.index_select(ambient_space, 1, index_to_select).tolist())
 
                 if not keep_ambient_space:
                     raise NotImplementedError("keeping previous samples is not yet supported when using per group sampling")
@@ -258,8 +269,8 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
                 ambient_space = ds.apply_affine_transform(affine_w, affine_b, ambient_space)
 
                 plt_inc_amb("layer output ",
-                            torch.index_select(included_space, 1, torch.tensor([1, 23])).tolist(),
-                            torch.index_select(ambient_space, 1, torch.tensor([1, 23])).tolist())
+                            torch.index_select(included_space, 1, index_to_select).tolist(),
+                            torch.index_select(ambient_space, 1, index_to_select).tolist())
 
                 included_space = ds.apply_relu_transform(included_space)
                 ambient_space = ds.apply_relu_transform(ambient_space)
@@ -272,7 +283,6 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
 
             group_inc_space = torch.index_select(included_space, 1, index_to_select)
             group_amb_space = torch.index_select(ambient_space, 1, index_to_select)
-            plt_inc_amb("layer output of neuron ", group_inc_space.tolist(), group_amb_space.tolist())
 
 
             mean = norm.get_mean(group_inc_space, group_amb_space)
@@ -364,10 +374,6 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
 
             t = time.time()
             # verify and enlarge convex approximation
-            plots = Plots_for(0, current_icnn, group_inc_space.detach(),
-                                          group_amb_space.detach(),
-                                          [-0.1, 0.25], [-0.1, 0.4])
-            plots.plt_mesh()
             if use_over_approximation:
                 copy_model = model.copy()
                 adversarial_input, c = ver.verification(current_icnn, copy_model, affine_w.detach().numpy(),
@@ -381,11 +387,15 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
 
                 current_icnn.apply_enlargement(c)
 
+            plots = Plots_for(0, current_icnn, group_inc_space.detach(),
+                                          group_amb_space.detach(),
+                                          [-0.1, 0.25], [-0.1, 0.4])
             plots.plt_mesh()
             print("        time for verification: {}".format(time.time() - t))
 
             #inp_bounds_icnn = bounds_layer_out[current_layer_index]
             #ver.min_max_of_icnns([current_icnn], inp_bounds_icnn, [group_indices[group_i]], print_log=False)
+            #ver.min_max_of_icnns([current_icnn], inp_bounds_icnn, [group_indices[group_i]], print_log1, 23=False)
 
             """
             #visualisation for one single ReLu

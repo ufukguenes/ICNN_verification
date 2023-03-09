@@ -214,9 +214,7 @@ def sample_random_sum_noise(data_samples, amount, center, eps, keep_samples=True
     return data_samples
 
 
-def sample_per_group(data_samples, amount, affine_w, center, eps, index_to_select, keep_samples=True):
-    with_sign_swap = False
-    with_noise = False
+def sample_per_group(data_samples, amount, affine_w, center, eps, index_to_select, keep_samples=True, with_noise=False, with_sign_swap=False):
     samples_per_bound = amount // 2
     eps_tensor = torch.tensor(eps, dtype=data_type).to(device)
 
@@ -224,11 +222,6 @@ def sample_per_group(data_samples, amount, affine_w, center, eps, index_to_selec
     lower = - 1
     cs_temp = (upper - lower) * torch.rand((samples_per_bound, len(index_to_select)),
                                       dtype=data_type).to(device) + lower
-
-    cs_temp[1] = torch.tensor([1, 1], dtype=data_type).to(device)
-    cs_temp[2] = torch.tensor([1, -1], dtype=data_type).to(device)
-    cs_temp[3] = torch.tensor([-1, 1], dtype=data_type).to(device)
-    cs_temp[4] = torch.tensor([-1, -1], dtype=data_type).to(device)
 
     cs = torch.zeros((samples_per_bound, affine_w.size(0)), dtype=data_type).to(device)
 
@@ -276,16 +269,15 @@ def sample_per_group(data_samples, amount, affine_w, center, eps, index_to_selec
         upper_samples = torch.mul(upper_samples, swaps)
         lower_samples = torch.mul(lower_samples, swaps)
 
-    """ eps_tensor = torch.zeros((affine_w.size(0), data_samples.size(1)), dtype=data_type).to(device) + eps
-    upper_input = torch.where(affine_w > 0, eps_tensor, - eps_tensor)
-    lower_input = torch.where(affine_w < 0, eps_tensor, - eps_tensor)
-    upper_samples[0] = upper_input
-    lower_samples[0] = lower_input"""
 
     all_samples = torch.cat([upper_samples, lower_samples], dim=0)
     all_samples.add_(center)
 
-    return all_samples
+    if keep_samples and data_samples.size(0) > 0:
+        data_samples = torch.cat([data_samples, all_samples], dim=0)
+    else:
+        data_samples = all_samples
+    return data_samples
 
 
 def sample_alternate_min_max(data_samples, amount, affine_w, center, eps, keep_samples=True):
