@@ -213,6 +213,81 @@ def sample_random_sum_noise(data_samples, amount, center, eps, keep_samples=True
         data_samples = new_samples
     return data_samples
 
+
+def sample_per_group(data_samples, amount, affine_w, center, eps, index_to_select, keep_samples=True):
+    with_sign_swap = False
+    with_noise = False
+    samples_per_bound = amount // 2
+    eps_tensor = torch.tensor(eps, dtype=data_type).to(device)
+
+    upper = 1
+    lower = - 1
+    cs_temp = (upper - lower) * torch.rand((samples_per_bound, len(index_to_select)),
+                                      dtype=data_type).to(device) + lower
+
+    cs_temp[1] = torch.tensor([1, 1], dtype=data_type).to(device)
+    cs_temp[2] = torch.tensor([1, -1], dtype=data_type).to(device)
+    cs_temp[3] = torch.tensor([-1, 1], dtype=data_type).to(device)
+    cs_temp[4] = torch.tensor([-1, -1], dtype=data_type).to(device)
+
+    cs = torch.zeros((samples_per_bound, affine_w.size(0)), dtype=data_type).to(device)
+
+    for i in range(samples_per_bound):
+        for k, index in enumerate(index_to_select):
+            cs[i][index] = cs_temp[i][k]
+
+    affine_w_temp = torch.matmul(cs, affine_w)
+    upper_samples = torch.where(affine_w_temp > 0, eps_tensor, - eps_tensor)
+    lower_samples = torch.where(affine_w_temp < 0, eps_tensor, - eps_tensor)
+
+    if with_noise:
+        upper = eps
+        lower = - eps
+        noise_per_sample = (upper - lower) * torch.rand((samples_per_bound, data_samples.size(1)),
+                                                        dtype=data_type).to(device) + lower
+
+        upper_samples.add_(noise_per_sample)
+        lower_samples.add_(noise_per_sample)
+
+        upper_samples = torch.where(upper_samples <= eps, upper_samples, eps_tensor)
+        upper_samples = torch.where(upper_samples >= -eps, upper_samples, -eps_tensor)
+
+        lower_samples = torch.where(lower_samples <= eps, lower_samples, eps_tensor)
+        lower_samples = torch.where(lower_samples >= -eps, lower_samples, -eps_tensor)
+
+    if with_sign_swap:
+        # changing sign
+        swap_probability = 0.2
+        if swap_probability == 0:
+            swaps = torch.ones((samples_per_bound, data_samples.size(1)))
+        elif swap_probability == 1:
+            swaps = -1 * torch.ones((samples_per_bound, data_samples.size(1)))
+        elif swap_probability <= 0.5:
+            swap_probability = int(1 / swap_probability)
+            swaps = torch.randint(-1, swap_probability, (samples_per_bound, data_samples.size(1)),
+                                  dtype=torch.int8)
+            swaps = torch.where(swaps >= 0, 1, swaps)
+        else:
+            swap_probability = 1 - swap_probability
+            swap_probability = - int(1 / swap_probability)
+            swaps = torch.randint(swap_probability, 1, (samples_per_bound, data_samples.size(1)),
+                                  dtype=torch.int8)
+            swaps = torch.where(swaps <= 0, 1, swaps)
+        upper_samples = torch.mul(upper_samples, swaps)
+        lower_samples = torch.mul(lower_samples, swaps)
+
+    """ eps_tensor = torch.zeros((affine_w.size(0), data_samples.size(1)), dtype=data_type).to(device) + eps
+    upper_input = torch.where(affine_w > 0, eps_tensor, - eps_tensor)
+    lower_input = torch.where(affine_w < 0, eps_tensor, - eps_tensor)
+    upper_samples[0] = upper_input
+    lower_samples[0] = lower_input"""
+
+    all_samples = torch.cat([upper_samples, lower_samples], dim=0)
+    all_samples.add_(center)
+
+    return all_samples
+
+
 def sample_alternate_min_max(data_samples, amount, affine_w, center, eps, keep_samples=True):
     samples_per_neuron = math.ceil(amount / affine_w.size(0))
     samples_per_bound = samples_per_neuron // 2

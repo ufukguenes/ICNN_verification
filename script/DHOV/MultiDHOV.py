@@ -38,7 +38,8 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
     valid_adapt_lambda = ["none", "high_low", "included"]
     valid_should_plot = ["none", "simple", "detailed", "verification", "output"]
     valid_optimizer = ["adam", "LBFGS", "SdLBFGS"]
-    valid_sampling_methods = ["uniform", "linespace", "boarder", "sum_noise", "min_max_perturbation", "alternate_min_max"]
+    valid_sampling_methods = ["uniform", "linespace", "boarder", "sum_noise", "min_max_perturbation",
+                              "alternate_min_max", "per_group_sampling"]
 
     parameter_list = list(nn.parameters())
     force_break = False
@@ -71,31 +72,32 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
 
     included_space = torch.empty((0, input_flattened.size(0)), dtype=data_type).to(device)
 
-    if sampling_method == "uniform":
-        included_space = ds.samples_uniform_over(included_space, int(sample_count / 2), eps_bounds)
-    elif sampling_method == "linespace":
-        included_space = ds.sample_linspace(included_space, int(sample_count / 2), center, eps)
-    elif sampling_method == "boarder":
-        included_space = ds.sample_boarder(included_space, int(sample_count / 2), center, eps)
-    elif sampling_method == "sum_noise":
-        included_space = ds.sample_random_sum_noise(included_space, int(sample_count), center, eps)
-    elif sampling_method == "min_max_perturbation":
-        included_space = ds.sample_min_max_perturbation(included_space, int(sample_count), parameter_list[0], center, eps)
-    elif sampling_method == "alternate_min_max":
-        included_space = ds.sample_alternate_min_max(included_space, int(sample_count), parameter_list[0], center, eps)
+    if sampling_method != "per_group_sampling":
+        if sampling_method == "uniform":
+            included_space = ds.samples_uniform_over(included_space, int(sample_count / 2), eps_bounds)
+        elif sampling_method == "linespace":
+            included_space = ds.sample_linspace(included_space, int(sample_count / 2), center, eps)
+        elif sampling_method == "boarder":
+            included_space = ds.sample_boarder(included_space, int(sample_count / 2), center, eps)
+        elif sampling_method == "sum_noise":
+            included_space = ds.sample_random_sum_noise(included_space, int(sample_count), center, eps)
+        elif sampling_method == "min_max_perturbation":
+            included_space = ds.sample_min_max_perturbation(included_space, int(sample_count), parameter_list[0], center, eps)
+        elif sampling_method == "alternate_min_max":
+            included_space = ds.sample_alternate_min_max(included_space, int(sample_count), parameter_list[0], center, eps)
 
-    #included_space = ds.samples_uniform_over(included_space, int(sample_count / 2), eps_bounds, keep_samples=True)
+        #included_space = ds.samples_uniform_over(included_space, int(sample_count / 2), eps_bounds, keep_samples=True)
 
-    ambient_space = torch.empty((0, input_flattened.size(0)), dtype=data_type).to(device)
-    original_included_space = torch.empty((0, input_flattened.size(0)), dtype=data_type).to(device)
-    original_ambient_space = torch.empty((0, input_flattened.size(0)), dtype=data_type).to(device)
+        ambient_space = torch.empty((0, input_flattened.size(0)), dtype=data_type).to(device)
+        original_included_space = torch.empty((0, input_flattened.size(0)), dtype=data_type).to(device)
+        original_ambient_space = torch.empty((0, input_flattened.size(0)), dtype=data_type).to(device)
 
-    #adv_samp = torch.load("adv_samp.pt") #todo rauslöschen
-    #included_space[0] = adv_samp
-    plt_inc_amb("help", torch.index_select(included_space, 1, torch.tensor([1, 23])).tolist(), torch.index_select(ambient_space, 1, torch.tensor([1, 23])).tolist())
+        #adv_samp = torch.load("adv_samp.pt") #todo rauslöschen
+        #included_space[0] = adv_samp
+        plt_inc_amb("help", torch.index_select(included_space, 1, torch.tensor([1, 23])).tolist(), torch.index_select(ambient_space, 1, torch.tensor([1, 23])).tolist())
 
-    if should_plot in valid_should_plot and should_plot != "none":
-        original_included_space, original_ambient_space = included_space, ambient_space
+        if should_plot in valid_should_plot and should_plot != "none":
+            original_included_space, original_ambient_space = included_space, ambient_space
 
     force_inclusion_steps += 1
     data_grad_descent_steps += 1
@@ -144,64 +146,65 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
         num_fixed_neurons_layer.append(len(fix_lower) + len(fix_upper))
         print("    number of fixed neurons for current layer: {}".format(len(fix_lower) + len(fix_upper)))
 
-        if not keep_ambient_space:
-            ambient_space = torch.empty((0, nn.layer_widths[current_layer_index]), dtype=data_type).to(device)
+        if sampling_method != "per_group_sampling":
+            if not keep_ambient_space:
+                ambient_space = torch.empty((0, nn.layer_widths[current_layer_index]), dtype=data_type).to(device)
 
-        if sample_over_input_space:
-            if i == 0:
-                ambient_space = ds.sample_uniform_excluding(ambient_space, int(sample_count / 2), eps_bounds,
-                                                            excluding_bound=eps_bounds, padding=eps)
-            else:
-                # todo test for when lower/upper bound is smaller then eps
-                ambient_space = ds.sample_uniform_excluding(ambient_space, int(sample_count / 2),
-                                                            bounds_layer_out[current_layer_index - 1],
-                                                            icnns=list_of_icnns[current_layer_index - 1],
-                                                            layer_index=current_layer_index, group_size=group_size,
-                                                            padding=eps)
+            if sample_over_input_space:
+                if i == 0:
+                    ambient_space = ds.sample_uniform_excluding(ambient_space, int(sample_count / 2), eps_bounds,
+                                                                excluding_bound=eps_bounds, padding=eps)
+                else:
+                    # todo test for when lower/upper bound is smaller then eps
+                    ambient_space = ds.sample_uniform_excluding(ambient_space, int(sample_count / 2),
+                                                                bounds_layer_out[current_layer_index - 1],
+                                                                icnns=list_of_icnns[current_layer_index - 1],
+                                                                layer_index=current_layer_index, group_size=group_size,
+                                                                padding=eps)
 
-        if should_plot == "detailed":
-            plt_inc_amb("start " + str(i), included_space.tolist(), ambient_space.tolist())
-
-        included_space = ds.apply_affine_transform(affine_w, affine_b, included_space)
-        ambient_space = ds.apply_affine_transform(affine_w, affine_b, ambient_space)
-
-        plt_inc_amb("second layer output of neuron 2, 3 / number of samples {}".format(sample_count),
-                    torch.index_select(included_space, 1, torch.tensor([1, 23])).tolist(),
-                    torch.index_select(ambient_space, 1, torch.tensor([1, 23])).tolist())
-
-        if should_plot in valid_should_plot and should_plot != "none":
-            original_included_space = ds.apply_affine_transform(affine_w, affine_b, original_included_space)
-            original_ambient_space = ds.apply_affine_transform(affine_w, affine_b, original_ambient_space)
             if should_plot == "detailed":
-                plt_inc_amb("affin e" + str(i), included_space.tolist(), ambient_space.tolist())
-                plt_inc_amb("original affin e" + str(i), original_included_space.tolist(),
-                            original_ambient_space.tolist())
+                plt_inc_amb("start " + str(i), included_space.tolist(), ambient_space.tolist())
 
-        included_space = ds.apply_relu_transform(included_space)
-        ambient_space = ds.apply_relu_transform(ambient_space)
+            included_space = ds.apply_affine_transform(affine_w, affine_b, included_space)
+            ambient_space = ds.apply_affine_transform(affine_w, affine_b, ambient_space)
 
-        plt_inc_amb("second layer output of neuron 2, 3", torch.index_select(included_space, 1, torch.tensor([2, 3])).tolist(),
-                    torch.index_select(ambient_space, 1, torch.tensor([2, 3])).tolist())
+            plt_inc_amb("second layer output of neuron 2, 3 / number of samples {}".format(sample_count),
+                        torch.index_select(included_space, 1, torch.tensor([1, 23])).tolist(),
+                        torch.index_select(ambient_space, 1, torch.tensor([1, 23])).tolist())
 
-        if should_plot in valid_should_plot and should_plot != "none":
-            original_included_space = ds.apply_relu_transform(original_included_space)
-            original_ambient_space = ds.apply_relu_transform(original_ambient_space)
+            if should_plot in valid_should_plot and should_plot != "none":
+                original_included_space = ds.apply_affine_transform(affine_w, affine_b, original_included_space)
+                original_ambient_space = ds.apply_affine_transform(affine_w, affine_b, original_ambient_space)
+                if should_plot == "detailed":
+                    plt_inc_amb("affin e" + str(i), included_space.tolist(), ambient_space.tolist())
+                    plt_inc_amb("original affin e" + str(i), original_included_space.tolist(),
+                                original_ambient_space.tolist())
+
+            included_space = ds.apply_relu_transform(included_space)
+            ambient_space = ds.apply_relu_transform(ambient_space)
+
+            plt_inc_amb("second layer output of neuron 2, 3", torch.index_select(included_space, 1, torch.tensor([2, 3])).tolist(),
+                        torch.index_select(ambient_space, 1, torch.tensor([2, 3])).tolist())
+
+            if should_plot in valid_should_plot and should_plot != "none":
+                original_included_space = ds.apply_relu_transform(original_included_space)
+                original_ambient_space = ds.apply_relu_transform(original_ambient_space)
+                if should_plot == "detailed":
+                    plt_inc_amb("relu " + str(i), included_space.tolist(), ambient_space.tolist())
+                    plt_inc_amb("original relu e" + str(i), original_included_space.tolist(),
+                                original_ambient_space.tolist())
+
+            if sample_over_output_space:
+                ambient_space = ds.samples_uniform_over(ambient_space, int(sample_count / 2),
+                                                        bounds_layer_out[current_layer_index], padding=eps)
+                if should_plot in ["simple", "detailed"]:
+                    original_ambient_space = ds.samples_uniform_over(original_ambient_space, int(sample_count / 2),
+                                                                     bounds_layer_out[current_layer_index], padding=eps)
+
             if should_plot == "detailed":
-                plt_inc_amb("relu " + str(i), included_space.tolist(), ambient_space.tolist())
-                plt_inc_amb("original relu e" + str(i), original_included_space.tolist(),
+                plt_inc_amb("enhanced ambient space " + str(i), included_space.tolist(), ambient_space.tolist())
+                plt_inc_amb("original enhanced ambient space " + str(i), original_included_space.tolist(),
                             original_ambient_space.tolist())
-
-        if sample_over_output_space:
-            ambient_space = ds.samples_uniform_over(ambient_space, int(sample_count / 2),
-                                                    bounds_layer_out[current_layer_index], padding=eps)
-            if should_plot in ["simple", "detailed"]:
-                original_ambient_space = ds.samples_uniform_over(original_ambient_space, int(sample_count / 2),
-                                                                 bounds_layer_out[current_layer_index], padding=eps)
-
-        if should_plot == "detailed":
-            plt_inc_amb("enhanced ambient space " + str(i), included_space.tolist(), ambient_space.tolist())
-            plt_inc_amb("original enhanced ambient space " + str(i), original_included_space.tolist(),
-                        original_ambient_space.tolist())
 
         number_of_groups = get_num_of_groups(len(affine_b) - num_fixed_neurons_layer[current_layer_index], group_size)
         group_indices = get_current_group_indices(len(affine_b), group_size,
@@ -231,12 +234,46 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
             t = time.time()
 
             index_to_select = torch.tensor(group_indices[group_i]).to(device)
-            group_inc_space = torch.index_select(included_space, 1, index_to_select)
-            group_amb_space = torch.index_select(ambient_space, 1, index_to_select)
 
             size_of_icnn_input = len(index_to_select)
             current_icnn = icnn_factory.get_new_icnn(size_of_icnn_input)
             list_of_icnns[current_layer_index].append(current_icnn)
+
+            if sampling_method == "per_group_sampling":
+                included_space = torch.empty((0, affine_w.size(1)), dtype=data_type).to(device)
+                included_space = ds.sample_per_group(included_space, sample_count // 2, parameter_list[0], center, eps, index_to_select)
+                ambient_space = torch.empty((0, affine_w.size(1)), dtype=data_type).to(device)
+
+                plt_inc_amb("layer output ",
+                            torch.index_select(included_space, 1, torch.tensor([1, 23])).tolist(),
+                            torch.index_select(ambient_space, 1, torch.tensor([1, 23])).tolist())
+
+                if not keep_ambient_space:
+                    raise NotImplementedError("keeping previous samples is not yet supported when using per group sampling")
+
+                if sample_over_input_space:
+                    raise NotImplementedError("sampling over input space is not yet supported when using per group sampling")
+
+                included_space = ds.apply_affine_transform(affine_w, affine_b, included_space)
+                ambient_space = ds.apply_affine_transform(affine_w, affine_b, ambient_space)
+
+                plt_inc_amb("layer output ",
+                            torch.index_select(included_space, 1, torch.tensor([1, 23])).tolist(),
+                            torch.index_select(ambient_space, 1, torch.tensor([1, 23])).tolist())
+
+                included_space = ds.apply_relu_transform(included_space)
+                ambient_space = ds.apply_relu_transform(ambient_space)
+
+                if sample_over_output_space:
+                    ambient_space = ds.samples_uniform_over(ambient_space, sample_count // 2, bounds_layer_out[current_layer_index],
+                                            padding=eps)
+
+
+
+            group_inc_space = torch.index_select(included_space, 1, index_to_select)
+            group_amb_space = torch.index_select(ambient_space, 1, index_to_select)
+            plt_inc_amb("layer output of neuron ", group_inc_space.tolist(), group_amb_space.tolist())
+
 
             mean = norm.get_mean(group_inc_space, group_amb_space)
             std = norm.get_std(group_inc_space, group_amb_space)
@@ -329,7 +366,7 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
             # verify and enlarge convex approximation
             plots = Plots_for(0, current_icnn, group_inc_space.detach(),
                                           group_amb_space.detach(),
-                                          [0, 0.35], [0, 0.35])
+                                          [-0.1, 0.25], [-0.1, 0.4])
             plots.plt_mesh()
             if use_over_approximation:
                 copy_model = model.copy()
