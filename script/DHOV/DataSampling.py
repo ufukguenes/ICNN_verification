@@ -232,7 +232,7 @@ def sample_alternate_min_max(data_samples, amount, affine_w, center, eps, keep_s
     upper_samples = torch.where(affine_w_temp > 0, eps_tensor, - eps_tensor)
     lower_samples = torch.where(affine_w_temp < 0, eps_tensor, - eps_tensor)
 
-    """upper = eps
+    upper = eps
     lower = - eps
     noise_per_sample = (upper - lower) * torch.rand((samples_per_bound, affine_w.size(0), data_samples.size(1)),
                                                     dtype=data_type).to(device) + lower
@@ -245,7 +245,7 @@ def sample_alternate_min_max(data_samples, amount, affine_w, center, eps, keep_s
     upper_samples = torch.where(upper_samples >= -eps, upper_samples, -eps_tensor)
 
     lower_samples = torch.where(lower_samples <= eps, lower_samples, eps_tensor)
-    lower_samples = torch.where(lower_samples >= -eps, lower_samples, -eps_tensor)"""
+    lower_samples = torch.where(lower_samples >= -eps, lower_samples, -eps_tensor)
 
     eps_tensor = torch.zeros((affine_w.size(0), data_samples.size(1)), dtype=data_type).to(device) + eps
     upper_input = torch.where(affine_w > 0, eps_tensor, - eps_tensor)
