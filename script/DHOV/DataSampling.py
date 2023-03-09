@@ -213,6 +213,51 @@ def sample_random_sum_noise(data_samples, amount, center, eps, keep_samples=True
         data_samples = new_samples
     return data_samples
 
+def sample_alternate_min_max(data_samples, amount, affine_w, center, eps, keep_samples=True):
+    samples_per_neuron = math.ceil(amount / affine_w.size(0))
+    samples_per_bound = samples_per_neuron // 2
+    eps_tensor = torch.zeros((affine_w.size(0), data_samples.size(1)), dtype=data_type).to(device) + eps
+
+    upper = 1
+    lower = - 1
+    cs = (upper - lower) * torch.rand((samples_per_bound, 1, affine_w.size(0)),
+                                                    dtype=data_type).to(device) + lower
+
+    cs[1][0] = torch.zeros(affine_w.size(0), dtype=data_type).to(device)
+    cs[1][0][1] = 1
+    cs[1][0][23] = 1
+
+
+    affine_w_temp = torch.matmul(cs, affine_w)
+    upper_samples = torch.where(affine_w_temp > 0, eps_tensor, - eps_tensor)
+    lower_samples = torch.where(affine_w_temp < 0, eps_tensor, - eps_tensor)
+
+    """upper = eps
+    lower = - eps
+    noise_per_sample = (upper - lower) * torch.rand((samples_per_bound, affine_w.size(0), data_samples.size(1)),
+                                                    dtype=data_type).to(device) + lower
+
+    upper_samples.add_(noise_per_sample)
+    lower_samples.add_(noise_per_sample)
+
+
+    upper_samples = torch.where(upper_samples <= eps, upper_samples, eps_tensor)
+    upper_samples = torch.where(upper_samples >= -eps, upper_samples, -eps_tensor)
+
+    lower_samples = torch.where(lower_samples <= eps, lower_samples, eps_tensor)
+    lower_samples = torch.where(lower_samples >= -eps, lower_samples, -eps_tensor)"""
+
+    eps_tensor = torch.zeros((affine_w.size(0), data_samples.size(1)), dtype=data_type).to(device) + eps
+    upper_input = torch.where(affine_w > 0, eps_tensor, - eps_tensor)
+    lower_input = torch.where(affine_w < 0, eps_tensor, - eps_tensor)
+    upper_samples[0] = upper_input
+    lower_samples[0] = lower_input
+    upper_samples = torch.flatten(upper_samples, 0, 1)
+    lower_samples = torch.flatten(lower_samples, 0, 1)
+    all_samples = torch.cat([upper_samples, lower_samples], dim=0)
+    all_samples.add_(center)
+
+    return all_samples
 
 def sample_min_max_perturbation(data_samples, amount, affine_w, center, eps, keep_samples=True, swap_probability=0.2):
     samples_per_neuron = math.ceil(amount / affine_w.size(0))
@@ -264,8 +309,11 @@ def sample_min_max_perturbation(data_samples, amount, affine_w, center, eps, kee
     new_samples = torch.cat([upper_samples, lower_samples], dim=0)
     new_samples.add_(center)
     new_samples = torch.flatten(new_samples, 0, 1)
-    return new_samples
-    data_samples = torch.cat([data_samples, new_samples], dim=0)
+
+    if keep_samples and data_samples.size(0) > 0:
+        data_samples = torch.cat([data_samples, new_samples], dim=0)
+    else:
+        data_samples = new_samples
     return data_samples
 
 

@@ -38,7 +38,7 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
     valid_adapt_lambda = ["none", "high_low", "included"]
     valid_should_plot = ["none", "simple", "detailed", "verification", "output"]
     valid_optimizer = ["adam", "LBFGS", "SdLBFGS"]
-    valid_sampling_methods = ["uniform", "linespace", "boarder", "sum_noise", "min_max_perturbation"]
+    valid_sampling_methods = ["uniform", "linespace", "boarder", "sum_noise", "min_max_perturbation", "alternate_min_max"]
 
     parameter_list = list(nn.parameters())
     force_break = False
@@ -69,7 +69,7 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
         bounds_affine_out, bounds_layer_out = nn.calculate_box_bounds(
             eps_bounds)  # todo abbrechen, wenn die box bounds schon die eigenschaft erfüllen
 
-    included_space = torch.empty((1, input_flattened.size(0)), dtype=data_type).to(device)
+    included_space = torch.empty((0, input_flattened.size(0)), dtype=data_type).to(device)
 
     if sampling_method == "uniform":
         included_space = ds.samples_uniform_over(included_space, int(sample_count / 2), eps_bounds)
@@ -81,6 +81,8 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
         included_space = ds.sample_random_sum_noise(included_space, int(sample_count), center, eps)
     elif sampling_method == "min_max_perturbation":
         included_space = ds.sample_min_max_perturbation(included_space, int(sample_count), parameter_list[0], center, eps)
+    elif sampling_method == "alternate_min_max":
+        included_space = ds.sample_alternate_min_max(included_space, int(sample_count), parameter_list[0], center, eps)
 
     #included_space = ds.samples_uniform_over(included_space, int(sample_count / 2), eps_bounds, keep_samples=True)
 
@@ -90,7 +92,7 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
 
     #adv_samp = torch.load("adv_samp.pt") #todo rauslöschen
     #included_space[0] = adv_samp
-    plt_inc_amb("help", torch.index_select(included_space, 1, torch.tensor([2, 3])).tolist(), torch.index_select(ambient_space, 1, torch.tensor([2, 3])).tolist())
+    plt_inc_amb("help", torch.index_select(included_space, 1, torch.tensor([1, 23])).tolist(), torch.index_select(ambient_space, 1, torch.tensor([1, 23])).tolist())
 
     if should_plot in valid_should_plot and should_plot != "none":
         original_included_space, original_ambient_space = included_space, ambient_space
@@ -163,8 +165,9 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
         included_space = ds.apply_affine_transform(affine_w, affine_b, included_space)
         ambient_space = ds.apply_affine_transform(affine_w, affine_b, ambient_space)
 
-        plt_inc_amb("second layer output of neuron 2, 3 / number of samples {}".format(sample_count), torch.index_select(included_space, 1, torch.tensor([2, 3])).tolist(),
-                    torch.index_select(ambient_space, 1, torch.tensor([2, 3])).tolist())
+        plt_inc_amb("second layer output of neuron 2, 3 / number of samples {}".format(sample_count),
+                    torch.index_select(included_space, 1, torch.tensor([1, 23])).tolist(),
+                    torch.index_select(ambient_space, 1, torch.tensor([1, 23])).tolist())
 
         if should_plot in valid_should_plot and should_plot != "none":
             original_included_space = ds.apply_affine_transform(affine_w, affine_b, original_included_space)
