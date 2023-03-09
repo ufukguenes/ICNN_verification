@@ -6,6 +6,7 @@ import torch
 import gurobipy as grp
 from script.settings import device, data_type
 
+
 def sample_max_radius(icnns, sample_size, group_indices, curr_bounds_layer_out, fixed_neuron_lower, fixed_neuron_upper):
     center_values = torch.zeros(len(curr_bounds_layer_out[0]), dtype=data_type).to(device)
     eps_values = torch.zeros(len(curr_bounds_layer_out[0]), dtype=data_type).to(device)
@@ -27,7 +28,6 @@ def sample_max_radius(icnns, sample_size, group_indices, curr_bounds_layer_out, 
         icnn.add_max_output_constraints(m, input_to_icnn_two, icnn_bounds_affine_out, icnn_bounds_layer_out)
 
         difference = m.addVar(lb=-float('inf'))
-
 
         for i in range(icnn_input_size):
             diff_const = m.addConstr(difference == input_to_icnn_one[i] - input_to_icnn_two[i])
@@ -104,7 +104,6 @@ def sample_max_radius(icnns, sample_size, group_indices, curr_bounds_layer_out, 
                 is_included = False
                 break
 
-
         if is_included:
             included_space = torch.cat([included_space, samp], dim=0)
         else:
@@ -148,8 +147,9 @@ def samples_uniform_over(data_samples, amount, bounds, keep_samples=True, paddin
 
     return data_samples
 
+
 def sample_linspace(data_samples, amount, center, eps, keep_samples=True):
-    step_number = 1 #math.floor(math.sqrt(amount))
+    step_number = 1  # math.floor(math.sqrt(amount))
     xs = torch.linspace(-eps, eps, steps=step_number)
     """#ys = torch.linspace(-eps, eps, steps=step_number)
     tens = [xs for i in range(step_number)]
@@ -183,6 +183,7 @@ def sample_boarder(data_samples, amount, center, eps, keep_samples=True):
         data_samples = new_samples
     return data_samples
 
+
 def sample_random_sum_noise(data_samples, amount, center, eps, keep_samples=True):
     upper = data_samples.size(1) * eps
     lower = - upper
@@ -198,7 +199,7 @@ def sample_random_sum_noise(data_samples, amount, center, eps, keep_samples=True
     sum_per_sample = torch.sum(noise_per_sample, dim=1)
     div_sum_per_sample = sum_per_sample.div(data_samples.size(1))
     for i in range(amount):
-       noise_per_sample[i] = noise_per_sample[i].add(- div_sum_per_sample[i])
+        noise_per_sample[i] = noise_per_sample[i].add(- div_sum_per_sample[i])
     samples = samples.add(noise_per_sample)
 
     eps_tensor = torch.zeros_like(samples, dtype=data_type).to(device) + eps
@@ -213,19 +214,22 @@ def sample_random_sum_noise(data_samples, amount, center, eps, keep_samples=True
     return data_samples
 
 
-def sample_min_max_perturbation(data_samples, amount, affine_w, center, eps, keep_samples=True, numer_of_permutation=3):
+def sample_min_max_perturbation(data_samples, amount, affine_w, center, eps, keep_samples=True, swap_probability=0.2):
     samples_per_neuron = math.ceil(amount / affine_w.size(0))
     samples_per_bound = samples_per_neuron // 2
     eps_tensor = torch.zeros((affine_w.size(0), data_samples.size(1)), dtype=data_type).to(device) + eps
     upper_input = torch.where(affine_w > 0, eps_tensor, - eps_tensor)
     lower_input = torch.where(affine_w < 0, eps_tensor, - eps_tensor)
 
-    upper_samples = torch.zeros((samples_per_bound, affine_w.size(0), data_samples.size(1)), dtype=data_type).to(device) + upper_input
-    lower_samples = torch.zeros((samples_per_bound, affine_w.size(0), data_samples.size(1)), dtype=data_type).to(device) + lower_input
+    upper_samples = torch.zeros((samples_per_bound, affine_w.size(0), data_samples.size(1)), dtype=data_type).to(
+        device) + upper_input
+    lower_samples = torch.zeros((samples_per_bound, affine_w.size(0), data_samples.size(1)), dtype=data_type).to(
+        device) + lower_input
 
     upper = eps
     lower = - eps
-    noise_per_sample = (upper - lower) * torch.rand((samples_per_bound, affine_w.size(0), data_samples.size(1)), dtype=data_type).to(device) + lower
+    noise_per_sample = (upper - lower) * torch.rand((samples_per_bound, affine_w.size(0), data_samples.size(1)),
+                                                    dtype=data_type).to(device) + lower
 
     upper_samples.add_(noise_per_sample)
     lower_samples.add_(noise_per_sample)
@@ -237,14 +241,33 @@ def sample_min_max_perturbation(data_samples, amount, affine_w, center, eps, kee
     lower_samples = torch.where(lower_samples <= eps, lower_samples, eps_tensor)
     lower_samples = torch.where(lower_samples >= -eps, lower_samples, -eps_tensor)
 
+    # changing sign
+    if swap_probability == 0:
+        swaps = torch.ones((samples_per_bound, affine_w.size(0), data_samples.size(1)))
+    elif swap_probability == 1:
+        swaps = -1 * torch.ones((samples_per_bound, affine_w.size(0), data_samples.size(1)))
+    elif swap_probability <= 0.5:
+        swap_probability = int(1 / swap_probability)
+        swaps = torch.randint(-1, swap_probability, (samples_per_bound, affine_w.size(0), data_samples.size(1)), dtype=torch.int8)
+        swaps = torch.where(swaps >= 0, 1, swaps)
+    else:
+        swap_probability = 1 - swap_probability
+        swap_probability = - int(1 / swap_probability)
+        swaps = torch.randint(swap_probability, 1, (samples_per_bound, affine_w.size(0), data_samples.size(1)), dtype=torch.int8)
+        swaps = torch.where(swaps <= 0, 1, swaps)
+    upper_samples = torch.mul(upper_samples, swaps)
+    lower_samples = torch.mul(lower_samples, swaps)
+
     upper_samples[0] = upper_input
     lower_samples[0] = lower_input
 
     new_samples = torch.cat([upper_samples, lower_samples], dim=0)
     new_samples.add_(center)
     new_samples = torch.flatten(new_samples, 0, 1)
+    return new_samples
     data_samples = torch.cat([data_samples, new_samples], dim=0)
     return data_samples
+
 
 def sample_uniform_excluding(data_samples, amount, including_bound, excluding_bound=None, icnns=None, layer_index=None,
                              group_size=None, keep_samples=True, padding=0):
@@ -278,7 +301,8 @@ def sample_uniform_excluding(data_samples, amount, including_bound, excluding_bo
                 if group_i == number_of_groups - 1 and input_size % group_size > 0:
                     from_to_neurons = [group_size * group_i, group_size * group_i + (input_size % group_size)]
                 else:
-                    from_to_neurons = [group_size * group_i, group_size * group_i + group_size]  # upper bound is exclusive
+                    from_to_neurons = [group_size * group_i,
+                                       group_size * group_i + group_size]  # upper bound is exclusive
                 inp = torch.unsqueeze(samp.clone()[from_to_neurons[0]:from_to_neurons[1]], 0)
                 out = icnns[group_i](inp)
                 if out > 0:

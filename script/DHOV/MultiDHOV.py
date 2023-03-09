@@ -88,8 +88,8 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
     original_included_space = torch.empty((0, input_flattened.size(0)), dtype=data_type).to(device)
     original_ambient_space = torch.empty((0, input_flattened.size(0)), dtype=data_type).to(device)
 
-    adv_samp = torch.load("adv_samp.pt") #todo rauslöschen
-    included_space[0] = adv_samp
+    #adv_samp = torch.load("adv_samp.pt") #todo rauslöschen
+    #included_space[0] = adv_samp
     plt_inc_amb("help", torch.index_select(included_space, 1, torch.tensor([2, 3])).tolist(), torch.index_select(ambient_space, 1, torch.tensor([2, 3])).tolist())
 
     if should_plot in valid_should_plot and should_plot != "none":
