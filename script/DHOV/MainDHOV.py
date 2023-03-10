@@ -331,7 +331,7 @@ def multi_net2D():
                                init_scaling=10, init_all_with_zeros=False)
     # icnn_factory = ICNNFactory("standard", [10, 10, 1])
     #icnn_factory = ICNNFactory("approx_max", [10, 1])
-    eps = 0.01
+    eps = 1
     #matplotlib.use('TkAgg')
 
     icnns, all_group_indices, fixed_neuron_per_layer_lower, fixed_neuron_per_layer_upper, bounds_affine_out, bounds_layer_out = \

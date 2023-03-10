@@ -246,8 +246,9 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
                 if i == 0:
                     """included_space = ds.sample_per_group(included_space, sample_count // 2, affine_w, center,
                                                          eps, index_to_select)"""
-                    included_space = ds.sample_per_group(included_space, sample_count // 2, affine_w, center,
-                                                         eps, index_to_select, rand_samples_percent=0.2)
+                    included_space = ds.sample_per_group(included_space, sample_count // 4, affine_w, center,
+                                                         eps, index_to_select, rand_samples_percent=0.2, rand_sample_alternation_percent=0.01)
+                    included_space = ds.samples_uniform_over(included_space, sample_count // 4, eps_bounds, keep_samples=True)
                     # included_space = ds.sample_min_max_perturbation(included_space, sample_count // 4, affine_w, center, eps, keep_samples=True, swap_probability=0.2)
                     # included_space = ds.sample_per_group(included_space, sample_count // 2, parameter_list[0], center, eps, index_to_select, with_noise=True, with_sign_swap=True)
                     # included_space = ds.sample_per_group(included_space, sample_count // 2, parameter_list[0], center, eps, index_to_select, with_noise=False, with_sign_swap=True)
@@ -255,17 +256,18 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
                 else:
                     copy_model = model.copy()
                     t_group = time.time()
-                    included_space = ds.sample_per_group_as_lp(included_space, sample_count // 2, affine_w, affine_b,
+                    included_space = ds.sample_per_group_as_lp(included_space, sample_count // 4, affine_w, affine_b,
                                                                eps, index_to_select, copy_model,
                                                                bounds_affine_out[current_layer_index],
-                                                               rand_samples_percent=0.2, keep_samples=True)
+                                                               rand_samples_percent=0.2, rand_sample_alternation_percent=0.2)
+                    included_space = ds.sample_uniform_over_icnn(included_space, sample_count // 4, list_of_icnns[current_layer_index - 1], all_group_indices[current_layer_index - 1], bounds_layer_out[current_layer_index - 1], keep_samples=True)
                     print("        time for sampling for one group: {}".format(time.time() - t_group))
 
 
 
-                plt_inc_amb("layer input ",
+                """plt_inc_amb("layer input ",
                             torch.index_select(included_space, 1, index_to_select).tolist(),
-                            torch.index_select(ambient_space, 1, index_to_select).tolist())
+                            torch.index_select(ambient_space, 1, index_to_select).tolist())"""
 
                 """plt_inc_amb_3D("layer input ",
                             torch.index_select(included_space, 1, index_to_select).tolist(),
@@ -281,15 +283,13 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
                 ambient_space = ds.apply_affine_transform(affine_w, affine_b, ambient_space)
 
 
-                plt_inc_amb("layer output ",
+                """ plt_inc_amb("layer output ",
                             torch.index_select(included_space, 1, index_to_select).tolist(),
                             torch.index_select(ambient_space, 1, index_to_select).tolist())
+                            """
                 """plt_inc_amb_3D("layer output ",
                             torch.index_select(included_space, 1, index_to_select).tolist(),
                             torch.index_select(ambient_space, 1, index_to_select).tolist())"""
-
-                if i != 0:
-                    stop = 1
 
                 included_space = ds.apply_relu_transform(included_space)
                 ambient_space = ds.apply_relu_transform(ambient_space)

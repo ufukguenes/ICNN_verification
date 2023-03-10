@@ -149,6 +149,36 @@ def samples_uniform_over(data_samples, amount, bounds, keep_samples=True, paddin
     return data_samples
 
 
+def sample_uniform_over_icnn(data_samples, amount, icnns, group_indices, curr_bounds_layer_out, keep_samples=True):
+    lb = curr_bounds_layer_out[0]
+    ub = curr_bounds_layer_out[1]
+    shape = data_samples.size(1)
+    random_samples = (ub - lb) * torch.rand((amount, shape), dtype=data_type).to(device) + lb
+
+    index_not_to_be_deleted = []
+    for i, samp in enumerate(random_samples):
+        is_included = True
+        samp = torch.unsqueeze(samp, 0)
+        for group_i, icnn in enumerate(icnns):
+            index_to_select = group_indices[group_i]
+            index_to_select = torch.tensor(index_to_select).to(device)
+            reduced_elem = torch.index_select(samp, 1, index_to_select)
+            output = icnn(reduced_elem)
+            if output > 0:
+                is_included = False
+                break
+
+        if is_included:
+            index_not_to_be_deleted.append(i)
+
+    index_not_to_be_deleted = torch.tensor(index_not_to_be_deleted, dtype=torch.int64).to(device)
+    random_samples = torch.index_select(random_samples, 0, index_not_to_be_deleted)
+    if keep_samples and data_samples.size(0) > 0:
+        data_samples = torch.cat([data_samples, random_samples], dim=0)
+    else:
+        data_samples = random_samples
+    return data_samples
+
 def sample_linspace(data_samples, amount, center, eps, keep_samples=True):
     step_number = 1  # math.floor(math.sqrt(amount))
     xs = torch.linspace(-eps, eps, steps=step_number)
@@ -215,9 +245,7 @@ def sample_random_sum_noise(data_samples, amount, center, eps, keep_samples=True
     return data_samples
 
 
-def sample_per_group_as_lp(data_samples, amount, affine_w, affine_b, eps, index_to_select, model, curr_bounds_affine_out, rand_samples_percent=0, keep_samples=True):
-    eps_tensor = torch.tensor(eps, dtype=data_type).to(device)
-
+def sample_per_group_as_lp(data_samples, amount, affine_w, affine_b, eps, index_to_select, model, curr_bounds_affine_out, rand_samples_percent=0, rand_sample_alternation_percent=0.2, keep_samples=True):
     upper = 1
     lower = - 1
     cs_temp = (upper - lower) * torch.rand((amount, len(index_to_select)),
@@ -232,11 +260,15 @@ def sample_per_group_as_lp(data_samples, amount, affine_w, affine_b, eps, index_
             cs[i][index] = cs_temp[i][k]
 
     num_rand_samples = math.floor(amount * rand_samples_percent)
-    if num_rand_samples > 0:
-        rand_samples = (upper - lower) * torch.rand((num_rand_samples, affine_w.size(0)),
+    alternations_per_sample = math.floor(affine_w.size(0) * rand_sample_alternation_percent)
+    if num_rand_samples > 0 and alternations_per_sample > 0:
+        rand_index = torch.randperm(affine_w.size(0))
+        rand_index = rand_index[:alternations_per_sample]
+        rand_samples = (upper - lower) * torch.rand((num_rand_samples, alternations_per_sample),
                                           dtype=data_type).to(device) + lower
         for i in range(num_rand_samples):
-            cs[i] = rand_samples[i]
+            for k, index in enumerate(rand_index):
+                cs[i][index] = rand_samples[i][k]
 
     input_approx_layer = []
     for i in range(affine_w.size(1)):
@@ -264,7 +296,7 @@ def sample_per_group_as_lp(data_samples, amount, affine_w, affine_b, eps, index_
     return data_samples
 
 
-def sample_per_group(data_samples, amount, affine_w, center, eps, index_to_select, keep_samples=True, rand_samples_percent=0, with_noise=False, with_sign_swap=False):
+def sample_per_group(data_samples, amount, affine_w, center, eps, index_to_select, keep_samples=True, rand_samples_percent=0, rand_sample_alternation_percent=0.2, with_noise=False, with_sign_swap=False):
     samples_per_bound = amount // 2
     eps_tensor = torch.tensor(eps, dtype=data_type).to(device)
 
@@ -280,11 +312,15 @@ def sample_per_group(data_samples, amount, affine_w, center, eps, index_to_selec
             cs[i][index] = cs_temp[i][k]
 
     num_rand_samples = math.floor(amount * rand_samples_percent)
-    if num_rand_samples > 0:
-        rand_samples = (upper - lower) * torch.rand((num_rand_samples, affine_w.size(0)),
+    alternations_per_sample = math.floor(affine_w.size(0) * rand_sample_alternation_percent)
+    if num_rand_samples > 0 and alternations_per_sample > 0:
+        rand_index = torch.randperm(affine_w.size(0))
+        rand_index = rand_index[:alternations_per_sample]
+        rand_samples = (upper - lower) * torch.rand((num_rand_samples, alternations_per_sample),
                                                     dtype=data_type).to(device) + lower
-
-        cs[: num_rand_samples] = rand_samples
+        for i in range(num_rand_samples):
+            for k, index in enumerate(rand_index):
+                cs[i][index] = rand_samples[i][k]
 
     affine_w_temp = torch.matmul(cs, affine_w)
     upper_samples = torch.where(affine_w_temp > 0, eps_tensor, - eps_tensor)
