@@ -7,6 +7,7 @@
       <change beforePath="$PROJECT_DIR$/script/DHOV/MainDHOV.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/DHOV/MainDHOV.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/script/DHOV/MultiDHOV.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/DHOV/MultiDHOV.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/script/DHOV/adv_samp.pt" beforeDir="false" afterPath="$PROJECT_DIR$/script/DHOV/adv_samp.pt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/script/Verification/Verification.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/Verification/Verification.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -145,14 +146,8 @@
       <workItem from="1678093853749" duration="18608000" />
       <workItem from="1678124510350" duration="7046000" />
       <workItem from="1678180996682" duration="10299000" />
-      <workItem from="1678353113565" duration="22892000" />
-    </task>
-    <task id="LOCAL-00010" summary="Refactoring">
-      <created>1675943440496</created>
-      <option name="number" value="00010" />
-      <option name="presentableId" value="LOCAL-00010" />
-      <option name="project" value="LOCAL" />
-      <updated>1675943440496</updated>
+      <workItem from="1678353113565" duration="25060000" />
+      <workItem from="1678434161884" duration="13399000" />
     </task>
     <task id="LOCAL-00011" summary="renaming variables">
       <created>1675947722114</created>
@@ -490,7 +485,14 @@
       <option name="project" value="LOCAL" />
       <updated>1678379843645</updated>
     </task>
-    <option name="localTasksCounter" value="59" />
+    <task id="LOCAL-00059" summary="new sampling method: per_group_sampling">
+      <created>1678382136557</created>
+      <option name="number" value="00059" />
+      <option name="presentableId" value="LOCAL-00059" />
+      <option name="project" value="LOCAL" />
+      <updated>1678382136557</updated>
+    </task>
+    <option name="localTasksCounter" value="60" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -592,8 +594,18 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/script/DHOV/MultiDHOV.py</url>
-          <line>388</line>
-          <option name="timeStamp" value="770" />
+          <line>291</line>
+          <option name="timeStamp" value="798" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/script/DHOV/MultiDHOV.py</url>
+          <line>261</line>
+          <option name="timeStamp" value="799" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/script/DHOV/DataSampling.py</url>
+          <line>259</line>
+          <option name="timeStamp" value="810" />
         </line-breakpoint>
       </breakpoints>
       <default-breakpoints>
@@ -614,7 +626,7 @@
     <SUITE FILE_PATH="coverage/ICNN_verification$main.coverage" NAME="main Coverage Results" MODIFIED="1670249050825" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ICNN_verification$DHOV.coverage" NAME="DHOV Coverage Results" MODIFIED="1674467903275" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script" />
     <SUITE FILE_PATH="coverage/ICNN_verification$MainMainDHOV.coverage" NAME="MainMainDHOV Coverage Results" MODIFIED="1676474643544" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script/DHOV" />
-    <SUITE FILE_PATH="coverage/ICNN_verification$MainDHOV.coverage" NAME="MainDHOV Coverage Results" MODIFIED="1678380848259" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script/DHOV" />
+    <SUITE FILE_PATH="coverage/ICNN_verification$MainDHOV.coverage" NAME="MainDHOV Coverage Results" MODIFIED="1678446635675" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script/DHOV" />
     <SUITE FILE_PATH="coverage/DeepHull$Verification.coverage" NAME="Verification Coverage Results" MODIFIED="1669122239179" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script" />
     <SUITE FILE_PATH="coverage/ICNN_verification$test.coverage" NAME="test Coverage Results" MODIFIED="1673302337900" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script" />
     <SUITE FILE_PATH="coverage/DeepHull$eval.coverage" NAME="eval Coverage Results" MODIFIED="1668723858367" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />

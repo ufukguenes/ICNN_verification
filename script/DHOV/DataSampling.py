@@ -5,6 +5,7 @@ import numpy as np
 import torch
 import gurobipy as grp
 from script.settings import device, data_type
+import script.Verification.VerificationBasics as verbas
 
 
 def sample_max_radius(icnns, sample_size, group_indices, curr_bounds_layer_out, fixed_neuron_lower, fixed_neuron_upper):
@@ -214,7 +215,56 @@ def sample_random_sum_noise(data_samples, amount, center, eps, keep_samples=True
     return data_samples
 
 
-def sample_per_group(data_samples, amount, affine_w, center, eps, index_to_select, keep_samples=True, with_noise=False, with_sign_swap=False):
+def sample_per_group_as_lp(data_samples, amount, affine_w, affine_b, eps, index_to_select, model, curr_bounds_affine_out, rand_samples_percent=0, keep_samples=True):
+    eps_tensor = torch.tensor(eps, dtype=data_type).to(device)
+
+    upper = 1
+    lower = - 1
+    cs_temp = (upper - lower) * torch.rand((amount, len(index_to_select)),
+                                      dtype=data_type).to(device) + lower
+
+    cs = torch.zeros((amount, affine_w.size(0)), dtype=data_type).to(device)
+
+    samples = torch.empty((amount, affine_w.size(1)), dtype=data_type).to(device)
+
+    for i in range(amount):
+        for k, index in enumerate(index_to_select):
+            cs[i][index] = cs_temp[i][k]
+
+    num_rand_samples = math.floor(amount * rand_samples_percent)
+    if num_rand_samples > 0:
+        rand_samples = (upper - lower) * torch.rand((num_rand_samples, affine_w.size(0)),
+                                          dtype=data_type).to(device) + lower
+        for i in range(num_rand_samples):
+            cs[i] = rand_samples[i]
+
+    input_approx_layer = []
+    for i in range(affine_w.size(1)):
+        input_approx_layer.append(model.getVarByName("input_approx_layer[{}]".format(i)))
+    input_approx_layer = grp.MVar.fromlist(input_approx_layer)
+
+    lb = curr_bounds_affine_out[0].detach().cpu().numpy()
+    ub = curr_bounds_affine_out[1].detach().cpu().numpy()
+    numpy_affine_w = affine_w.detach().cpu().numpy()
+    numpy_affine_b = affine_b.detach().cpu().numpy()
+    output_var = verbas.add_affine_constr(model, numpy_affine_w, numpy_affine_b, input_approx_layer, lb, ub, i=0)
+
+    for index, c in enumerate(cs):
+        c = c.detach().cpu().numpy()
+        model.setObjective(c @ output_var, grp.GRB.MAXIMIZE)
+
+        model.optimize()
+        if model.Status == grp.GRB.OPTIMAL:
+            samples[index] = torch.tensor(input_approx_layer.getAttr("X"), dtype=data_type).to(device)
+
+    if keep_samples and data_samples.size(0) > 0:
+        data_samples = torch.cat([data_samples, samples], dim=0)
+    else:
+        data_samples = samples
+    return data_samples
+
+
+def sample_per_group(data_samples, amount, affine_w, center, eps, index_to_select, keep_samples=True, rand_samples_percent=0, with_noise=False, with_sign_swap=False):
     samples_per_bound = amount // 2
     eps_tensor = torch.tensor(eps, dtype=data_type).to(device)
 
@@ -228,6 +278,13 @@ def sample_per_group(data_samples, amount, affine_w, center, eps, index_to_selec
     for i in range(samples_per_bound):
         for k, index in enumerate(index_to_select):
             cs[i][index] = cs_temp[i][k]
+
+    num_rand_samples = math.floor(amount * rand_samples_percent)
+    if num_rand_samples > 0:
+        rand_samples = (upper - lower) * torch.rand((num_rand_samples, affine_w.size(0)),
+                                                    dtype=data_type).to(device) + lower
+
+        cs[: num_rand_samples] = rand_samples
 
     affine_w_temp = torch.matmul(cs, affine_w)
     upper_samples = torch.where(affine_w_temp > 0, eps_tensor, - eps_tensor)

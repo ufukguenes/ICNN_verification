@@ -244,20 +244,32 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
                 ambient_space = torch.empty((0, affine_w.size(1)), dtype=data_type).to(device)
 
                 if i == 0:
-                    included_space = ds.sample_per_group(included_space, sample_count // 2, parameter_list[0], center,
-                                                         eps, index_to_select)
+                    """included_space = ds.sample_per_group(included_space, sample_count // 2, affine_w, center,
+                                                         eps, index_to_select)"""
+                    included_space = ds.sample_per_group(included_space, sample_count // 2, affine_w, center,
+                                                         eps, index_to_select, rand_samples_percent=0.2)
+                    # included_space = ds.sample_min_max_perturbation(included_space, sample_count // 4, affine_w, center, eps, keep_samples=True, swap_probability=0.2)
+                    # included_space = ds.sample_per_group(included_space, sample_count // 2, parameter_list[0], center, eps, index_to_select, with_noise=True, with_sign_swap=True)
+                    # included_space = ds.sample_per_group(included_space, sample_count // 2, parameter_list[0], center, eps, index_to_select, with_noise=False, with_sign_swap=True)
+                    # included_space = ds.sample_per_group(included_space, sample_count // 2, parameter_list[0], center, eps, index_to_select, with_noise=True, with_sign_swap=False)
                 else:
-                    included_space = ds.sample_per_group(included_space, sample_count // 2, parameter_list[0], center,
-                                                         eps, index_to_select)
+                    copy_model = model.copy()
+                    t_group = time.time()
+                    included_space = ds.sample_per_group_as_lp(included_space, sample_count // 2, affine_w, affine_b,
+                                                               eps, index_to_select, copy_model,
+                                                               bounds_affine_out[current_layer_index],
+                                                               rand_samples_percent=0.2, keep_samples=True)
+                    print("        time for sampling for one group: {}".format(time.time() - t_group))
 
-                included_space = ds.sample_min_max_perturbation(included_space, sample_count // 2, affine_w, center, eps, keep_samples=True, swap_probability=0.2)
-                included_space = ds.sample_per_group(included_space, sample_count // 2, parameter_list[0], center, eps, index_to_select, with_noise=True, with_sign_swap=True)
-                included_space = ds.sample_per_group(included_space, sample_count // 2, parameter_list[0], center, eps, index_to_select, with_noise=False, with_sign_swap=True)
-                included_space = ds.sample_per_group(included_space, sample_count // 2, parameter_list[0], center, eps, index_to_select, with_noise=True, with_sign_swap=False)
 
-                plt_inc_amb("layer output ",
+
+                plt_inc_amb("layer input ",
                             torch.index_select(included_space, 1, index_to_select).tolist(),
                             torch.index_select(ambient_space, 1, index_to_select).tolist())
+
+                """plt_inc_amb_3D("layer input ",
+                            torch.index_select(included_space, 1, index_to_select).tolist(),
+                            torch.index_select(ambient_space, 1, index_to_select).tolist())"""
 
                 if not keep_ambient_space:
                     raise NotImplementedError("keeping previous samples is not yet supported when using per group sampling")
@@ -268,16 +280,23 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
                 included_space = ds.apply_affine_transform(affine_w, affine_b, included_space)
                 ambient_space = ds.apply_affine_transform(affine_w, affine_b, ambient_space)
 
+
                 plt_inc_amb("layer output ",
                             torch.index_select(included_space, 1, index_to_select).tolist(),
                             torch.index_select(ambient_space, 1, index_to_select).tolist())
+                """plt_inc_amb_3D("layer output ",
+                            torch.index_select(included_space, 1, index_to_select).tolist(),
+                            torch.index_select(ambient_space, 1, index_to_select).tolist())"""
+
+                if i != 0:
+                    stop = 1
 
                 included_space = ds.apply_relu_transform(included_space)
                 ambient_space = ds.apply_relu_transform(ambient_space)
 
                 if sample_over_output_space:
                     ambient_space = ds.samples_uniform_over(ambient_space, sample_count // 2, bounds_layer_out[current_layer_index],
-                                            padding=eps)
+                                                            padding=eps)
 
 
 
@@ -387,10 +406,10 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
 
                 current_icnn.apply_enlargement(c)
 
-            plots = Plots_for(0, current_icnn, group_inc_space.detach(),
+            """ plots = Plots_for(0, current_icnn, group_inc_space.detach(),
                                           group_amb_space.detach(),
                                           [-0.1, 0.25], [-0.1, 0.4])
-            plots.plt_mesh()
+            plots.plt_mesh()"""
             print("        time for verification: {}".format(time.time() - t))
 
             #inp_bounds_icnn = bounds_layer_out[current_layer_index]
@@ -482,6 +501,17 @@ def plt_inc_amb(caption, inc, amb):
     plt.figure(figsize=(20, 10))
     plt.scatter(list(map(lambda x: x[0], amb)), list(map(lambda x: x[1], amb)), c="#ff7f0e")
     plt.scatter(list(map(lambda x: x[0], inc)), list(map(lambda x: x[1], inc)), c="#1f77b4")
+    plt.title(caption)
+    plt.show()
+
+def plt_inc_amb_3D(caption, inc, amb):
+    fig = plt.figure()
+    ax = fig.add_subplot(projection="3d")
+    ax.set_ylim(-0.2, 0.2)
+    ax.set_xlim(-0.1, 0.25)
+    ax.set_zlim(-0.1, 0.3)
+    ax.scatter(list(map(lambda x: x[0], amb)), list(map(lambda x: x[1], amb)), list(map(lambda x: x[2], amb)), c="#ff7f0e")
+    ax.scatter(list(map(lambda x: x[0], inc)), list(map(lambda x: x[1], inc)), list(map(lambda x: x[2], inc)), c="#1f77b4")
     plt.title(caption)
     plt.show()
 

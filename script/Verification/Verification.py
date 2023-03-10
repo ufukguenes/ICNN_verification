@@ -56,7 +56,7 @@ def generate_model_icnns(constraint_icnns, group_indices, last_bounds_layer_out,
         m.addConstr(input_approx_layer[neuron_index] <= last_bounds_layer_out[1][neuron_index])
 
     for i, var in enumerate(input_approx_layer.tolist()):
-        var.setAttr("varname", "input_approx_layer" + str(i))
+        var.setAttr("varname", "input_approx_layer[{}]".format(i))
     return m
 
 
