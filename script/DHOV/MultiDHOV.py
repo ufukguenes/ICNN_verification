@@ -257,7 +257,7 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
                     copy_model = model.copy()
                     t_group = time.time()
                     included_space = ds.sample_per_group_as_lp(included_space, sample_count // 4, affine_w, affine_b,
-                                                               eps, index_to_select, copy_model,
+                                                               index_to_select, copy_model,
                                                                bounds_affine_out[current_layer_index],
                                                                rand_samples_percent=0.2, rand_sample_alternation_percent=0.2)
                     included_space = ds.sample_uniform_over_icnn(included_space, sample_count // 4, list_of_icnns[current_layer_index - 1], all_group_indices[current_layer_index - 1], bounds_layer_out[current_layer_index - 1], keep_samples=True)
