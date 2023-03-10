@@ -245,7 +245,7 @@ def sample_random_sum_noise(data_samples, amount, center, eps, keep_samples=True
     return data_samples
 
 
-def sample_per_group_as_lp(data_samples, amount, affine_w, affine_b, eps, index_to_select, model, curr_bounds_affine_out, rand_samples_percent=0, rand_sample_alternation_percent=0.2, keep_samples=True):
+def sample_per_group_as_lp(data_samples, amount, affine_w, affine_b, index_to_select, model, curr_bounds_affine_out, rand_samples_percent=0, rand_sample_alternation_percent=0.2, keep_samples=True):
     upper = 1
     lower = - 1
     cs_temp = (upper - lower) * torch.rand((amount, len(index_to_select)),
