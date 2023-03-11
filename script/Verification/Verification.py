@@ -201,38 +201,35 @@ def verification(icnn, model, affine_w, b, index_to_select, curr_bounds_affine_o
         return inp, output_var[0].X
 
 
-def min_max_of_icnns(icnns, inp_bounds_icnn, group_indices, print_log=False):
-    for k, icnn in enumerate(icnns):
-        m = Model()
-        if not print_log:
-            m.Params.LogToConsole = 0
+def min_max_of_icnns(model, bounds_affine_out, bounds_layer_out, current_layer_index, affine_w, affine_b):
 
-        input_size = icnn.layer_widths[0]
+    input_to_current_layer = []
+    for i in range(affine_w.shape[1]):
+        input_to_current_layer.append(model.getVarByName("input_approx_layer[{}]".format(i)))
+    input_to_current_layer = grp.MVar.fromlist(input_to_current_layer)
 
-        index_to_select = group_indices[k]
-        index_to_select = torch.tensor(index_to_select).to(device)
-        low = torch.index_select(inp_bounds_icnn[0], 0, index_to_select)
-        up = torch.index_select(inp_bounds_icnn[1], 0, index_to_select)
-        input_var = m.addMVar(input_size, lb=low.detach().numpy(), ub=up.detach().numpy(), name="in_var")
-        icnn_bounds_affine_out, icnn_bounds_layer_out = icnn.calculate_box_bounds([low, up])
-        output_var = icnn.add_max_output_constraints(m, input_var, icnn_bounds_affine_out, icnn_bounds_layer_out, as_lp=True)
-        m.update()
+    lb = bounds_affine_out[current_layer_index][0].detach()
+    ub = bounds_affine_out[current_layer_index][1].detach()
+    affine_var = verbas.add_affine_constr(model, affine_w, affine_b, input_to_current_layer, lb, ub)
 
-        for neuron_to_optimize in range(input_size):
-            m.setObjective(input_var[neuron_to_optimize], GRB.MINIMIZE)
-            m.optimize()
-            if m.Status == GRB.OPTIMAL:
-                inp = input_var.getAttr("x")
-                #neurons_lb.append(inp[neuron_to_optimize])
-                print("        lower: new {}, old {}".format(inp[neuron_to_optimize], inp_bounds_icnn[0][group_indices[k][neuron_to_optimize]]))
-                inp_bounds_icnn[0][group_indices[k][neuron_to_optimize]] = inp[neuron_to_optimize]
+    model.update()
 
-            m.setObjective(input_var[neuron_to_optimize], GRB.MAXIMIZE)
-            m.optimize()
-            if m.Status == GRB.OPTIMAL:
-                inp = input_var.getAttr("x")
-                #neurons_ub.append(inp[neuron_to_optimize])
-                print("        upper: new {}, old {}".format(inp[neuron_to_optimize], inp_bounds_icnn[1][group_indices[k][neuron_to_optimize]]))
-                inp_bounds_icnn[1][group_indices[k][neuron_to_optimize]] = inp[neuron_to_optimize]
+    for neuron_to_optimize in range(len(affine_var.tolist())):
+        model.setObjective(affine_var[neuron_to_optimize], GRB.MINIMIZE)
+        model.optimize()
+        if model.Status == GRB.OPTIMAL:
+            value = affine_var.getAttr("x")
+            print("        lower: new {}, old {}".format(value[neuron_to_optimize], bounds_affine_out[current_layer_index][0][neuron_to_optimize]))
+            bounds_affine_out[current_layer_index][0][neuron_to_optimize] = value[neuron_to_optimize]
 
-    return inp_bounds_icnn
+        model.setObjective(affine_var[neuron_to_optimize], GRB.MAXIMIZE)
+        model.optimize()
+        if model.Status == GRB.OPTIMAL:
+            value = affine_var.getAttr("x")
+            print("        upper: new {}, old {}".format(value[neuron_to_optimize], bounds_affine_out[current_layer_index][1][neuron_to_optimize]))
+            bounds_affine_out[current_layer_index][1][neuron_to_optimize] = value[neuron_to_optimize]
+
+    relu_out_lb, relu_out_ub = verbas.calc_relu_out_bound(bounds_affine_out[current_layer_index][0], bounds_affine_out[current_layer_index][1])
+    bounds_layer_out[current_layer_index][0] = relu_out_lb
+    bounds_layer_out[current_layer_index][1] = relu_out_ub
+    return bounds_affine_out, bounds_affine_out

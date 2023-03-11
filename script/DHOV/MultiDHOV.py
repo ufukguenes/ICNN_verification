@@ -29,12 +29,13 @@ adapt_lambda has values: none, high_low, included
 
 
 def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.001, icnn_batch_size=1000,
-                       icnn_epochs=100,sample_count=1000, sampling_method="uniform",
+                       icnn_epochs=100, sample_count=1000, sampling_method="uniform",
                        break_after=None, use_icnn_bounds=False, use_fixed_neurons=False,
                        keep_ambient_space=False, sample_new=True, use_over_approximation=True, opt_steps_gd=100,
                        sample_over_input_space=False, sample_over_output_space=True, data_grad_descent_steps=0,
                        train_outer=False, preemptive_stop=True, even_gradient_training=False, force_inclusion_steps=0,
-                       init_network=False, adapt_lambda="none", should_plot='none', optimizer="adam", print_training_loss=False):
+                       init_network=False, adapt_lambda="none", should_plot='none', optimizer="adam",
+                       print_training_loss=False):
     valid_adapt_lambda = ["none", "high_low", "included"]
     valid_should_plot = ["none", "simple", "detailed", "verification", "output"]
     valid_optimizer = ["adam", "LBFGS", "SdLBFGS"]
@@ -64,11 +65,8 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
     center = input_flattened
     eps_bounds = [input_flattened.add(-eps), input_flattened.add(eps)]
 
-    if use_icnn_bounds:
-        bounds_affine_out, bounds_layer_out = [], []
-    else:
-        bounds_affine_out, bounds_layer_out = nn.calculate_box_bounds(
-            eps_bounds)  # todo abbrechen, wenn die box bounds schon die eigenschaft erfüllen
+    bounds_affine_out, bounds_layer_out = nn.calculate_box_bounds(eps_bounds)
+    # todo abbrechen, wenn die box bounds schon die eigenschaft erfüllen
 
     included_space = torch.empty((0, input_flattened.size(0)), dtype=data_type).to(device)
 
@@ -82,19 +80,22 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
         elif sampling_method == "sum_noise":
             included_space = ds.sample_random_sum_noise(included_space, int(sample_count), center, eps)
         elif sampling_method == "min_max_perturbation":
-            included_space = ds.sample_min_max_perturbation(included_space, int(sample_count), parameter_list[0], center, eps)
+            included_space = ds.sample_min_max_perturbation(included_space, int(sample_count), parameter_list[0],
+                                                            center, eps)
         elif sampling_method == "alternate_min_max":
-            included_space = ds.sample_alternate_min_max(included_space, int(sample_count), parameter_list[0], center, eps)
+            included_space = ds.sample_alternate_min_max(included_space, int(sample_count), parameter_list[0], center,
+                                                         eps)
 
-        #included_space = ds.samples_uniform_over(included_space, int(sample_count / 2), eps_bounds, keep_samples=True)
+        # included_space = ds.samples_uniform_over(included_space, int(sample_count / 2), eps_bounds, keep_samples=True)
 
         ambient_space = torch.empty((0, input_flattened.size(0)), dtype=data_type).to(device)
         original_included_space = torch.empty((0, input_flattened.size(0)), dtype=data_type).to(device)
         original_ambient_space = torch.empty((0, input_flattened.size(0)), dtype=data_type).to(device)
 
-        #adv_samp = torch.load("adv_samp.pt") #todo rauslöschen
-        #included_space[0] = adv_samp
-        plt_inc_amb("help", torch.index_select(included_space, 1, torch.tensor([1, 23])).tolist(), torch.index_select(ambient_space, 1, torch.tensor([1, 23])).tolist())
+        # adv_samp = torch.load("adv_samp.pt") #todo rauslöschen
+        # included_space[0] = adv_samp
+        plt_inc_amb("help", torch.index_select(included_space, 1, torch.tensor([1, 23])).tolist(),
+                    torch.index_select(ambient_space, 1, torch.tensor([1, 23])).tolist())
 
         if should_plot in valid_should_plot and should_plot != "none":
             original_included_space, original_ambient_space = included_space, ambient_space
@@ -115,36 +116,6 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
         print("approximation of layer: {}".format(current_layer_index))
 
         affine_w, affine_b = parameter_list[i], parameter_list[i + 1]
-
-        if use_icnn_bounds:
-            if i == 0:
-                affine_out_lb, affine_out_ub = verbas.calc_affine_out_bound(affine_w, affine_b, eps_bounds[0],
-                                                                            eps_bounds[1])
-            else:
-                affine_out_lb, affine_out_ub = verbas.calc_affine_out_bound(affine_w, affine_b,
-                                                                            bounds_layer_out[current_layer_index - 1][
-                                                                                0],
-                                                                            bounds_layer_out[current_layer_index - 1][
-                                                                                1])
-            relu_out_lb, relu_out_ub = verbas.calc_relu_out_bound(affine_out_lb, affine_out_ub)
-            bounds_affine_out.append([affine_out_lb, affine_out_ub])
-            bounds_layer_out.append([relu_out_lb, relu_out_ub])
-
-        fix_upper = []
-        fix_lower = []
-        if use_fixed_neurons:
-            for neuron_index, (lb, ub) in enumerate(
-                    zip(bounds_affine_out[current_layer_index][0], bounds_affine_out[current_layer_index][1])):
-                if ub <= 0:
-                    fix_upper.append(neuron_index)
-                    number_of_fixed_neurons += 1
-                elif lb >= 0:
-                    fix_lower.append(neuron_index)
-                    number_of_fixed_neurons += 1
-        fixed_neuron_per_layer_lower.append(fix_lower)
-        fixed_neuron_per_layer_upper.append(fix_upper)
-        num_fixed_neurons_layer.append(len(fix_lower) + len(fix_upper))
-        print("    number of fixed neurons for current layer: {}".format(len(fix_lower) + len(fix_upper)))
 
         if sampling_method != "per_group_sampling":
             if not keep_ambient_space:
@@ -206,13 +177,6 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
                 plt_inc_amb("original enhanced ambient space " + str(i), original_included_space.tolist(),
                             original_ambient_space.tolist())
 
-        number_of_groups = get_num_of_groups(len(affine_b) - num_fixed_neurons_layer[current_layer_index], group_size)
-        group_indices = get_current_group_indices(len(affine_b), group_size,
-                                                  fixed_neuron_per_layer_lower[current_layer_index],
-                                                  fixed_neuron_per_layer_upper[current_layer_index])
-
-        # current_from_tos = get_from_tos(len(affine_b), group_size)
-
         if use_over_approximation:
             if i == 0:
                 model = ver.generate_model_center_eps(center.detach().cpu().numpy(), eps)
@@ -220,8 +184,8 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
                 affine_w_list = parameter_list[:i:2]
                 affine_b_list = parameter_list[1:i:2]
                 model = ver.generate_complete_model_icnn(center, eps, affine_w_list, affine_b_list, list_of_icnns,
-                                             all_group_indices, bounds_affine_out, bounds_layer_out,
-                                             fixed_neuron_per_layer_lower, fixed_neuron_per_layer_upper)
+                                                         all_group_indices, bounds_affine_out, bounds_layer_out,
+                                                         fixed_neuron_per_layer_lower, fixed_neuron_per_layer_upper)
                 """past_group_indices = all_group_indices[-1]
                 prev_icnns = list_of_icnns[current_layer_index - 1]
                 model = ver.generate_model_icnns(prev_icnns, past_group_indices,
@@ -229,6 +193,36 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
                                                  fixed_neuron_per_layer_lower[current_layer_index - 1],
                                                  fixed_neuron_per_layer_upper[current_layer_index - 1])"""
             model.update()
+
+        if use_icnn_bounds and i != 0:
+            t = time.time()
+            copy_model = model.copy()
+            bounds_affine_out, bounds_layer_out = ver.min_max_of_icnns(copy_model, bounds_affine_out, bounds_layer_out,
+                                                                       current_layer_index, affine_w.detach().numpy(),
+                                                                       affine_b.detach().numpy())
+            print("    time for icnn_bound calculation: {}".format(time.time() - t))
+
+        fix_upper = []
+        fix_lower = []
+        if use_fixed_neurons:
+            for neuron_index, (lb, ub) in enumerate(
+                    zip(bounds_affine_out[current_layer_index][0], bounds_affine_out[current_layer_index][1])):
+                if ub <= 0:
+                    fix_upper.append(neuron_index)
+                    number_of_fixed_neurons += 1
+                elif lb >= 0:
+                    fix_lower.append(neuron_index)
+                    number_of_fixed_neurons += 1
+        fixed_neuron_per_layer_lower.append(fix_lower)
+        fixed_neuron_per_layer_upper.append(fix_upper)
+        num_fixed_neurons_layer.append(len(fix_lower) + len(fix_upper))
+        print("    number of fixed neurons for current layer: {}".format(len(fix_lower) + len(fix_upper)))
+
+        number_of_groups = get_num_of_groups(len(affine_b) - num_fixed_neurons_layer[current_layer_index], group_size)
+        group_indices = get_current_group_indices(len(affine_b), group_size,
+                                                  fixed_neuron_per_layer_lower[current_layer_index],
+                                                  fixed_neuron_per_layer_upper[current_layer_index])
+
         all_group_indices.append(group_indices)
 
         list_of_icnns.append([])
@@ -252,8 +246,10 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
                     """included_space = ds.sample_per_group(included_space, sample_count // 2, affine_w, center,
                                                          eps, index_to_select)"""
                     included_space = ds.sample_per_group(included_space, sample_count // 4, affine_w, center,
-                                                         eps, index_to_select, rand_samples_percent=0.2, rand_sample_alternation_percent=0.01)
-                    included_space = ds.samples_uniform_over(included_space, sample_count // 4, eps_bounds, keep_samples=True)
+                                                         eps, index_to_select, rand_samples_percent=0.2,
+                                                         rand_sample_alternation_percent=0.01)
+                    included_space = ds.samples_uniform_over(included_space, sample_count // 4, eps_bounds,
+                                                             keep_samples=True)
                     # included_space = ds.sample_min_max_perturbation(included_space, sample_count // 4, affine_w, center, eps, keep_samples=True, swap_probability=0.2)
                     # included_space = ds.sample_per_group(included_space, sample_count // 2, parameter_list[0], center, eps, index_to_select, with_noise=True, with_sign_swap=True)
                     # included_space = ds.sample_per_group(included_space, sample_count // 2, parameter_list[0], center, eps, index_to_select, with_noise=False, with_sign_swap=True)
@@ -264,11 +260,14 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
                     included_space = ds.sample_per_group_as_lp(included_space, sample_count // 4, affine_w, affine_b,
                                                                index_to_select, copy_model,
                                                                bounds_affine_out[current_layer_index],
-                                                               rand_samples_percent=0.2, rand_sample_alternation_percent=0.2)
-                    included_space = ds.sample_uniform_over_icnn(included_space, sample_count // 4, list_of_icnns[current_layer_index - 1], all_group_indices[current_layer_index - 1], bounds_layer_out[current_layer_index - 1], keep_samples=True)
+                                                               rand_samples_percent=0.2,
+                                                               rand_sample_alternation_percent=0.2)
+                    included_space = ds.sample_uniform_over_icnn(included_space, sample_count // 4,
+                                                                 list_of_icnns[current_layer_index - 1],
+                                                                 all_group_indices[current_layer_index - 1],
+                                                                 bounds_layer_out[current_layer_index - 1],
+                                                                 keep_samples=True)
                     print("        time for sampling for one group: {}".format(time.time() - t_group))
-
-
 
                 """plt_inc_amb("layer input ",
                             torch.index_select(included_space, 1, index_to_select).tolist(),
@@ -279,18 +278,19 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
                             torch.index_select(ambient_space, 1, index_to_select).tolist())"""
 
                 if not keep_ambient_space:
-                    raise NotImplementedError("keeping previous samples is not yet supported when using per group sampling")
+                    raise NotImplementedError(
+                        "keeping previous samples is not yet supported when using per group sampling")
 
                 if sample_over_input_space:
-                    raise NotImplementedError("sampling over input space is not yet supported when using per group sampling")
+                    raise NotImplementedError(
+                        "sampling over input space is not yet supported when using per group sampling")
 
                 included_space = ds.apply_affine_transform(affine_w, affine_b, included_space)
                 ambient_space = ds.apply_affine_transform(affine_w, affine_b, ambient_space)
 
-
-                plt_inc_amb("layer output ",
+                """plt_inc_amb("layer output ",
                             torch.index_select(included_space, 1, index_to_select).tolist(),
-                            torch.index_select(ambient_space, 1, index_to_select).tolist())
+                            torch.index_select(ambient_space, 1, index_to_select).tolist())"""
                 """plt_inc_amb_3D("layer output ",
                             torch.index_select(included_space, 1, index_to_select).tolist(),
                             torch.index_select(ambient_space, 1, index_to_select).tolist())"""
@@ -299,14 +299,12 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
                 ambient_space = ds.apply_relu_transform(ambient_space)
 
                 if sample_over_output_space:
-                    ambient_space = ds.samples_uniform_over(ambient_space, sample_count // 2, bounds_layer_out[current_layer_index],
+                    ambient_space = ds.samples_uniform_over(ambient_space, sample_count // 2,
+                                                            bounds_layer_out[current_layer_index],
                                                             padding=eps)
-
-
 
             group_inc_space = torch.index_select(included_space, 1, index_to_select)
             group_amb_space = torch.index_select(ambient_space, 1, index_to_select)
-
 
             mean = norm.get_mean(group_inc_space, group_amb_space)
             std = norm.get_std(group_inc_space, group_amb_space)
@@ -351,7 +349,8 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
                             epochs_in_run = epochs_per_inclusion // data_grad_descent_steps
                         print("===== grad descent =====")
                         train_icnn(current_icnn, train_loader, ambient_loader, epochs=epochs_in_run, hyper_lambda=1,
-                                   optimizer=optimizer, adapt_lambda=adapt_lambda, preemptive_stop=preemptive_stop, verbose=print_training_loss)
+                                   optimizer=optimizer, adapt_lambda=adapt_lambda, preemptive_stop=preemptive_stop,
+                                   verbose=print_training_loss)
 
                         for v in range(optimization_steps):
                             # normalized_ambient_space =
@@ -378,7 +377,8 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
 
                 else:
                     train_icnn(current_icnn, train_loader, ambient_loader, epochs=epochs_per_inclusion, hyper_lambda=1,
-                               optimizer=optimizer, adapt_lambda=adapt_lambda, preemptive_stop=preemptive_stop, verbose=print_training_loss)
+                               optimizer=optimizer, adapt_lambda=adapt_lambda, preemptive_stop=preemptive_stop,
+                               verbose=print_training_loss)
 
             if train_outer:  # todo will ich train outer behalten oder einfach verwerfen?
                 for k in range(icnn_epochs):
@@ -405,22 +405,20 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
                                                         bounds_layer_out[current_layer_index],
                                                         has_relu=True)
 
-
                 torch.save(torch.tensor(adversarial_input, dtype=data_type), "adv_samp.pt")
 
                 current_icnn.apply_enlargement(c)
 
-            plots = Plots_for(0, current_icnn, group_inc_space.detach(),
-                                          group_amb_space.detach(),
-                                          [-0.1, 0.25], [-0.1, 0.4], calculate_convex_hull=False)
+            """plots = Plots_for(0, current_icnn, group_inc_space.detach(), group_amb_space.detach(),
+                              [-0.1, 0.25], [-0.1, 0.4])
             plots.plt_mesh()
-            print("        time for verification: {}".format(time.time() - t))
+            print("        time for verification: {}".format(time.time() - t))"""
             if i != 0:
                 stop = 1
 
-            #inp_bounds_icnn = bounds_layer_out[current_layer_index]
-            #ver.min_max_of_icnns([current_icnn], inp_bounds_icnn, [group_indices[group_i]], print_log=False)
-            #ver.min_max_of_icnns([current_icnn], inp_bounds_icnn, [group_indices[group_i]], print_log1, 23=False)
+            # inp_bounds_icnn = bounds_layer_out[current_layer_index]
+            # ver.min_max_of_icnns([current_icnn], inp_bounds_icnn, [group_indices[group_i]], print_log=False)
+            # ver.min_max_of_icnns([current_icnn], inp_bounds_icnn, [group_indices[group_i]], print_log1, 23=False)
 
             """
             #visualisation for one single ReLu
@@ -453,13 +451,6 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
             print("aborting because of force break")
             break
 
-        if use_icnn_bounds and i != 0:
-            t = time.time()
-            inp_bounds_icnn = bounds_layer_out[current_layer_index]
-            new_bounds = ver.min_max_of_icnns(list_of_icnns[current_layer_index], inp_bounds_icnn,
-                                              group_indices, print_log=False)
-            bounds_layer_out[current_layer_index] = new_bounds
-            print("    time for icnn_bound calculation: {}".format(time.time() - t))
 
         # entweder oder:
         # nutze die samples weiter (dafür muss man dann das ReLU layer anwenden), und man muss schauen ob die
@@ -510,14 +501,17 @@ def plt_inc_amb(caption, inc, amb):
     plt.title(caption)
     plt.show()
 
+
 def plt_inc_amb_3D(caption, inc, amb):
     fig = plt.figure()
     ax = fig.add_subplot(projection="3d")
     ax.set_ylim(-0.2, 0.2)
     ax.set_xlim(-0.1, 0.25)
     ax.set_zlim(-0.1, 0.3)
-    ax.scatter(list(map(lambda x: x[0], amb)), list(map(lambda x: x[1], amb)), list(map(lambda x: x[2], amb)), c="#ff7f0e")
-    ax.scatter(list(map(lambda x: x[0], inc)), list(map(lambda x: x[1], inc)), list(map(lambda x: x[2], inc)), c="#1f77b4")
+    ax.scatter(list(map(lambda x: x[0], amb)), list(map(lambda x: x[1], amb)), list(map(lambda x: x[2], amb)),
+               c="#ff7f0e")
+    ax.scatter(list(map(lambda x: x[0], inc)), list(map(lambda x: x[1], inc)), list(map(lambda x: x[2], inc)),
+               c="#1f77b4")
     plt.title(caption)
     plt.show()
 
