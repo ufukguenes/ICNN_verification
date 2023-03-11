@@ -286,6 +286,28 @@ def sample_per_group_as_lp(data_samples, amount, affine_w, affine_b, index_to_se
         model.setObjective(c @ output_var, grp.GRB.MAXIMIZE)
 
         model.optimize()
+        if model.Status == grp.GRB.INFEASIBLE:
+            model.Params.LogToConsole = 1
+            model.computeIIS()
+            print("constraint")
+            all_constr = model.getConstrs()
+
+            for const in all_constr:
+                if const.IISConstr:
+                    print("{}".format(const))
+
+            print("lower bound")
+            all_var = model.getVars()
+            for var in all_var:
+                if var.IISLB:
+                    print("{}, lb: {}, ub: {}".format(var, var.getAttr("lb"), var.getAttr("ub")))
+
+            print("upper bound")
+            all_var = model.getVars()
+            for var in all_var:
+                if var.IISUB:
+                    print("{}, lb: {}, ub: {}".format(var, var.getAttr("lb"), var.getAttr("ub")))
+            return
         if model.Status == grp.GRB.OPTIMAL:
             samples[index] = torch.tensor(input_approx_layer.getAttr("X"), dtype=data_type).to(device)
 

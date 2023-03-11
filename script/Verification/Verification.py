@@ -60,6 +60,56 @@ def generate_model_icnns(constraint_icnns, group_indices, last_bounds_layer_out,
     return m
 
 
+def generate_complete_model_icnn(center, eps, affine_w_list, affine_b_list, constraint_icnns_per_layer, group_indices_per_layer, bounds_affine_out, bounds_layer_out, fixed_neuron_lower_per_layer, fixed_neuron_upper_per_layer):
+    m = Model()
+    m.Params.LogToConsole = 0
+
+    input_to_previous_layer_size = len(center)
+    input_var = m.addMVar(input_to_previous_layer_size, lb=[elem - eps for elem in center],
+                                   ub=[elem + eps for elem in center], name="inp_eps")
+    m.addConstrs((input_var[i] <= center[i] + eps for i in range(input_to_previous_layer_size)), name="in_const_ub")
+    m.addConstrs((input_var[i] >= center[i] - eps for i in range(input_to_previous_layer_size)), name="in_const_lb")
+
+    in_var = input_var
+    for i in range(0, len(affine_w_list)):
+        in_lb = bounds_affine_out[i][0].detach().numpy()
+        in_ub = bounds_affine_out[i][1].detach().numpy()
+        W, b = affine_w_list[i].detach().numpy(), affine_b_list[i].detach().numpy()
+
+        out_fet = len(b)
+        affine_var = m.addMVar(out_fet, lb=in_lb, ub=in_ub, name="affine_var" + str(i))
+        const = m.addConstrs((W[i] @ in_var + b[i] == affine_var[i] for i in range(len(W))), name="affine_const"+str(i))
+
+        out_lb = bounds_layer_out[i][0].detach().numpy()
+        out_ub = bounds_layer_out[i][1].detach().numpy()
+        out_vars = m.addMVar(out_fet, lb=out_lb, ub=out_ub, name="out_var" + str(i))
+
+        for neuron_index in fixed_neuron_upper_per_layer[i]:
+            m.addConstr(out_vars[neuron_index] == 0)
+
+        for neuron_index in fixed_neuron_lower_per_layer[i]:
+            m.addConstr(out_vars[neuron_index] == affine_var[neuron_index])
+
+
+        for k in range(len(constraint_icnns_per_layer[i])):
+            constraint_icnns = constraint_icnns_per_layer[i]
+            index_to_select = torch.tensor(group_indices_per_layer[i][k]).to(device)
+            low = torch.index_select(bounds_layer_out[i][0], 0, index_to_select)
+            up = torch.index_select(bounds_layer_out[i][1], 0, index_to_select)
+            constraint_icnn_bounds_affine_out, constraint_icnn_bounds_layer_out = constraint_icnns[
+                k].calculate_box_bounds(
+                [low, up])
+            current_in_vars = [out_vars[x] for x in group_indices_per_layer[i][k]]
+            constraint_icnns[k].add_max_output_constraints(m, current_in_vars, constraint_icnn_bounds_affine_out,
+                                                           constraint_icnn_bounds_layer_out)
+
+        in_var = out_vars
+
+    for i, var in enumerate(in_var.tolist()):
+        var.setAttr("varname", "input_approx_layer[{}]".format(i))
+    return m
+
+
 def generate_model_A_b(a_matrix, b_vector):
     m = Model()
     m.Params.LogToConsole = 0
@@ -174,15 +224,15 @@ def min_max_of_icnns(icnns, inp_bounds_icnn, group_indices, print_log=False):
             if m.Status == GRB.OPTIMAL:
                 inp = input_var.getAttr("x")
                 #neurons_lb.append(inp[neuron_to_optimize])
+                print("        lower: new {}, old {}".format(inp[neuron_to_optimize], inp_bounds_icnn[0][group_indices[k][neuron_to_optimize]]))
                 inp_bounds_icnn[0][group_indices[k][neuron_to_optimize]] = inp[neuron_to_optimize]
-                #print("        lower {}".format(inp[neuron_to_optimize]))
 
             m.setObjective(input_var[neuron_to_optimize], GRB.MAXIMIZE)
             m.optimize()
             if m.Status == GRB.OPTIMAL:
                 inp = input_var.getAttr("x")
                 #neurons_ub.append(inp[neuron_to_optimize])
+                print("        upper: new {}, old {}".format(inp[neuron_to_optimize], inp_bounds_icnn[1][group_indices[k][neuron_to_optimize]]))
                 inp_bounds_icnn[1][group_indices[k][neuron_to_optimize]] = inp[neuron_to_optimize]
-                #print("        upper {}".format(inp[neuron_to_optimize]))
 
     return inp_bounds_icnn

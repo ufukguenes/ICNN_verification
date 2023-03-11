@@ -168,9 +168,9 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
             included_space = ds.apply_affine_transform(affine_w, affine_b, included_space)
             ambient_space = ds.apply_affine_transform(affine_w, affine_b, ambient_space)
 
-            plt_inc_amb("second layer output of neuron 2, 3 / number of samples {}".format(sample_count),
+            """plt_inc_amb("second layer output of neuron 2, 3 / number of samples {}".format(sample_count),
                         torch.index_select(included_space, 1, torch.tensor([1, 23])).tolist(),
-                        torch.index_select(ambient_space, 1, torch.tensor([1, 23])).tolist())
+                        torch.index_select(ambient_space, 1, torch.tensor([1, 23])).tolist())"""
 
             if should_plot in valid_should_plot and should_plot != "none":
                 original_included_space = ds.apply_affine_transform(affine_w, affine_b, original_included_space)
@@ -183,8 +183,8 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
             included_space = ds.apply_relu_transform(included_space)
             ambient_space = ds.apply_relu_transform(ambient_space)
 
-            plt_inc_amb("second layer output of neuron 2, 3", torch.index_select(included_space, 1, torch.tensor([2, 3])).tolist(),
-                        torch.index_select(ambient_space, 1, torch.tensor([2, 3])).tolist())
+            """plt_inc_amb("second layer output of neuron 2, 3", torch.index_select(included_space, 1, torch.tensor([2, 3])).tolist(),
+                        torch.index_select(ambient_space, 1, torch.tensor([2, 3])).tolist())"""
 
             if should_plot in valid_should_plot and should_plot != "none":
                 original_included_space = ds.apply_relu_transform(original_included_space)
@@ -217,12 +217,17 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
             if i == 0:
                 model = ver.generate_model_center_eps(center.detach().cpu().numpy(), eps)
             else:
-                past_group_indices = all_group_indices[-1]
+                affine_w_list = parameter_list[:i:2]
+                affine_b_list = parameter_list[1:i:2]
+                model = ver.generate_complete_model_icnn(center, eps, affine_w_list, affine_b_list, list_of_icnns,
+                                             all_group_indices, bounds_affine_out, bounds_layer_out,
+                                             fixed_neuron_per_layer_lower, fixed_neuron_per_layer_upper)
+                """past_group_indices = all_group_indices[-1]
                 prev_icnns = list_of_icnns[current_layer_index - 1]
                 model = ver.generate_model_icnns(prev_icnns, past_group_indices,
                                                  bounds_layer_out[current_layer_index - 1],
                                                  fixed_neuron_per_layer_lower[current_layer_index - 1],
-                                                 fixed_neuron_per_layer_upper[current_layer_index - 1])
+                                                 fixed_neuron_per_layer_upper[current_layer_index - 1])"""
             model.update()
         all_group_indices.append(group_indices)
 
@@ -283,10 +288,9 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
                 ambient_space = ds.apply_affine_transform(affine_w, affine_b, ambient_space)
 
 
-                """ plt_inc_amb("layer output ",
+                plt_inc_amb("layer output ",
                             torch.index_select(included_space, 1, index_to_select).tolist(),
                             torch.index_select(ambient_space, 1, index_to_select).tolist())
-                            """
                 """plt_inc_amb_3D("layer output ",
                             torch.index_select(included_space, 1, index_to_select).tolist(),
                             torch.index_select(ambient_space, 1, index_to_select).tolist())"""
@@ -406,11 +410,13 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
 
                 current_icnn.apply_enlargement(c)
 
-            """ plots = Plots_for(0, current_icnn, group_inc_space.detach(),
+            plots = Plots_for(0, current_icnn, group_inc_space.detach(),
                                           group_amb_space.detach(),
-                                          [-0.1, 0.25], [-0.1, 0.4])
-            plots.plt_mesh()"""
+                                          [-0.1, 0.25], [-0.1, 0.4], calculate_convex_hull=False)
+            plots.plt_mesh()
             print("        time for verification: {}".format(time.time() - t))
+            if i != 0:
+                stop = 1
 
             #inp_bounds_icnn = bounds_layer_out[current_layer_index]
             #ver.min_max_of_icnns([current_icnn], inp_bounds_icnn, [group_indices[group_i]], print_log=False)
@@ -447,7 +453,7 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
             print("aborting because of force break")
             break
 
-        if use_icnn_bounds:
+        if use_icnn_bounds and i != 0:
             t = time.time()
             inp_bounds_icnn = bounds_layer_out[current_layer_index]
             new_bounds = ver.min_max_of_icnns(list_of_icnns[current_layer_index], inp_bounds_icnn,
