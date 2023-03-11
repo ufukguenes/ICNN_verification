@@ -249,7 +249,7 @@ def sample_per_group_as_lp(data_samples, amount, affine_w, affine_b, index_to_se
     upper = 1
     lower = - 1
     cs_temp = (upper - lower) * torch.rand((amount, len(index_to_select)),
-                                      dtype=data_type).to(device) + lower
+                                           dtype=data_type).to(device) + lower
 
     cs = torch.zeros((amount, affine_w.size(0)), dtype=data_type).to(device)
 
@@ -265,7 +265,7 @@ def sample_per_group_as_lp(data_samples, amount, affine_w, affine_b, index_to_se
         rand_index = torch.randperm(affine_w.size(0))
         rand_index = rand_index[:alternations_per_sample]
         rand_samples = (upper - lower) * torch.rand((num_rand_samples, alternations_per_sample),
-                                          dtype=data_type).to(device) + lower
+                                                    dtype=data_type).to(device) + lower
         for i in range(num_rand_samples):
             for k, index in enumerate(rand_index):
                 cs[i][index] = rand_samples[i][k]
@@ -281,6 +281,7 @@ def sample_per_group_as_lp(data_samples, amount, affine_w, affine_b, index_to_se
     numpy_affine_b = affine_b.detach().cpu().numpy()
     output_var = verbas.add_affine_constr(model, numpy_affine_w, numpy_affine_b, input_approx_layer, lb, ub, i=0)
 
+    model.update()
     for index, c in enumerate(cs):
         c = c.detach().cpu().numpy()
         model.setObjective(c @ output_var, grp.GRB.MAXIMIZE)

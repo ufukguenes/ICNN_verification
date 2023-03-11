@@ -326,10 +326,10 @@ def multi_net2D():
     test_image = torch.zeros((1, 500), dtype=data_type).to(device)
     parameter_list = list(nn.parameters())"""
 
-    group_size = 2
-    icnn_factory = ICNNFactory("logical", [10, 10, 1], force_positive_init=False, with_two_layers=False,
-                               init_scaling=10, init_all_with_zeros=False)
-    #icnn_factory = ICNNFactory("standard", [10, 10, 1])
+    group_size = 3
+    """icnn_factory = ICNNFactory("logical", [10, 10, 1], force_positive_init=False, with_two_layers=False,
+                               init_scaling=10, init_all_with_zeros=False)"""
+    icnn_factory = ICNNFactory("standard", [10, 10, 1])
     #icnn_factory = ICNNFactory("approx_max", [10, 1])
     eps = 0.01
     #matplotlib.use('TkAgg')

@@ -413,8 +413,6 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
                               [-0.1, 0.25], [-0.1, 0.4])
             plots.plt_mesh()
             print("        time for verification: {}".format(time.time() - t))"""
-            if i != 0:
-                stop = 1
 
             # inp_bounds_icnn = bounds_layer_out[current_layer_index]
             # ver.min_max_of_icnns([current_icnn], inp_bounds_icnn, [group_indices[group_i]], print_log=False)
