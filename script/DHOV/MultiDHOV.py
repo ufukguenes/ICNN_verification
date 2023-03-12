@@ -21,14 +21,8 @@ from script.NeuralNets.trainFunction import train_icnn, train_icnn_outer
 from script.settings import device, data_type
 import gurobipy as grp
 
+
 # todo zu Klasse umwandeln
-"""
-should_plot has values: none, simple, detailed, verification
-optimizer has values: adam, LBFGS, SdLBFGS
-adapt_lambda has values: none, high_low, included
-"""
-
-
 def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.001, icnn_batch_size=1000,
                        icnn_epochs=100, sample_count=1000, sampling_method="uniform",
                        break_after=None, use_icnn_bounds=False, use_fixed_neurons=False,
@@ -45,6 +39,9 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
 
     parameter_list = list(nn.parameters())
     force_break = False
+
+    # only use fixed_neurons when optimizing bounds with icnn
+    use_fixed_neurons = use_fixed_neurons and use_icnn_bounds
 
     if adapt_lambda not in valid_adapt_lambda:
         raise AttributeError(
@@ -67,7 +64,6 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
     eps_bounds = [input_flattened.add(-eps), input_flattened.add(eps)]
 
     bounds_affine_out, bounds_layer_out = nn.calculate_box_bounds(eps_bounds)
-    # todo abbrechen, wenn die box bounds schon die eigenschaft erfüllen
 
     nn_encoding_model = grp.Model()
     nn_encoding_model.Params.LogToConsole = 0
@@ -128,7 +124,6 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
                     ambient_space = ds.sample_uniform_excluding(ambient_space, int(sample_count / 2), eps_bounds,
                                                                 excluding_bound=eps_bounds, padding=eps)
                 else:
-                    # todo test for when lower/upper bound is smaller then eps
                     ambient_space = ds.sample_uniform_excluding(ambient_space, int(sample_count / 2),
                                                                 bounds_layer_out[current_layer_index - 1],
                                                                 icnns=list_of_icnns[current_layer_index - 1],
@@ -266,11 +261,11 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
                                                                  keep_samples=True)
                     print("        time for sampling for one group: {}".format(time.time() - t_group))
 
-                if should_plot in valid_should_plot and should_plot != "none" and len(group_indices[group_i]) == 2:
+                if should_plot in valid_should_plot and should_plot not in ["none", "verification"] and len(group_indices[group_i]) == 2:
                     plt_inc_amb("layer input ",
                                 torch.index_select(included_space, 1, index_to_select).tolist(),
                                 torch.index_select(ambient_space, 1, index_to_select).tolist())
-                elif should_plot in valid_should_plot and should_plot != "none" and len(group_indices[group_i]) == 3:
+                elif should_plot in valid_should_plot and should_plot not in ["none", "verification"] and len(group_indices[group_i]) == 3:
                     plt_inc_amb_3D("layer input ",
                                 torch.index_select(included_space, 1, index_to_select).tolist(),
                                 torch.index_select(ambient_space, 1, index_to_select).tolist())
@@ -286,11 +281,11 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
                 included_space = ds.apply_affine_transform(affine_w, affine_b, included_space)
                 ambient_space = ds.apply_affine_transform(affine_w, affine_b, ambient_space)
 
-                if should_plot in valid_should_plot and should_plot != "none" and len(group_indices[group_i]) == 2:
+                if should_plot in valid_should_plot and should_plot not in ["none", "verification"] and len(group_indices[group_i]) == 2:
                     plt_inc_amb("layer output ",
                                 torch.index_select(included_space, 1, index_to_select).tolist(),
                                 torch.index_select(ambient_space, 1, index_to_select).tolist())
-                elif should_plot in valid_should_plot and should_plot != "none" and len(group_indices[group_i]) == 3:
+                elif should_plot in valid_should_plot and should_plot not in ["none", "verification"] and len(group_indices[group_i]) == 3:
                     plt_inc_amb_3D("layer output ",
                             torch.index_select(included_space, 1, index_to_select).tolist(),
                             torch.index_select(ambient_space, 1, index_to_select).tolist())
@@ -323,6 +318,7 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
                 current_icnn.init_with_box_bounds(low, up)
 
             # train icnn
+            current_icnn.use_training_setup = True  # is only relevant for ApproxMaxICNNs
             epochs_per_inclusion = icnn_epochs // force_inclusion_steps
             epochs_in_last_inclusion = icnn_epochs % force_inclusion_steps
             for inclusion_round in range(force_inclusion_steps):
@@ -384,14 +380,14 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
                 for k in range(icnn_epochs):
                     train_icnn_outer(current_icnn, train_loader, ambient_loader, epochs=1)
                     if k % 10 == 0:
-                        plots = Plots_for(0, current_icnn, group_norm_ambient_space.detach(),
+                        plots = Plots_for(0, current_icnn, group_norm_included_space.detach(),
                                           group_norm_ambient_space.detach(),
                                           [-2, 3], [-2, 3])
                         plots.plt_mesh()
 
             current_icnn.apply_normalisation(mean, std)
 
-            current_icnn.use_training_setup = False  # todo richtig integrieren in den code
+            current_icnn.use_training_setup = False
 
             print("        time for training: {}".format(time.time() - t))
 
@@ -472,7 +468,6 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
         # oder sample neue punkte
         t = time.time()
         if sample_new and sampling_method != "per_group_sampling":
-            # todo entweder über box bounds sampeln oder über maximum radius
             included_space, ambient_space = ds.sample_max_radius(list_of_icnns[current_layer_index], sample_count,
                                                                  group_indices, bounds_layer_out[current_layer_index],
                                                                  fixed_neuron_per_layer_lower[current_layer_index],
@@ -484,7 +479,7 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
                                                                ambient_space, group_indices)
         print("    time for regrouping method: {}".format(time.time() - t))
 
-    if should_plot in valid_should_plot and should_plot != "none" and included_space.size(1) == 2:
+    if should_plot in valid_should_plot and should_plot != "none" and sampling_method != "per_group_sampling" and included_space.size(1) == 2:
         index = len(parameter_list) - 2
         affine_w, affine_b = parameter_list[index], parameter_list[index + 1]
         included_space = ds.apply_affine_transform(affine_w, affine_b, included_space)

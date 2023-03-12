@@ -18,18 +18,22 @@ def sample_max_radius(icnns, sample_size, group_indices, curr_bounds_layer_out, 
         m = grp.Model()
         m.Params.LogToConsole = 0
 
-        input_to_icnn_one = m.addMVar(icnn_input_size, lb=-float('inf'))
-        input_to_icnn_two = m.addMVar(icnn_input_size, lb=-float('inf'))
+
 
         index_to_select = torch.tensor(index_to_select).to(device)
         low = torch.index_select(curr_bounds_layer_out[0], 0, index_to_select)
         up = torch.index_select(curr_bounds_layer_out[1], 0, index_to_select)
         icnn_bounds_affine_out, icnn_bounds_layer_out = icnn.calculate_box_bounds([low, up])
+
+        lb = low.detach().numpy()
+        ub = up.detach().numpy()
+        input_to_icnn_one = m.addMVar(icnn_input_size, lb=lb, ub=ub)
+        input_to_icnn_two = m.addMVar(icnn_input_size, lb=lb, ub=ub)
         icnn.add_max_output_constraints(m, input_to_icnn_one, icnn_bounds_affine_out, icnn_bounds_layer_out)
         icnn.add_max_output_constraints(m, input_to_icnn_two, icnn_bounds_affine_out, icnn_bounds_layer_out)
 
-        difference = m.addVar(lb=-float('inf'))
-
+        difference = m.addVar(lb=min(lb - ub), ub=max(ub - lb))
+        m.update()
         for i in range(icnn_input_size):
             diff_const = m.addConstr(difference == input_to_icnn_one[i] - input_to_icnn_two[i])
             m.setObjective(difference, grp.GRB.MAXIMIZE)

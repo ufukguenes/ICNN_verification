@@ -23,8 +23,6 @@ def generate_model_center_eps(model, center, eps, layer_index):
     model.addConstrs(input_approx_layer[i] <= center[i] + eps for i in range(input_to_previous_layer_size))
     model.addConstrs(input_approx_layer[i] >= center[i] - eps for i in range(input_to_previous_layer_size))
 
-    return model
-
 
 def add_layer_to_model(model, affine_w, affine_b, curr_constraint_icnns, curr_group_indices, curr_bounds_affine_out, curr_bounds_layer_out, curr_fixed_neuron_lower, curr_fixed_neuron_upper, current_layer_index):
 
@@ -67,14 +65,10 @@ def add_layer_to_model(model, affine_w, affine_b, curr_constraint_icnns, curr_gr
         var.setAttr("varname", "output_layer_[{}]_[{}]".format(current_layer_index, i))
 
 
-def generate_model_A_b(a_matrix, b_vector, layer_index):
-    m = Model() #todo hier model als eingabe machen
-    m.Params.LogToConsole = 0
+def generate_model_A_b(model, a_matrix, b_vector, layer_index):
     input_size = len(b_vector)
-    input_var = m.addMVar(input_size, lb=-float('inf'), name="output_layer_[{}]_".format(layer_index))  # todo mit boxbounds anpassen
-    m.addMConstr(a_matrix, input_var, "<=", b_vector)
-
-    return m
+    input_var = model.addMVar(input_size, lb=-float('inf'), name="output_layer_[{}]_".format(layer_index))
+    model.addMConstr(a_matrix, input_var, "<=", b_vector)
 
 
 def verification(icnn, model, affine_w, affine_b, index_to_select, curr_bounds_affine_out, curr_bounds_layer_out, prev_layer_index, has_relu=False):
@@ -190,4 +184,4 @@ def min_max_of_icnns(model, bounds_affine_out, bounds_layer_out, current_layer_i
     relu_out_lb, relu_out_ub = verbas.calc_relu_out_bound(bounds_affine_out[current_layer_index][0], bounds_affine_out[current_layer_index][1])
     bounds_layer_out[current_layer_index][0] = relu_out_lb
     bounds_layer_out[current_layer_index][1] = relu_out_ub
-    return bounds_affine_out, bounds_affine_out
+    return bounds_affine_out, bounds_layer_out

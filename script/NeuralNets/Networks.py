@@ -67,12 +67,6 @@ class SequentialNN(nn.Sequential, VerifiableNet):
     def calculate_box_bounds(self, input_bounds):
         parameter_list = list(self.parameters())
 
-        if input_bounds is None:
-            bounds_per_layer = [([torch.tensor([-5000 for k in range(len(parameter_list[i]))]),
-                                  torch.tensor([5000 for k in range(len(parameter_list[i]))])]) for i in
-                                range(0, len(parameter_list), 2)]
-            return bounds_per_layer  # todo None entfernen aus aufrufen und durch sinnvolle eingabe ersetzen
-
         affine_in_lb = input_bounds[0]
         affine_in_ub = input_bounds[1]
         affine_out_bounds_per_layer = []
@@ -258,14 +252,6 @@ class ICNN(nn.Module, VerifiableNet):
             last[1].data = torch.zeros_like(last[1], dtype=data_type).to(device)
 
     def calculate_box_bounds(self, input_bounds):  # todo für andere Netze die Architektur anpassen
-        sequential_weights_biases = list(self.parameters())
-        # todo for now this only works for sequential nets
-
-        if input_bounds is None:
-            bounds_per_layer = [([torch.tensor([-5000 for k in range(len(parameter_list[i]))]),
-                                  torch.tensor([5000 for k in range(len(parameter_list[i]))])]) for i in
-                                range(0, len(parameter_list), 2)]
-            return bounds_per_layer  # todo None entfernen aus aufrufen und durch sinnvolle eingabe ersetzen
 
         affine_in_lb = input_bounds[0]
         affine_in_ub = input_bounds[1]
@@ -429,12 +415,18 @@ class ICNNLogical(ICNN):
 
     def add_max_output_constraints(self, model, input_vars, bounds_affine_out, bounds_layer_out, as_lp=True):
         icnn_output_var = super().add_constraints(model, input_vars, bounds_affine_out, bounds_layer_out, as_lp=as_lp)
+        model.update()
 
-        lb = -float("inf")
-        ub = float("inf")  # todo richtige box bounds anwenden (die vom zu approximierenden Layer)
         ls = self.ls
-
         bb_w, bb_b = ls[0].weight.data.detach().cpu().numpy(), ls[0].bias.data.detach().cpu().numpy()
+
+        in_lb = torch.tensor([var.getAttr("lb").item() for var in input_vars], dtype=data_type).to(device)
+        in_ub = torch.tensor([var.getAttr("ub").item() for var in input_vars], dtype=data_type).to(device)
+        tensor_bb_w = torch.tensor(bb_w, dtype=data_type).to(device)
+        tensor_bb_b = torch.tensor(bb_b, dtype=data_type).to(device)
+
+        lb, ub = verbas.calc_affine_out_bound(tensor_bb_w, tensor_bb_b, in_lb, in_ub)
+
         bb_var = model.addMVar(len(bb_b), lb=lb, ub=ub, name="skip_var")
         skip_const = model.addConstrs((bb_w[i] @ input_vars + bb_b[i] == bb_var[i] for i in range(len(bb_w))), name="bb_const")
         max_var = model.addVar(lb=-float("inf"))
@@ -552,11 +544,17 @@ class ICNNApproxMax(ICNN):
     def add_max_output_constraints(self, model, input_vars, bounds_affine_out, bounds_layer_out, as_lp=True):
         icnn_output_var = super().add_constraints(model, input_vars, bounds_affine_out, bounds_layer_out, as_lp=as_lp)
         output_of_and = model.addMVar(1, lb=-float('inf'))
-        lb = - float("inf")
-        ub = float("inf")  # todo richtige box bounds anwenden (die vom zu approximierenden Layer)
-        ls = self.ls
+        model.update()
 
+        ls = self.ls
         bb_w, bb_b = ls[0].weight.data.detach().cpu().numpy(), ls[0].bias.data.detach().cpu().numpy()
+
+        in_lb = torch.tensor([var.getAttr("lb").item() for var in input_vars], dtype=data_type).to(device)
+        in_ub = torch.tensor([var.getAttr("ub").item() for var in input_vars], dtype=data_type).to(device)
+        tensor_bb_w = torch.tensor(bb_w, dtype=data_type).to(device)
+        tensor_bb_b = torch.tensor(bb_b, dtype=data_type).to(device)
+        lb, ub = verbas.calc_affine_out_bound(tensor_bb_w, tensor_bb_b, in_lb, in_ub)
+
         bb_var = model.addMVar(4, lb=lb, ub=ub, name="skip_var")
         skip_const = model.addConstrs(bb_w[i] @ input_vars + bb_b[i] == bb_var[i] for i in range(len(bb_w)))
         max_var = model.addVar(lb=-float("inf"))
