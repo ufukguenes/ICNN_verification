@@ -98,11 +98,6 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
         original_included_space = torch.empty((0, input_flattened.size(0)), dtype=data_type).to(device)
         original_ambient_space = torch.empty((0, input_flattened.size(0)), dtype=data_type).to(device)
 
-        # adv_samp = torch.load("adv_samp.pt") #todo rauslöschen
-        # included_space[0] = adv_samp
-        plt_inc_amb("help", torch.index_select(included_space, 1, torch.tensor([1, 23])).tolist(),
-                    torch.index_select(ambient_space, 1, torch.tensor([1, 23])).tolist())
-
         if should_plot in valid_should_plot and should_plot != "none":
             original_included_space, original_ambient_space = included_space, ambient_space
 
@@ -140,7 +135,7 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
                                                                 layer_index=current_layer_index, group_size=group_size,
                                                                 padding=eps)
 
-            if should_plot == "detailed":
+            if should_plot == "detailed" and included_space.size(1) == 2:
                 plt_inc_amb("start " + str(i), included_space.tolist(), ambient_space.tolist())
 
             included_space = ds.apply_affine_transform(affine_w, affine_b, included_space)
@@ -150,7 +145,7 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
                         torch.index_select(included_space, 1, torch.tensor([1, 23])).tolist(),
                         torch.index_select(ambient_space, 1, torch.tensor([1, 23])).tolist())"""
 
-            if should_plot in valid_should_plot and should_plot != "none":
+            if should_plot in valid_should_plot and should_plot != "none" and included_space.size(1) == 2:
                 original_included_space = ds.apply_affine_transform(affine_w, affine_b, original_included_space)
                 original_ambient_space = ds.apply_affine_transform(affine_w, affine_b, original_ambient_space)
                 if should_plot == "detailed":
@@ -164,7 +159,7 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
             """plt_inc_amb("second layer output of neuron 2, 3", torch.index_select(included_space, 1, torch.tensor([2, 3])).tolist(),
                         torch.index_select(ambient_space, 1, torch.tensor([2, 3])).tolist())"""
 
-            if should_plot in valid_should_plot and should_plot != "none":
+            if should_plot in valid_should_plot and should_plot != "none" and included_space.size(1) == 2:
                 original_included_space = ds.apply_relu_transform(original_included_space)
                 original_ambient_space = ds.apply_relu_transform(original_ambient_space)
                 if should_plot == "detailed":
@@ -175,11 +170,11 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
             if sample_over_output_space:
                 ambient_space = ds.samples_uniform_over(ambient_space, int(sample_count / 2),
                                                         bounds_layer_out[current_layer_index], padding=eps)
-                if should_plot in ["simple", "detailed"]:
+                if should_plot in ["simple", "detailed"] and included_space.size(1) == 2:
                     original_ambient_space = ds.samples_uniform_over(original_ambient_space, int(sample_count / 2),
                                                                      bounds_layer_out[current_layer_index], padding=eps)
 
-            if should_plot == "detailed":
+            if should_plot == "detailed" and included_space.size(1) == 2:
                 plt_inc_amb("enhanced ambient space " + str(i), included_space.tolist(), ambient_space.tolist())
                 plt_inc_amb("original enhanced ambient space " + str(i), original_included_space.tolist(),
                             original_ambient_space.tolist())
@@ -243,6 +238,7 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
                 ambient_space = torch.empty((0, affine_w.size(1)), dtype=data_type).to(device)
 
                 if i == 0:
+                    t_group = time.time()
                     """included_space = ds.sample_per_group(included_space, sample_count // 2, affine_w, center,
                                                          eps, index_to_select)"""
                     included_space = ds.sample_per_group(included_space, sample_count // 4, affine_w, center,
@@ -254,6 +250,7 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
                     # included_space = ds.sample_per_group(included_space, sample_count // 2, parameter_list[0], center, eps, index_to_select, with_noise=True, with_sign_swap=True)
                     # included_space = ds.sample_per_group(included_space, sample_count // 2, parameter_list[0], center, eps, index_to_select, with_noise=False, with_sign_swap=True)
                     # included_space = ds.sample_per_group(included_space, sample_count // 2, parameter_list[0], center, eps, index_to_select, with_noise=True, with_sign_swap=False)
+                    print("        time for sampling for one group: {}".format(time.time() - t_group))
                 else:
                     copy_model = nn_encoding_model.copy()
                     t_group = time.time()
@@ -269,11 +266,11 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
                                                                  keep_samples=True)
                     print("        time for sampling for one group: {}".format(time.time() - t_group))
 
-                if len(group_indices[group_i]) == 2:
+                if should_plot in valid_should_plot and should_plot != "none" and len(group_indices[group_i]) == 2:
                     plt_inc_amb("layer input ",
                                 torch.index_select(included_space, 1, index_to_select).tolist(),
                                 torch.index_select(ambient_space, 1, index_to_select).tolist())
-                elif len(group_indices[group_i]) == 3:
+                elif should_plot in valid_should_plot and should_plot != "none" and len(group_indices[group_i]) == 3:
                     plt_inc_amb_3D("layer input ",
                                 torch.index_select(included_space, 1, index_to_select).tolist(),
                                 torch.index_select(ambient_space, 1, index_to_select).tolist())
@@ -289,11 +286,11 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
                 included_space = ds.apply_affine_transform(affine_w, affine_b, included_space)
                 ambient_space = ds.apply_affine_transform(affine_w, affine_b, ambient_space)
 
-                if len(group_indices[group_i]) == 2:
+                if should_plot in valid_should_plot and should_plot != "none" and len(group_indices[group_i]) == 2:
                     plt_inc_amb("layer output ",
                                 torch.index_select(included_space, 1, index_to_select).tolist(),
                                 torch.index_select(ambient_space, 1, index_to_select).tolist())
-                elif len(group_indices[group_i]) == 3:
+                elif should_plot in valid_should_plot and should_plot != "none" and len(group_indices[group_i]) == 3:
                     plt_inc_amb_3D("layer output ",
                             torch.index_select(included_space, 1, index_to_select).tolist(),
                             torch.index_select(ambient_space, 1, index_to_select).tolist())
@@ -340,7 +337,7 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
                     # todo sollte ich das noch dazu nehmen, dann wird ja ggf die anzahl samples
                     #  doppelt so groß und es dauert länger
                     untouched_group_norm_ambient_space = group_norm_ambient_space.detach().clone()
-                    if should_plot in ["simple", "detailed"]:
+                    if should_plot in ["simple", "detailed"] and len(group_indices[group_i]) == 2 :
                         plt_inc_amb("without gradient descent", group_norm_included_space.tolist(),
                                     group_norm_ambient_space.tolist())
                     for gd_round in range(data_grad_descent_steps):
@@ -367,7 +364,7 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
                         #  übernommen wird
                         ambient_loader = DataLoader(dataset, batch_size=icnn_batch_size, shuffle=True)
 
-                        if should_plot in ["simple", "detailed"]:
+                        if should_plot in ["simple", "detailed"] and len(group_indices[group_i]) == 2:
                             """plt_inc_amb("with gradient descent", normalized_included_space.tolist(),
                                         torch.cat([normalized_ambient_space.detach(),
                                                    untouched_normalized_ambient_space.detach()]).tolist())"""
@@ -408,13 +405,11 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
                                                         bounds_layer_out[current_layer_index], prev_layer_index,
                                                         has_relu=True)
 
-                torch.save(torch.tensor(adversarial_input, dtype=data_type), "adv_samp.pt")
-
                 current_icnn.apply_enlargement(c)
 
             print("        time for verification: {}".format(time.time() - t))
 
-            if len(group_indices[group_i]) == 2:
+            if should_plot in ["detailed", "verification"] and should_plot != "none" and len(group_indices[group_i]) == 2:
                 plots = Plots_for(0, current_icnn, group_inc_space.detach(), group_amb_space.detach(),
                                   [-0.1, 0.25], [-0.1, 0.4])
                 plots.plt_mesh()
@@ -476,19 +471,20 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
 
         # oder sample neue punkte
         t = time.time()
-        if sample_new:
+        if sample_new and sampling_method != "per_group_sampling":
             # todo entweder über box bounds sampeln oder über maximum radius
             included_space, ambient_space = ds.sample_max_radius(list_of_icnns[current_layer_index], sample_count,
                                                                  group_indices, bounds_layer_out[current_layer_index],
                                                                  fixed_neuron_per_layer_lower[current_layer_index],
                                                                  fixed_neuron_per_layer_upper[current_layer_index])
 
-        else:
+        elif sampling_method != "per_group_sampling":
+            # re-grouping
             included_space, ambient_space = ds.regroup_samples(list_of_icnns[current_layer_index], included_space,
                                                                ambient_space, group_indices)
         print("    time for regrouping method: {}".format(time.time() - t))
 
-    if should_plot in valid_should_plot and should_plot != "none":
+    if should_plot in valid_should_plot and should_plot != "none" and included_space.size(1) == 2:
         index = len(parameter_list) - 2
         affine_w, affine_b = parameter_list[index], parameter_list[index + 1]
         included_space = ds.apply_affine_transform(affine_w, affine_b, included_space)
