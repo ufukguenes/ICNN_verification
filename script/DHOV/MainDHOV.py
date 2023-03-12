@@ -278,7 +278,7 @@ def multi_net2D():
     W3 = [-1. 1.; 1. 1.]
     b3 = [3., 0.] """
 
-    nn = SequentialNN([2, 2, 2, 2])
+    """nn = SequentialNN([2, 2, 2, 2])
 
     with torch.no_grad():
         parameter_list = list(nn.parameters())
@@ -289,7 +289,7 @@ def multi_net2D():
         parameter_list[4].data = torch.tensor([[-1, 1], [1, 1]], dtype=data_type).to(device)
         parameter_list[5].data = torch.tensor([3, 0], dtype=data_type).to(device)
 
-    test_image = torch.tensor([[0, 0]], dtype=data_type).to(device)
+    test_image = torch.tensor([[0, 0]], dtype=data_type).to(device)"""
 
     """transform = Compose([ToTensor(),
                          Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
@@ -303,7 +303,7 @@ def multi_net2D():
     nn = SequentialNN([32 * 32 * 3, 1024, 512, 10])
     nn.load_state_dict(torch.load("../../cifar_fc.pth", map_location=torch.device('cpu')), strict=False)"""
 
-    """transform = Compose([ToTensor(),
+    transform = Compose([ToTensor(),
                          Normalize(0.5, 0.5)]
                         )
 
@@ -316,7 +316,7 @@ def multi_net2D():
         torch.tensor(labels), 0).to(dtype=data_type).to(device)
 
     nn = SequentialNN([28*28*1, 100, 30, 10])
-    nn.load_state_dict(torch.load("../../mnist_fc.pth", map_location=torch.device('cpu')), strict=False)"""
+    nn.load_state_dict(torch.load("../../mnist_fc.pth", map_location=torch.device('cpu')), strict=False)
 
     #nn = SequentialNN([300, 100, 50, 7])
     #test_image = torch.zeros((1, 300), dtype=data_type).to(device)

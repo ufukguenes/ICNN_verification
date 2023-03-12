@@ -333,7 +333,7 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
                     # todo sollte ich das noch dazu nehmen, dann wird ja ggf die anzahl samples
                     #  doppelt so groß und es dauert länger
                     untouched_group_norm_ambient_space = group_norm_ambient_space.detach().clone()
-                    if should_plot in ["simple", "detailed"] and len(group_indices[group_i]) == 2 :
+                    if should_F in ["simple", "detailed"] and len(group_indices[group_i]) == 2 :
                         plt_inc_amb("without gradient descent", group_norm_included_space.tolist(),
                                     group_norm_ambient_space.tolist())
                     for gd_round in range(data_grad_descent_steps):
@@ -364,10 +364,14 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
                             """plt_inc_amb("with gradient descent", normalized_included_space.tolist(),
                                         torch.cat([normalized_ambient_space.detach(),
                                                    untouched_normalized_ambient_space.detach()]).tolist())"""
+                            min_x, max_x, min_y, max_y = get_min_max_x_y(torch.cat(
+                                [group_norm_included_space.detach(), group_norm_ambient_space.detach(),
+                                 untouched_group_norm_ambient_space.detach()]))
+
                             plots = Plots_for(0, current_icnn, group_norm_included_space.detach(), torch.cat(
                                 [group_norm_ambient_space.detach(),
                                  untouched_group_norm_ambient_space.detach()]).detach(),
-                                              [-2, 3], [-2, 3])
+                                              [min_x, max_x], [min_y, max_y])
 
                             plots.plt_mesh()
 
@@ -380,9 +384,11 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
                 for k in range(icnn_epochs):
                     train_icnn_outer(current_icnn, train_loader, ambient_loader, epochs=1)
                     if k % 10 == 0:
+                        min_x, max_x, min_y, max_y = get_min_max_x_y(torch.cat(
+                            [group_norm_included_space.detach(), group_norm_ambient_space.detach()]))
                         plots = Plots_for(0, current_icnn, group_norm_included_space.detach(),
                                           group_norm_ambient_space.detach(),
-                                          [-2, 3], [-2, 3])
+                                          [min_x, max_x], [min_y, max_y])
                         plots.plt_mesh()
 
             current_icnn.apply_normalisation(mean, std)
@@ -406,8 +412,10 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
             print("        time for verification: {}".format(time.time() - t))
 
             if should_plot in ["detailed", "verification"] and should_plot != "none" and len(group_indices[group_i]) == 2:
+                min_x, max_x, min_y, max_y = \
+                    get_min_max_x_y(torch.cat([group_inc_space.detach(), group_amb_space.detach()]))
                 plots = Plots_for(0, current_icnn, group_inc_space.detach(), group_amb_space.detach(),
-                                  [-0.1, 0.25], [-0.1, 0.4])
+                                  [min_x, max_x], [min_y, max_y])
                 plots.plt_mesh()
 
             # inp_bounds_icnn = bounds_layer_out[current_layer_index]
@@ -485,8 +493,11 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
         included_space = ds.apply_affine_transform(affine_w, affine_b, included_space)
         ambient_space = ds.apply_affine_transform(affine_w, affine_b, ambient_space)
         original_included_space = ds.apply_affine_transform(affine_w, affine_b, original_included_space)
-        plots = Plots_for(0, current_icnn, included_space.detach().cpu(), ambient_space.detach().cpu(), [-1, 3],
-                          [-1, 3],
+
+        min_x, max_x, min_y, max_y = \
+            get_min_max_x_y(torch.cat([included_space.detach(), ambient_space.detach()]))
+        plots = Plots_for(0, current_icnn, included_space.detach().cpu(), ambient_space.detach().cpu(),
+                          [min_x, max_x], [min_y, max_y],
                           extr=original_included_space.detach().cpu())
         plots.plt_initial()
 
@@ -559,3 +570,11 @@ def get_current_group_indices(num_neurons, group_size, fixed_neurons_lower, fixe
     if len(current_group) > 0:
         group_indices.append(current_group)
     return group_indices
+
+
+def get_min_max_x_y(values):
+    xs = torch.index_select(values, 1, torch.tensor(0))
+    ys = torch.index_select(values, 1, torch.tensor(1))
+    min_x, max_x = xs.min(), xs.max()
+    min_y, max_y = ys.min(), ys.max()
+    return min_x, max_x, min_y, max_y
