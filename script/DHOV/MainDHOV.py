@@ -326,16 +326,16 @@ def multi_net2D():
     test_image = torch.zeros((1, 500), dtype=data_type).to(device)
     parameter_list = list(nn.parameters())"""
 
-    group_size = 3
+    group_size = 2
     """icnn_factory = ICNNFactory("logical", [10, 10, 1], force_positive_init=False, with_two_layers=False,
                                init_scaling=10, init_all_with_zeros=False)"""
     icnn_factory = ICNNFactory("standard", [10, 10, 1])
     #icnn_factory = ICNNFactory("approx_max", [10, 1])
-    eps = 0.01
+    eps = 0.015
     #matplotlib.use('TkAgg')
 
     icnns, all_group_indices, fixed_neuron_per_layer_lower, fixed_neuron_per_layer_upper, bounds_affine_out, bounds_layer_out = \
-        multidhov.start_verification(nn, test_image, icnn_factory, group_size, eps=eps, icnn_epochs=10,
+        multidhov.start_verification(nn, test_image, icnn_factory, group_size, eps=eps, icnn_epochs=1,
                                      icnn_batch_size=10000, sample_count=1000, sample_new=True, use_over_approximation=True, break_after=None,
                                      sample_over_input_space=False, sample_over_output_space=True, use_icnn_bounds=True,
                                      use_fixed_neurons=True, sampling_method="per_group_sampling",

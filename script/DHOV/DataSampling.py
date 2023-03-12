@@ -245,7 +245,7 @@ def sample_random_sum_noise(data_samples, amount, center, eps, keep_samples=True
     return data_samples
 
 
-def sample_per_group_as_lp(data_samples, amount, affine_w, affine_b, index_to_select, model, curr_bounds_affine_out, rand_samples_percent=0, rand_sample_alternation_percent=0.2, keep_samples=True):
+def sample_per_group_as_lp(data_samples, amount, affine_w, affine_b, index_to_select, model, curr_bounds_affine_out, prev_layer_index, rand_samples_percent=0, rand_sample_alternation_percent=0.2, keep_samples=True):
     upper = 1
     lower = - 1
     cs_temp = (upper - lower) * torch.rand((amount, len(index_to_select)),
@@ -270,16 +270,16 @@ def sample_per_group_as_lp(data_samples, amount, affine_w, affine_b, index_to_se
             for k, index in enumerate(rand_index):
                 cs[i][index] = rand_samples[i][k]
 
-    input_approx_layer = []
-    for i in range(affine_w.size(1)):
-        input_approx_layer.append(model.getVarByName("input_approx_layer[{}]".format(i)))
-    input_approx_layer = grp.MVar.fromlist(input_approx_layer)
+    output_prev_layer = []
+    for i in range(affine_w.shape[1]):
+        output_prev_layer.append(model.getVarByName("output_layer_[{}]_[{}]".format(prev_layer_index, i)))
+    output_prev_layer = grp.MVar.fromlist(output_prev_layer)
 
     lb = curr_bounds_affine_out[0].detach().cpu().numpy()
     ub = curr_bounds_affine_out[1].detach().cpu().numpy()
     numpy_affine_w = affine_w.detach().cpu().numpy()
     numpy_affine_b = affine_b.detach().cpu().numpy()
-    output_var = verbas.add_affine_constr(model, numpy_affine_w, numpy_affine_b, input_approx_layer, lb, ub, i=0)
+    output_var = verbas.add_affine_constr(model, numpy_affine_w, numpy_affine_b, output_prev_layer, lb, ub, i=0)
 
     model.update()
     for index, c in enumerate(cs):
@@ -287,30 +287,8 @@ def sample_per_group_as_lp(data_samples, amount, affine_w, affine_b, index_to_se
         model.setObjective(c @ output_var, grp.GRB.MAXIMIZE)
 
         model.optimize()
-        if model.Status == grp.GRB.INFEASIBLE:
-            model.Params.LogToConsole = 1
-            model.computeIIS()
-            print("constraint")
-            all_constr = model.getConstrs()
-
-            for const in all_constr:
-                if const.IISConstr:
-                    print("{}".format(const))
-
-            print("lower bound")
-            all_var = model.getVars()
-            for var in all_var:
-                if var.IISLB:
-                    print("{}, lb: {}, ub: {}".format(var, var.getAttr("lb"), var.getAttr("ub")))
-
-            print("upper bound")
-            all_var = model.getVars()
-            for var in all_var:
-                if var.IISUB:
-                    print("{}, lb: {}, ub: {}".format(var, var.getAttr("lb"), var.getAttr("ub")))
-            return
         if model.Status == grp.GRB.OPTIMAL:
-            samples[index] = torch.tensor(input_approx_layer.getAttr("X"), dtype=data_type).to(device)
+            samples[index] = torch.tensor(output_prev_layer.getAttr("X"), dtype=data_type).to(device)
 
     if keep_samples and data_samples.size(0) > 0:
         data_samples = torch.cat([data_samples, samples], dim=0)
