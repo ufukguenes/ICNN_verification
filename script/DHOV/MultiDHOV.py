@@ -20,6 +20,7 @@ from script.eval import Plots_for
 from script.NeuralNets.trainFunction import train_icnn, train_icnn_outer
 from script.settings import device, data_type
 import gurobipy as grp
+import warnings
 
 
 # todo zu Klasse umwandeln
@@ -58,6 +59,15 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
     if sampling_method not in valid_sampling_methods:
         raise AttributeError(
             "Expected sampling method to be one of: {} , got: {}".format(valid_sampling_methods, sampling_method))
+    if keep_ambient_space and sampling_method == "per_group_sampling":
+        warnings.warn("keep_ambient_space is True and sampling method ist -per_group_sampling-. "
+                      "Keeping previous samples is not supported when using per group sampling")
+    if sample_over_input_space:
+        sample_over_input_space = False
+        sample_over_output_space = True
+        warnings.warn("sample_over_input_space is True and sampling method ist -per_group_sampling-. "
+                      "Sampling over input space is not yet supported when using per group sampling. "
+                      "Using sampling over output space instead...")
 
     input_flattened = torch.flatten(input)
     center = input_flattened
@@ -72,21 +82,28 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
 
     included_space = torch.empty((0, input_flattened.size(0)), dtype=data_type).to(device)
 
+    inc_space_sample_count = sample_count // 2
+
+    if sample_over_input_space and sample_over_output_space:
+        amb_space_sample_count = sample_count // 4
+    else:
+        amb_space_sample_count = sample_count // 2
+
     if sampling_method != "per_group_sampling":
         if sampling_method == "uniform":
-            included_space = ds.samples_uniform_over(included_space, int(sample_count / 2), eps_bounds)
+            included_space = ds.samples_uniform_over(included_space, inc_space_sample_count, eps_bounds)
         elif sampling_method == "linespace":
-            included_space = ds.sample_linspace(included_space, int(sample_count / 2), center, eps)
+            included_space = ds.sample_linspace(included_space, inc_space_sample_count, center, eps)
         elif sampling_method == "boarder":
-            included_space = ds.sample_boarder(included_space, int(sample_count / 2), center, eps)
+            included_space = ds.sample_boarder(included_space, inc_space_sample_count, center, eps)
         elif sampling_method == "sum_noise":
-            included_space = ds.sample_random_sum_noise(included_space, int(sample_count), center, eps)
+            included_space = ds.sample_random_sum_noise(included_space, inc_space_sample_count, center, eps)
         elif sampling_method == "min_max_perturbation":
-            included_space = ds.sample_min_max_perturbation(included_space, int(sample_count), parameter_list[0],
+            included_space = ds.sample_min_max_perturbation(included_space, inc_space_sample_count, parameter_list[0],
                                                             center, eps)
         elif sampling_method == "alternate_min_max":
-            included_space = ds.sample_alternate_min_max(included_space, int(sample_count), parameter_list[0], center,
-                                                         eps)
+            included_space = ds.sample_alternate_min_max(included_space, inc_space_sample_count, parameter_list[0],
+                                                         center, eps)
 
         # included_space = ds.samples_uniform_over(included_space, int(sample_count / 2), eps_bounds, keep_samples=True)
 
@@ -121,10 +138,10 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
 
             if sample_over_input_space:
                 if i == 0:
-                    ambient_space = ds.sample_uniform_excluding(ambient_space, int(sample_count / 2), eps_bounds,
+                    ambient_space = ds.sample_uniform_excluding(ambient_space, amb_space_sample_count, eps_bounds,
                                                                 excluding_bound=eps_bounds, padding=eps)
                 else:
-                    ambient_space = ds.sample_uniform_excluding(ambient_space, int(sample_count / 2),
+                    ambient_space = ds.sample_uniform_excluding(ambient_space, amb_space_sample_count,
                                                                 bounds_layer_out[current_layer_index - 1],
                                                                 icnns=list_of_icnns[current_layer_index - 1],
                                                                 layer_index=current_layer_index, group_size=group_size,
@@ -163,10 +180,10 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
                                 original_ambient_space.tolist())
 
             if sample_over_output_space:
-                ambient_space = ds.samples_uniform_over(ambient_space, int(sample_count / 2),
+                ambient_space = ds.samples_uniform_over(ambient_space, amb_space_sample_count,
                                                         bounds_layer_out[current_layer_index], padding=eps)
                 if should_plot in ["simple", "detailed"] and included_space.size(1) == 2:
-                    original_ambient_space = ds.samples_uniform_over(original_ambient_space, int(sample_count / 2),
+                    original_ambient_space = ds.samples_uniform_over(original_ambient_space, amb_space_sample_count,
                                                                      bounds_layer_out[current_layer_index], padding=eps)
 
             if should_plot == "detailed" and included_space.size(1) == 2:
@@ -236,25 +253,25 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
                     t_group = time.time()
                     """included_space = ds.sample_per_group(included_space, sample_count // 2, affine_w, center,
                                                          eps, index_to_select)"""
-                    included_space = ds.sample_per_group(included_space, sample_count // 4, affine_w, center,
+                    included_space = ds.sample_per_group(included_space, inc_space_sample_count // 2,  affine_w, center,
                                                          eps, index_to_select, rand_samples_percent=0.2,
                                                          rand_sample_alternation_percent=0.01)
-                    included_space = ds.samples_uniform_over(included_space, sample_count // 4, eps_bounds,
+                    included_space = ds.samples_uniform_over(included_space, inc_space_sample_count // 2, eps_bounds,
                                                              keep_samples=True)
-                    # included_space = ds.sample_min_max_perturbation(included_space, sample_count // 4, affine_w, center, eps, keep_samples=True, swap_probability=0.2)
-                    # included_space = ds.sample_per_group(included_space, sample_count // 2, parameter_list[0], center, eps, index_to_select, with_noise=True, with_sign_swap=True)
-                    # included_space = ds.sample_per_group(included_space, sample_count // 2, parameter_list[0], center, eps, index_to_select, with_noise=False, with_sign_swap=True)
-                    # included_space = ds.sample_per_group(included_space, sample_count // 2, parameter_list[0], center, eps, index_to_select, with_noise=True, with_sign_swap=False)
+                    # included_space = ds.sample_min_max_perturbation(included_space, inc_space_sample_count // 2, affine_w, center, eps, keep_samples=True, swap_probability=0.2)
+                    # included_space = ds.sample_per_group(included_space, inc_space_sample_count // 2, parameter_list[0], center, eps, index_to_select, with_noise=True, with_sign_swap=True)
+                    # included_space = ds.sample_per_group(included_space, inc_space_sample_count // 2, parameter_list[0], center, eps, index_to_select, with_noise=False, with_sign_swap=True)
+                    # included_space = ds.sample_per_group(included_space, inc_space_sample_count // 2, parameter_list[0], center, eps, index_to_select, with_noise=True, with_sign_swap=False)
                     print("        time for sampling for one group: {}".format(time.time() - t_group))
                 else:
                     copy_model = nn_encoding_model.copy()
                     t_group = time.time()
-                    included_space = ds.sample_per_group_as_lp(included_space, sample_count // 4, affine_w, affine_b,
+                    included_space = ds.sample_per_group_as_lp(included_space, inc_space_sample_count // 2, affine_w, affine_b,
                                                                index_to_select, copy_model,
                                                                bounds_affine_out[current_layer_index], prev_layer_index,
                                                                rand_samples_percent=0.2,
                                                                rand_sample_alternation_percent=0.2)
-                    included_space = ds.sample_uniform_over_icnn(included_space, sample_count // 4,
+                    included_space = ds.sample_uniform_over_icnn(included_space, inc_space_sample_count // 2,
                                                                  list_of_icnns[current_layer_index - 1],
                                                                  all_group_indices[current_layer_index - 1],
                                                                  bounds_layer_out[current_layer_index - 1],
@@ -269,14 +286,6 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
                     plt_inc_amb_3D("layer input ",
                                 torch.index_select(included_space, 1, index_to_select).tolist(),
                                 torch.index_select(ambient_space, 1, index_to_select).tolist())
-
-                if not keep_ambient_space:
-                    raise NotImplementedError(
-                        "keeping previous samples is not yet supported when using per group sampling")
-
-                if sample_over_input_space:
-                    raise NotImplementedError(
-                        "sampling over input space is not yet supported when using per group sampling")
 
                 included_space = ds.apply_affine_transform(affine_w, affine_b, included_space)
                 ambient_space = ds.apply_affine_transform(affine_w, affine_b, ambient_space)
@@ -294,7 +303,7 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
                 ambient_space = ds.apply_relu_transform(ambient_space)
 
                 if sample_over_output_space:
-                    ambient_space = ds.samples_uniform_over(ambient_space, sample_count // 2,
+                    ambient_space = ds.samples_uniform_over(ambient_space, amb_space_sample_count,
                                                             bounds_layer_out[current_layer_index],
                                                             padding=eps)
 
@@ -330,10 +339,7 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
                     max_out = torch.max(out)
                     current_icnn.apply_enlargement(max_out)
                 if data_grad_descent_steps > 1:
-                    # todo sollte ich das noch dazu nehmen, dann wird ja ggf die anzahl samples
-                    #  doppelt so groß und es dauert länger
-                    untouched_group_norm_ambient_space = group_norm_ambient_space.detach().clone()
-                    if should_F in ["simple", "detailed"] and len(group_indices[group_i]) == 2 :
+                    if should_plot in ["simple", "detailed"] and len(group_indices[group_i]) == 2 :
                         plt_inc_amb("without gradient descent", group_norm_included_space.tolist(),
                                     group_norm_ambient_space.tolist())
                     for gd_round in range(data_grad_descent_steps):
@@ -353,8 +359,7 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
                             # dop.gradient_descent_data_optim(current_icnn, normalized_ambient_space.detach())
                             group_norm_ambient_space = dop.adam_data_optim(current_icnn,
                                                                            group_norm_ambient_space.detach())
-                        dataset = ConvexDataset(data=torch.cat(
-                            [group_norm_ambient_space.detach(), untouched_group_norm_ambient_space.detach()]))
+                        dataset = ConvexDataset(group_norm_ambient_space.detach())
 
                         # todo hier muss ich noch verwalten was passiert wenn ambient space in die nächste runde
                         #  übernommen wird
@@ -365,12 +370,10 @@ def start_verification(nn: SequentialNN, input, icnn_factory, group_size, eps=0.
                                         torch.cat([normalized_ambient_space.detach(),
                                                    untouched_normalized_ambient_space.detach()]).tolist())"""
                             min_x, max_x, min_y, max_y = get_min_max_x_y(torch.cat(
-                                [group_norm_included_space.detach(), group_norm_ambient_space.detach(),
-                                 untouched_group_norm_ambient_space.detach()]))
+                                [group_norm_included_space.detach(), group_norm_ambient_space.detach()]))
 
-                            plots = Plots_for(0, current_icnn, group_norm_included_space.detach(), torch.cat(
-                                [group_norm_ambient_space.detach(),
-                                 untouched_group_norm_ambient_space.detach()]).detach(),
+                            plots = Plots_for(0, current_icnn, group_norm_included_space.detach(),
+                                              group_norm_ambient_space.detach(),
                                               [min_x, max_x], [min_y, max_y])
 
                             plots.plt_mesh()
