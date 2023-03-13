@@ -22,6 +22,7 @@ def generate_model_center_eps(model, center, eps, layer_index):
                                         ub=[elem + eps for elem in center], name="output_layer_[{}]_".format(layer_index))
     model.addConstrs(input_approx_layer[i] <= center[i] + eps for i in range(input_to_previous_layer_size))
     model.addConstrs(input_approx_layer[i] >= center[i] - eps for i in range(input_to_previous_layer_size))
+    return input_approx_layer
 
 
 def add_layer_to_model(model, affine_w, affine_b, curr_constraint_icnns, curr_group_indices, curr_bounds_affine_out, curr_bounds_layer_out, curr_fixed_neuron_lower, curr_fixed_neuron_upper, current_layer_index):
@@ -152,7 +153,7 @@ def verification(icnn, model, affine_w, affine_b, index_to_select, curr_bounds_a
         return inp, output_var[0].X
 
 
-def min_max_of_icnns(model, bounds_affine_out, bounds_layer_out, current_layer_index, affine_w, affine_b):
+def update_bounds_with_icnns(model, bounds_affine_out, bounds_layer_out, current_layer_index, affine_w, affine_b):
 
     output_prev_layer = []
     prev_layer_index = current_layer_index - 1
@@ -184,4 +185,3 @@ def min_max_of_icnns(model, bounds_affine_out, bounds_layer_out, current_layer_i
     relu_out_lb, relu_out_ub = verbas.calc_relu_out_bound(bounds_affine_out[current_layer_index][0], bounds_affine_out[current_layer_index][1])
     bounds_layer_out[current_layer_index][0] = relu_out_lb
     bounds_layer_out[current_layer_index][1] = relu_out_ub
-    return bounds_affine_out, bounds_layer_out
