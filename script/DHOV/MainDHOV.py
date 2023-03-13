@@ -327,9 +327,9 @@ def multi_net2D():
     parameter_list = list(nn.parameters())"""
 
     group_size = 2
-    """icnn_factory = ICNNFactory("logical", [10, 10, 1], force_positive_init=False, with_two_layers=False,
-                               init_scaling=10, init_all_with_zeros=True)"""
-    icnn_factory = ICNNFactory("standard", [10, 10, 1])
+    icnn_factory = ICNNFactory("logical", [10, 10, 1], force_positive_init=False, with_two_layers=False,
+                               init_scaling=10, init_all_with_zeros=True)
+    """icnn_factory = ICNNFactory("standard", [10, 10, 1])"""
     #icnn_factory = ICNNFactory("approx_max", [10, 10, 1])
     eps = 0.01
     #matplotlib.use('TkAgg')

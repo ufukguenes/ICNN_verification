@@ -564,7 +564,34 @@ class MultiDHOV:
             name="affine_const_[{}]".format(last_layer_index))
 
         nn_encoding_model.update()
+
+        #todo this is a code duplicat
+        for neuron_to_optimize in range(len(output_nn.tolist())):
+            nn_encoding_model.setObjective(output_nn[neuron_to_optimize], grp.GRB.MINIMIZE)
+            nn_encoding_model.optimize()
+            if nn_encoding_model.Status == grp.GRB.OPTIMAL:
+                value = output_nn.getAttr("x")
+                print("        lower: new {}, old {}".format(value[neuron_to_optimize],
+                                                             bounds_affine_out[last_layer_index][0][
+                                                                 neuron_to_optimize]))
+                bounds_affine_out[last_layer_index][0][neuron_to_optimize] = value[neuron_to_optimize]
+
+            nn_encoding_model.setObjective(output_nn[neuron_to_optimize], grp.GRB.MAXIMIZE)
+            nn_encoding_model.optimize()
+            if nn_encoding_model.Status == grp.GRB.OPTIMAL:
+                value = output_nn.getAttr("x")
+                print("        upper: new {}, old {}".format(value[neuron_to_optimize],
+                                                             bounds_affine_out[last_layer_index][1][
+                                                                 neuron_to_optimize]))
+                bounds_affine_out[last_layer_index][1][neuron_to_optimize] = value[neuron_to_optimize]
+
+        relu_out_lb, relu_out_ub = verbas.calc_relu_out_bound(bounds_affine_out[last_layer_index][0],
+                                                              bounds_affine_out[last_layer_index][1])
+        bounds_layer_out[last_layer_index][0] = relu_out_lb
+        bounds_layer_out[last_layer_index][1] = relu_out_ub
+
         self.output_var = output_nn
+        print("done...")
         return
 
 
