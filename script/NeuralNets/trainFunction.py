@@ -78,13 +78,12 @@ def train_icnn(model, train_loader, ambient_loader, epochs=10, optimizer="adam",
 
             if return_history:
                 history.append(train_loss / train_n)
-            if verbose:
-                if i % 100 == 0:
+            if verbose and i % 100 == 0:
                     print("batch = {}, mean loss = {}".format(i, train_loss / train_n))
 
         if train_n == 0:
             train_n = 1
-        if verbose:
+        if verbose and i % 100 == 0:
             print("batch = {}, mean loss = {}".format(len(train_loader), train_loss / train_n))
             print("time per epoch: {}".format(time.time() - epoch_start_time))
 

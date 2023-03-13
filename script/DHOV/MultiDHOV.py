@@ -44,7 +44,7 @@ class MultiDHOV:
                            train_outer=False, preemptive_stop=True, even_gradient_training=False,
                            force_inclusion_steps=0,
                            init_network=False, adapt_lambda="none", should_plot='none', optimizer="adam",
-                           print_training_loss=False):
+                           print_training_loss=False, print_new_bounds=False):
         valid_adapt_lambda = ["none", "high_low", "included"]
         valid_should_plot = ["none", "simple", "detailed", "verification", "output"]
         valid_optimizer = ["adam", "LBFGS", "SdLBFGS"]
@@ -74,12 +74,12 @@ class MultiDHOV:
             raise AttributeError(
                 "Expected sampling method to be one of: {} , got: {}".format(valid_sampling_methods, sampling_method))
         if keep_ambient_space and sampling_method == "per_group_sampling":
-            warnings.warn("keep_ambient_space is True and sampling method ist -per_group_sampling-. "
+            warnings.warn("keep_ambient_space is True and sampling method is per_group_sampling. "
                           "Keeping previous samples is not supported when using per group sampling")
         if sample_over_input_space:
             sample_over_input_space = False
             sample_over_output_space = True
-            warnings.warn("sample_over_input_space is True and sampling method ist -per_group_sampling-. "
+            warnings.warn("sample_over_input_space is True and sampling method is per_group_sampling. "
                           "Sampling over input space is not yet supported when using per group sampling. "
                           "Using sampling over output space instead...")
 
@@ -234,7 +234,7 @@ class MultiDHOV:
                 copy_model = nn_encoding_model.copy()
                 ver.update_bounds_with_icnns(copy_model, bounds_affine_out, bounds_layer_out,
                                              current_layer_index, affine_w.detach().numpy(),
-                                             affine_b.detach().numpy())
+                                             affine_b.detach().numpy(), print_new_bounds=print_new_bounds)
                 print("    time for icnn_bound calculation: {}".format(time.time() - t))
 
             fix_upper = []
@@ -531,6 +531,9 @@ class MultiDHOV:
                                                                    ambient_space, group_indices)
             print("    time for regrouping method: {}".format(time.time() - t))
 
+        if force_break:
+            return
+
         if should_plot in valid_should_plot and should_plot != "none" and sampling_method != "per_group_sampling" and included_space.size(
                 1) == 2:
             index = len(parameter_list) - 2
@@ -571,14 +574,16 @@ class MultiDHOV:
             nn_encoding_model.optimize()
             if nn_encoding_model.Status == grp.GRB.OPTIMAL:
                 value = output_nn.getAttr("x")
-                # print("        lower: new {}, old {}".format(value[neuron_to_optimize], bounds_affine_out[last_layer_index][0][neuron_to_optimize]))
+                if print_new_bounds:
+                    print("        lower: new {}, old {}".format(value[neuron_to_optimize], bounds_affine_out[last_layer_index][0][neuron_to_optimize]))
                 bounds_affine_out[last_layer_index][0][neuron_to_optimize] = value[neuron_to_optimize]
 
             nn_encoding_model.setObjective(output_nn[neuron_to_optimize], grp.GRB.MAXIMIZE)
             nn_encoding_model.optimize()
             if nn_encoding_model.Status == grp.GRB.OPTIMAL:
                 value = output_nn.getAttr("x")
-                # print("        upper: new {}, old {}".format(value[neuron_to_optimize], bounds_affine_out[last_layer_index][1][neuron_to_optimize]))
+                if print_new_bounds:
+                    print("        upper: new {}, old {}".format(value[neuron_to_optimize], bounds_affine_out[last_layer_index][1][neuron_to_optimize]))
                 bounds_affine_out[last_layer_index][1][neuron_to_optimize] = value[neuron_to_optimize]
 
         relu_out_lb, relu_out_ub = verbas.calc_relu_out_bound(bounds_affine_out[last_layer_index][0],

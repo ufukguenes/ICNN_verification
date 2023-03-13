@@ -153,7 +153,7 @@ def verification(icnn, model, affine_w, affine_b, index_to_select, curr_bounds_a
         return inp, output_var[0].X
 
 
-def update_bounds_with_icnns(model, bounds_affine_out, bounds_layer_out, current_layer_index, affine_w, affine_b):
+def update_bounds_with_icnns(model, bounds_affine_out, bounds_layer_out, current_layer_index, affine_w, affine_b, print_new_bounds=False):
 
     output_prev_layer = []
     prev_layer_index = current_layer_index - 1
@@ -172,14 +172,16 @@ def update_bounds_with_icnns(model, bounds_affine_out, bounds_layer_out, current
         model.optimize()
         if model.Status == GRB.OPTIMAL:
             value = affine_var.getAttr("x")
-            # print("        lower: new {}, old {}".format(value[neuron_to_optimize], bounds_affine_out[current_layer_index][0][neuron_to_optimize]))
+            if print_new_bounds:
+                print("        lower: new {}, old {}".format(value[neuron_to_optimize], bounds_affine_out[current_layer_index][0][neuron_to_optimize]))
             bounds_affine_out[current_layer_index][0][neuron_to_optimize] = value[neuron_to_optimize]
 
         model.setObjective(affine_var[neuron_to_optimize], GRB.MAXIMIZE)
         model.optimize()
         if model.Status == GRB.OPTIMAL:
             value = affine_var.getAttr("x")
-            # print("        upper: new {}, old {}".format(value[neuron_to_optimize], bounds_affine_out[current_layer_index][1][neuron_to_optimize]))
+            if print_new_bounds:
+                print("        upper: new {}, old {}".format(value[neuron_to_optimize], bounds_affine_out[current_layer_index][1][neuron_to_optimize]))
             bounds_affine_out[current_layer_index][1][neuron_to_optimize] = value[neuron_to_optimize]
 
     relu_out_lb, relu_out_ub = verbas.calc_relu_out_bound(bounds_affine_out[current_layer_index][0], bounds_affine_out[current_layer_index][1])
