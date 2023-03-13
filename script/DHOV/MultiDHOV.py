@@ -493,7 +493,7 @@ class MultiDHOV:
                     break
 
             if force_break:
-                print("aborting because of force break")
+                print("aborting because of force break. Layer currently approximated is not ")
                 break
 
             # add current layer to model
@@ -571,18 +571,14 @@ class MultiDHOV:
             nn_encoding_model.optimize()
             if nn_encoding_model.Status == grp.GRB.OPTIMAL:
                 value = output_nn.getAttr("x")
-                print("        lower: new {}, old {}".format(value[neuron_to_optimize],
-                                                             bounds_affine_out[last_layer_index][0][
-                                                                 neuron_to_optimize]))
+                # print("        lower: new {}, old {}".format(value[neuron_to_optimize], bounds_affine_out[last_layer_index][0][neuron_to_optimize]))
                 bounds_affine_out[last_layer_index][0][neuron_to_optimize] = value[neuron_to_optimize]
 
             nn_encoding_model.setObjective(output_nn[neuron_to_optimize], grp.GRB.MAXIMIZE)
             nn_encoding_model.optimize()
             if nn_encoding_model.Status == grp.GRB.OPTIMAL:
                 value = output_nn.getAttr("x")
-                print("        upper: new {}, old {}".format(value[neuron_to_optimize],
-                                                             bounds_affine_out[last_layer_index][1][
-                                                                 neuron_to_optimize]))
+                # print("        upper: new {}, old {}".format(value[neuron_to_optimize], bounds_affine_out[last_layer_index][1][neuron_to_optimize]))
                 bounds_affine_out[last_layer_index][1][neuron_to_optimize] = value[neuron_to_optimize]
 
         relu_out_lb, relu_out_ub = verbas.calc_relu_out_bound(bounds_affine_out[last_layer_index][0],
