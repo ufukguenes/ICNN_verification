@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="6d238203-6334-43f4-afee-09b5387b5116" name="Changes" comment="ensuring we don't exceed sampling count limit" />
+    <list default="true" id="6d238203-6334-43f4-afee-09b5387b5116" name="Changes" comment="removing printing of new bounds" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -143,34 +143,7 @@
       <workItem from="1678434161884" duration="33329000" />
       <workItem from="1678527660838" duration="18324000" />
       <workItem from="1678620123022" duration="16115000" />
-    </task>
-    <task id="LOCAL-00026" summary="adapting dhov to work if group size is size of layer">
-      <created>1676900647098</created>
-      <option name="number" value="00026" />
-      <option name="presentableId" value="LOCAL-00026" />
-      <option name="project" value="LOCAL" />
-      <updated>1676900647098</updated>
-    </task>
-    <task id="LOCAL-00027" summary="adapting dhov to work on group sizes smaller then the layer size">
-      <created>1676901545603</created>
-      <option name="number" value="00027" />
-      <option name="presentableId" value="LOCAL-00027" />
-      <option name="project" value="LOCAL" />
-      <updated>1676901545603</updated>
-    </task>
-    <task id="LOCAL-00028" summary="comparison with visualization of single neuron approx with dhov">
-      <created>1676911265834</created>
-      <option name="number" value="00028" />
-      <option name="presentableId" value="LOCAL-00028" />
-      <option name="project" value="LOCAL" />
-      <updated>1676911265834</updated>
-    </task>
-    <task id="LOCAL-00029" summary="fixing bug when using sample_new and sample_over_inp">
-      <created>1676914752944</created>
-      <option name="number" value="00029" />
-      <option name="presentableId" value="LOCAL-00029" />
-      <option name="project" value="LOCAL" />
-      <updated>1676914752944</updated>
+      <workItem from="1678662951786" duration="5327000" />
     </task>
     <task id="LOCAL-00030" summary="minor adaptations for cifar verification">
       <created>1676924988996</created>
@@ -487,7 +460,35 @@
       <option name="project" value="LOCAL" />
       <updated>1678642973323</updated>
     </task>
-    <option name="localTasksCounter" value="75" />
+    <task id="LOCAL-00075" summary="making MultiDHOV a class">
+      <created>1678665704521</created>
+      <option name="number" value="00075" />
+      <option name="presentableId" value="LOCAL-00075" />
+      <option name="project" value="LOCAL" />
+      <updated>1678665704521</updated>
+    </task>
+    <task id="LOCAL-00076" summary="adding last affine transformation to model">
+      <created>1678667342519</created>
+      <option name="number" value="00076" />
+      <option name="presentableId" value="LOCAL-00076" />
+      <option name="project" value="LOCAL" />
+      <updated>1678667342519</updated>
+    </task>
+    <task id="LOCAL-00077" summary="experiments">
+      <created>1678667348453</created>
+      <option name="number" value="00077" />
+      <option name="presentableId" value="LOCAL-00077" />
+      <option name="project" value="LOCAL" />
+      <updated>1678667348453</updated>
+    </task>
+    <task id="LOCAL-00078" summary="removing printing of new bounds">
+      <created>1678667905881</created>
+      <option name="number" value="00078" />
+      <option name="presentableId" value="LOCAL-00078" />
+      <option name="project" value="LOCAL" />
+      <updated>1678667905881</updated>
+    </task>
+    <option name="localTasksCounter" value="79" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -537,9 +538,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="fixed bug which didn't generate samples for fixed neurons" />
-    <MESSAGE value="optional calculation of convex hull" />
-    <MESSAGE value="bug fix: wrong constraints for verification / enlargement of icnn" />
     <MESSAGE value="added linspace sampling" />
     <MESSAGE value="new sampling methods" />
     <MESSAGE value="added new sampling method min_max_perturbation" />
@@ -556,13 +554,16 @@
     <MESSAGE value="fix for encoding fixed neurons" />
     <MESSAGE value="fixed bug in bound calculation with icnns" />
     <MESSAGE value="optimizing sampling" />
-    <MESSAGE value="experiments" />
     <MESSAGE value="building model for nn layer by layer" />
     <MESSAGE value="making 2d and 3d plotting depended on group size" />
     <MESSAGE value="implemented todos and simplified plotting" />
     <MESSAGE value="plotting with color based on min and max values" />
     <MESSAGE value="ensuring we don't exceed sampling count limit" />
-    <option name="LAST_COMMIT_MESSAGE" value="ensuring we don't exceed sampling count limit" />
+    <MESSAGE value="making MultiDHOV a class" />
+    <MESSAGE value="adding last affine transformation to model" />
+    <MESSAGE value="experiments" />
+    <MESSAGE value="removing printing of new bounds" />
+    <option name="LAST_COMMIT_MESSAGE" value="removing printing of new bounds" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -584,8 +585,18 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/script/DHOV/MultiDHOV.py</url>
-          <line>488</line>
+          <line>529</line>
           <option name="timeStamp" value="818" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/script/DHOV/MultiDHOV.py</url>
+          <line>590</line>
+          <option name="timeStamp" value="896" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/script/DHOV/MainDHOV.py</url>
+          <line>346</line>
+          <option name="timeStamp" value="897" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="jupyter-line">
           <url>notebook://C:/Users/Ufuk/Documents/Programming/ICNN_verification/script/Experiments/NeuronBounds.ipynb</url>
@@ -611,7 +622,7 @@
     <SUITE FILE_PATH="coverage/ICNN_verification$main.coverage" NAME="main Coverage Results" MODIFIED="1670249050825" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ICNN_verification$DHOV.coverage" NAME="DHOV Coverage Results" MODIFIED="1674467903275" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script" />
     <SUITE FILE_PATH="coverage/ICNN_verification$MainMainDHOV.coverage" NAME="MainMainDHOV Coverage Results" MODIFIED="1676474643544" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script/DHOV" />
-    <SUITE FILE_PATH="coverage/ICNN_verification$MainDHOV.coverage" NAME="MainDHOV Coverage Results" MODIFIED="1678641412793" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script/DHOV" />
+    <SUITE FILE_PATH="coverage/ICNN_verification$MainDHOV.coverage" NAME="MainDHOV Coverage Results" MODIFIED="1678667839775" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script/DHOV" />
     <SUITE FILE_PATH="coverage/DeepHull$Verification.coverage" NAME="Verification Coverage Results" MODIFIED="1669122239179" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script" />
     <SUITE FILE_PATH="coverage/ICNN_verification$test.coverage" NAME="test Coverage Results" MODIFIED="1673302337900" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script" />
     <SUITE FILE_PATH="coverage/DeepHull$eval.coverage" NAME="eval Coverage Results" MODIFIED="1668723858367" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />

@@ -456,9 +456,6 @@ class ICNNLogical(ICNN):
             max_var2 = model.addVar(lb=-float("inf"))
             model.addGenConstrMax(max_var2, affine_var1.tolist(), name="max_out1")
 
-        max_var2 = model.addVar(lb=-float("inf"), name="max_out_var")
-        model.addGenConstrMax(max_var2, affine_var1.tolist(), name="max_out2")
-
         model.addConstr(max_var2 <= 0, name="max<0")
 
         return max_var2

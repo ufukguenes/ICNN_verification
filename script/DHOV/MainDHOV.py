@@ -278,7 +278,7 @@ def multi_net2D():
     W3 = [-1. 1.; 1. 1.]
     b3 = [3., 0.] """
 
-    """nn = SequentialNN([2, 2, 2, 2])
+    nn = SequentialNN([2, 2, 2, 2])
 
     with torch.no_grad():
         parameter_list = list(nn.parameters())
@@ -289,7 +289,7 @@ def multi_net2D():
         parameter_list[4].data = torch.tensor([[-1, 1], [1, 1]], dtype=data_type).to(device)
         parameter_list[5].data = torch.tensor([3, 0], dtype=data_type).to(device)
 
-    test_image = torch.tensor([[0, 0]], dtype=data_type).to(device)"""
+    test_image = torch.tensor([[0, 0]], dtype=data_type).to(device)
 
     """transform = Compose([ToTensor(),
                          Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
@@ -303,7 +303,7 @@ def multi_net2D():
     nn = SequentialNN([32 * 32 * 3, 1024, 512, 10])
     nn.load_state_dict(torch.load("../../cifar_fc.pth", map_location=torch.device('cpu')), strict=False)"""
 
-    transform = Compose([ToTensor(),
+    """transform = Compose([ToTensor(),
                          Normalize(0.5, 0.5)]
                         )
 
@@ -316,7 +316,7 @@ def multi_net2D():
         torch.tensor(labels), 0).to(dtype=data_type).to(device)
 
     nn = SequentialNN([28*28*1, 100, 30, 10])
-    nn.load_state_dict(torch.load("../../mnist_fc.pth", map_location=torch.device('cpu')), strict=False)
+    nn.load_state_dict(torch.load("../../mnist_fc.pth", map_location=torch.device('cpu')), strict=False)"""
 
     #nn = SequentialNN([300, 100, 50, 7])
     #test_image = torch.zeros((1, 300), dtype=data_type).to(device)
@@ -331,18 +331,18 @@ def multi_net2D():
                                init_scaling=10, init_all_with_zeros=True)
     """icnn_factory = ICNNFactory("standard", [10, 10, 1])"""
     #icnn_factory = ICNNFactory("approx_max", [10, 10, 1])
-    eps = 0.01
+    eps = 1
     #matplotlib.use('TkAgg')
 
     dhov_verifier = multidhov.MultiDHOV()
     dhov_verifier.start_verification(nn, test_image, icnn_factory, group_size, eps=eps, icnn_epochs=10,
-                                     icnn_batch_size=10000, sample_count=100, sample_new=True, use_over_approximation=True, break_after=None,
+                                     icnn_batch_size=10000, sample_count=1000, sample_new=True, use_over_approximation=True, break_after=None,
                                      sample_over_input_space=False, sample_over_output_space=True, use_icnn_bounds=True,
-                                     use_fixed_neurons=True, sampling_method="per_group_sampling",
+                                     use_fixed_neurons=True, sampling_method="uniform",
                                      force_inclusion_steps=0, preemptive_stop=False, even_gradient_training=False,
                                      keep_ambient_space=True, data_grad_descent_steps=0, opt_steps_gd=100,
                                      train_outer=False, print_training_loss=False,
-                                     should_plot="none", optimizer="SdLBFGS", init_network=True, adapt_lambda="none")
+                                     should_plot="detailed", optimizer="SdLBFGS", init_network=True, adapt_lambda="none")
 
     return
     milp_verifier = MILPVerifier(nn, test_image, 1)
