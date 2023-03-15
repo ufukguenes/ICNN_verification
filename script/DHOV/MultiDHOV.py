@@ -18,6 +18,7 @@ import script.DHOV.DataOptimization as dop
 from script.dataInit import ConvexDataset
 from script.eval import Plots_for
 from script.NeuralNets.trainFunction import train_icnn, train_icnn_outer
+from script.NeuralNets.testFunction import test_icnn
 from script.settings import device, data_type
 import gurobipy as grp
 import warnings
@@ -54,8 +55,6 @@ class MultiDHOV:
         parameter_list = list(nn.parameters())
         force_break = False
 
-        # only use fixed_neurons when optimizing bounds with icnn
-        use_fixed_neurons = use_fixed_neurons and use_icnn_bounds
 
         if adapt_lambda not in valid_adapt_lambda:
             raise AttributeError(
@@ -266,7 +265,6 @@ class MultiDHOV:
                 if break_after is not None:
                     break_after -= 1
                 print("    layer progress, group {} of {} ".format(group_i + 1, number_of_groups))
-                t = time.time()
 
                 index_to_select = torch.tensor(group_indices[group_i]).to(device)
 
@@ -343,7 +341,7 @@ class MultiDHOV:
                         ambient_space = ds.samples_uniform_over(ambient_space, amb_space_sample_count,
                                                                 bounds_layer_out[current_layer_index],
                                                                 padding=eps)
-
+                t = time.time()
                 group_inc_space = torch.index_select(included_space, 1, index_to_select)
                 group_amb_space = torch.index_select(ambient_space, 1, index_to_select)
 
@@ -377,13 +375,15 @@ class MultiDHOV:
                         max_out = torch.max(out)
                         current_icnn.apply_enlargement(max_out)
                     if data_grad_descent_steps > 1:
+                        untouched_amb_space = group_norm_ambient_space.detach().clone()
                         if should_plot in ["simple", "detailed"] and len(group_indices[group_i]) == 2:
                             plt_inc_amb("without gradient descent", group_norm_included_space.tolist(),
                                         group_norm_ambient_space.tolist())
                         for gd_round in range(data_grad_descent_steps):
                             optimization_steps = opt_steps_gd
-
-                            if gd_round == data_grad_descent_steps - 1:
+                            if data_grad_descent_steps > epochs_per_inclusion:
+                                epochs_in_run = 1
+                            elif gd_round == data_grad_descent_steps - 1 and epochs_per_inclusion % data_grad_descent_steps != 0:
                                 epochs_in_run = epochs_per_inclusion % data_grad_descent_steps
                             else:
                                 epochs_in_run = epochs_per_inclusion // data_grad_descent_steps
@@ -415,6 +415,14 @@ class MultiDHOV:
                                                   [min_x, max_x], [min_y, max_y])
 
                                 plots.plt_mesh()
+
+                        if print_training_loss:
+                            dataset = ConvexDataset(data=group_norm_included_space)
+                            train_loader = DataLoader(dataset, batch_size=icnn_batch_size)
+                            dataset = ConvexDataset(data=untouched_amb_space)
+                            ambient_loader = DataLoader(dataset, batch_size=icnn_batch_size)
+                            test_icnn(current_icnn, train_loader, ambient_loader)
+
 
                     else:
                         train_icnn(current_icnn, train_loader, ambient_loader, epochs=epochs_per_inclusion,
@@ -465,29 +473,33 @@ class MultiDHOV:
                 # ver.min_max_of_icnns([current_icnn], inp_bounds_icnn, [group_indices[group_i]], print_log=False)
                 # ver.min_max_of_icnns([current_icnn], inp_bounds_icnn, [group_indices[group_i]], print_log1, 23=False)
 
-                """
+
                 #visualisation for one single ReLu
-                gt0 = []
-                leq0 = []
-                gt_x = []
-                leq_x = []
-                x_in = torch.tensor(x, dtype=data_type).to(device)
-                for k, samp in enumerate(x_in):
-                    testsamp = torch.unsqueeze(samp, dim=0)
-                    testsamp = torch.unsqueeze(testsamp, dim=0)
-                    if current_icnn(testsamp) > 0:
-                        gt0.append(samp)
-                        gt_x.append(current_icnn(testsamp))
-                    else:
-                        leq0.append(samp)
-                        leq_x.append(current_icnn(testsamp))
-    
-                plt.scatter(list(map(lambda x: x.detach().numpy(), gt0)),
-                            list(map(lambda x: x.detach().numpy(), gt_x)), c="#ff7f0e")
-                plt.scatter(list(map(lambda x: x.detach().numpy(), leq0)),
-                            list(map(lambda x: x.detach().numpy(), leq_x)), c="#1f77b4")
-                plt.title("My ReLU post overapprox")
-                plt.show()"""
+                """for index_neuron in group_indices[group_i]:
+                    gt0 = []
+                    leq0 = []
+                    gt_x = []
+                    leq_x = []
+                    x = np.linspace(bounds_affine_out[current_layer_index][0][index_neuron].item()*1.2, bounds_affine_out[current_layer_index][1][index_neuron].item()*1.2, 100)
+                    x_in = torch.tensor(x, dtype=data_type).to(device)
+                    for k, samp in enumerate(x_in):
+                        testsamp = torch.unsqueeze(samp, dim=0)
+                        testsamp = torch.unsqueeze(testsamp, dim=0)
+                        relu_out = torch.nn.ReLU()(testsamp)
+                        if current_icnn(testsamp) >= 0:
+                            gt0.append(samp)
+                            gt_x.append(relu_out)
+                        else:
+                            leq0.append(samp)
+                            leq_x.append(relu_out)
+
+                    plt.scatter(list(map(lambda x: x.detach().numpy(), gt0)),
+                                list(map(lambda x: x.detach().numpy(), gt_x)), c="#ff7f0e")
+                    plt.scatter(list(map(lambda x: x.detach().numpy(), leq0)),
+                                list(map(lambda x: x.detach().numpy(), leq_x)), c="#1f77b4")
+                    plt.title("My ReLU post overapprox")
+                    plt.show()"""
+
                 if break_after is not None and break_after == 0:
                     force_break = True
                     break
@@ -568,28 +580,29 @@ class MultiDHOV:
 
         nn_encoding_model.update()
 
-        #todo this is a code duplicat
-        for neuron_to_optimize in range(len(output_nn.tolist())):
-            nn_encoding_model.setObjective(output_nn[neuron_to_optimize], grp.GRB.MINIMIZE)
-            nn_encoding_model.optimize()
-            if nn_encoding_model.Status == grp.GRB.OPTIMAL:
-                value = output_nn.getAttr("x")
-                if print_new_bounds:
-                    print("        lower: new {}, old {}".format(value[neuron_to_optimize], bounds_affine_out[last_layer_index][0][neuron_to_optimize]))
-                bounds_affine_out[last_layer_index][0][neuron_to_optimize] = value[neuron_to_optimize]
+        if use_icnn_bounds:
+            #todo this is a code duplicat
+            for neuron_to_optimize in range(len(output_nn.tolist())):
+                nn_encoding_model.setObjective(output_nn[neuron_to_optimize], grp.GRB.MINIMIZE)
+                nn_encoding_model.optimize()
+                if nn_encoding_model.Status == grp.GRB.OPTIMAL:
+                    value = output_nn.getAttr("x")
+                    if print_new_bounds and abs(value[neuron_to_optimize] - bounds_affine_out[last_layer_index][0][neuron_to_optimize]) > 0.00001:
+                        print("        {}, lower: new {}, old {}".format(neuron_to_optimize, value[neuron_to_optimize], bounds_affine_out[last_layer_index][0][neuron_to_optimize]))
+                    bounds_affine_out[last_layer_index][0][neuron_to_optimize] = value[neuron_to_optimize]
 
-            nn_encoding_model.setObjective(output_nn[neuron_to_optimize], grp.GRB.MAXIMIZE)
-            nn_encoding_model.optimize()
-            if nn_encoding_model.Status == grp.GRB.OPTIMAL:
-                value = output_nn.getAttr("x")
-                if print_new_bounds:
-                    print("        upper: new {}, old {}".format(value[neuron_to_optimize], bounds_affine_out[last_layer_index][1][neuron_to_optimize]))
-                bounds_affine_out[last_layer_index][1][neuron_to_optimize] = value[neuron_to_optimize]
+                nn_encoding_model.setObjective(output_nn[neuron_to_optimize], grp.GRB.MAXIMIZE)
+                nn_encoding_model.optimize()
+                if nn_encoding_model.Status == grp.GRB.OPTIMAL:
+                    value = output_nn.getAttr("x")
+                    if print_new_bounds and abs(value[neuron_to_optimize] - bounds_affine_out[last_layer_index][1][neuron_to_optimize]) > 0.00001:
+                        print("        {}, upper: new {}, old {}".format(neuron_to_optimize, value[neuron_to_optimize], bounds_affine_out[last_layer_index][1][neuron_to_optimize]))
+                    bounds_affine_out[last_layer_index][1][neuron_to_optimize] = value[neuron_to_optimize]
 
-        relu_out_lb, relu_out_ub = verbas.calc_relu_out_bound(bounds_affine_out[last_layer_index][0],
-                                                              bounds_affine_out[last_layer_index][1])
-        bounds_layer_out[last_layer_index][0] = relu_out_lb
-        bounds_layer_out[last_layer_index][1] = relu_out_ub
+            relu_out_lb, relu_out_ub = verbas.calc_relu_out_bound(bounds_affine_out[last_layer_index][0],
+                                                                  bounds_affine_out[last_layer_index][1])
+            bounds_layer_out[last_layer_index][0] = relu_out_lb
+            bounds_layer_out[last_layer_index][1] = relu_out_ub
 
         self.output_var = output_nn
         print("done...")
