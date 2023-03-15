@@ -121,11 +121,44 @@ class SingleNeuronVerifier(Verifier):
             out_vars = m.addMVar(out_fet, lb=in_lb, ub=in_ub, name="affine_var" + str(i))
             const = m.addConstrs((W[i] @ in_var + b[i] == out_vars[i] for i in range(len(W))), name="affine_const" + str(i))
 
+            print("================ layer {} ===============".format(i // 2))
+            m.update()
+            # todo code duplicat
+            for neuron_to_optimize in range(len(out_vars.tolist())):
+                m.setObjective(out_vars[neuron_to_optimize], grp.GRB.MINIMIZE)
+                m.optimize()
+                if m.Status == grp.GRB.OPTIMAL:
+                    value = out_vars.getAttr("x")
+                    if abs(value[neuron_to_optimize] - bounds_affine_out[i // 2][0][neuron_to_optimize]) > 0.00001:
+                        print("        {}, lower: new {}, old {}".format(neuron_to_optimize, value[neuron_to_optimize],
+                                                                     bounds_affine_out[i // 2][0][
+                                                                         neuron_to_optimize]))
+                    bounds_affine_out[i // 2][0][neuron_to_optimize] = value[neuron_to_optimize]
+
+                m.setObjective(out_vars[neuron_to_optimize], grp.GRB.MAXIMIZE)
+                m.optimize()
+                if m.Status == grp.GRB.OPTIMAL:
+                    value = out_vars.getAttr("x")
+                    if abs(value[neuron_to_optimize] - bounds_affine_out[i // 2][1][neuron_to_optimize]) > 0.00001:
+                        print("        {}, upper: new {}, old {}".format(neuron_to_optimize, value[neuron_to_optimize],
+                                                                     bounds_affine_out[i // 2][1][
+                                                                         neuron_to_optimize]))
+                    bounds_affine_out[i // 2][1][neuron_to_optimize] = value[neuron_to_optimize]
+
+            relu_out_lb, relu_out_ub = verbas.calc_relu_out_bound(bounds_affine_out[i // 2][0],
+                                                                  bounds_affine_out[i // 2][1])
+            bounds_layer_out[i // 2][0] = relu_out_lb
+            bounds_layer_out[i // 2][1] = relu_out_ub
+
+
             relu_in_var = out_vars
             out_lb = bounds_layer_out[int(i / 2)][0].detach().cpu().numpy()
             out_ub = bounds_layer_out[int(i / 2)][1].detach().cpu().numpy()
             relu_vars = verbas.add_single_neuron_constr(m, relu_in_var, out_fet, in_lb, in_ub, out_lb, out_ub, i=i)
             in_var = relu_vars
+
+
+
 
         lb = bounds_affine_out[-1][0].detach().cpu().numpy()
         ub = bounds_affine_out[-1][1].detach().cpu().numpy()
