@@ -1,3 +1,4 @@
+import math
 import random
 import time
 
@@ -6,13 +7,13 @@ import torch
 import torch.nn as nn
 
 from script.NeuralNets.lossFunction import deep_hull_simple_loss, deep_hull_loss
-from script.NeuralNets.testFunction import test
+from script.NeuralNets.testFunction import test, test_icnn
 from script.Optimizer.sdlbfgs import SdLBFGS
 import script.DHOV.DataOptimization as dop
 from script.settings import device, data_type
 
 def train_icnn(model, train_loader, ambient_loader, epochs=10, optimizer="adam", return_history=False,
-               sequential=False, adapt_lambda="none",  hyper_lambda=1, preemptive_stop=True, min_loss_change=1e-6, verbose=False):
+               sequential=False, adapt_lambda="none",  hyper_lambda=1, preemptive_stop=True, min_loss_change=1e-3, verbose=False):
     history = []
 
     params_to_train = model.parameters()
@@ -23,15 +24,13 @@ def train_icnn(model, train_loader, ambient_loader, epochs=10, optimizer="adam",
     elif optimizer == "SdLBFGS":
         opt = SdLBFGS(params_to_train)
 
-    stop_training = False
-    last_loss = 0
+    loss = 0
     low = True
+    window_size = 5
+    moving_avg_loss = torch.zeros(5)
     for epoch in range(epochs):
         train_loss = 0
         train_n = 0
-        if stop_training:
-            print("preemptive stop of training")
-            break
         if verbose:
             print("=== Epoch: {}===".format(epoch))
         epoch_start_time = time.time()
@@ -69,8 +68,6 @@ def train_icnn(model, train_loader, ambient_loader, epochs=10, optimizer="adam",
                             # only want positive entries
                             p[:] = torch.maximum(torch.Tensor([0]).to(device), p)
 
-            if preemptive_stop and abs(loss - last_loss) <= min_loss_change:
-                stop_training = True
             last_loss = loss
 
             train_loss += loss.item()
@@ -83,9 +80,16 @@ def train_icnn(model, train_loader, ambient_loader, epochs=10, optimizer="adam",
 
         if train_n == 0:
             train_n = 1
-        if verbose and i % 100 == 0:
+        if verbose and i % 100 != 0:
             print("batch = {}, mean loss = {}".format(len(train_loader), train_loss / train_n))
             print("time per epoch: {}".format(time.time() - epoch_start_time))
+
+        cyclic_index = epoch % window_size
+        moving_avg_loss[cyclic_index] = loss
+        avg_loss = moving_avg_loss.mean()
+        if preemptive_stop and avg_loss <= min_loss_change:
+            break
+
 
         if adapt_lambda == "none":
             continue
@@ -111,6 +115,8 @@ def train_icnn(model, train_loader, ambient_loader, epochs=10, optimizer="adam",
                 hyper_lambda = 1.2
                 low = True
 
+    if verbose:
+        test_icnn(model, train_loader, ambient_loader, critic=deep_hull_simple_loss, hyper_lambda=1)
     if return_history:
         return history
 
