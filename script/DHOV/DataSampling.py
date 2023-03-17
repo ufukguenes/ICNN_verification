@@ -293,6 +293,8 @@ def sample_per_group_as_lp(data_samples, amount, affine_w, affine_b, index_to_se
         model.optimize()
         if model.Status == grp.GRB.OPTIMAL:
             samples[index] = torch.tensor(output_prev_layer.getAttr("X"), dtype=data_type).to(device)
+        else:
+            print("Model unfeasible?")
 
     if keep_samples and data_samples.size(0) > 0:
         data_samples = torch.cat([data_samples, samples], dim=0)
