@@ -449,6 +449,18 @@ class MultiDHOV:
 
                 t = time.time()
                 # verify and enlarge convex approximation
+
+                if should_plot in ["detailed", "verification"] and should_plot != "none":
+                    if len(group_indices[group_i]) == 2:
+                        min_x, max_x, min_y, max_y = \
+                            get_min_max_x_y(torch.cat([group_inc_space.detach(), group_amb_space.detach()]))
+                        plots = Plots_for(0, current_icnn, group_inc_space.detach(), group_amb_space.detach(),
+                                          [min_x, max_x], [min_y, max_y])
+                        plots.plt_mesh()
+
+                    elif len(group_indices[group_i]) == 1:
+                        visualize_single_neuron(current_icnn, group_indices[group_i], current_layer_index, bounds_affine_out)
+
                 if use_over_approximation:
                     copy_model = nn_encoding_model.copy()
                     adversarial_input, c = ver.verification(current_icnn, copy_model, affine_w.detach().numpy(),
@@ -461,44 +473,22 @@ class MultiDHOV:
 
                 print("        time for verification: {}".format(time.time() - t))
 
-                if should_plot in ["detailed", "verification"] and should_plot != "none" and len(
-                        group_indices[group_i]) == 2:
-                    min_x, max_x, min_y, max_y = \
-                        get_min_max_x_y(torch.cat([group_inc_space.detach(), group_amb_space.detach()]))
-                    plots = Plots_for(0, current_icnn, group_inc_space.detach(), group_amb_space.detach(),
-                                      [min_x, max_x], [min_y, max_y])
-                    plots.plt_mesh()
+                if should_plot in ["detailed", "verification"] and should_plot != "none":
+                    if len(group_indices[group_i]) == 2:
+                        min_x, max_x, min_y, max_y = \
+                            get_min_max_x_y(torch.cat([group_inc_space.detach(), group_amb_space.detach()]))
+                        plots = Plots_for(0, current_icnn, group_inc_space.detach(), group_amb_space.detach(),
+                                          [min_x, max_x], [min_y, max_y])
+                        plots.plt_mesh()
+
+                    elif len(group_indices[group_i]) == 1:
+                        visualize_single_neuron(current_icnn, group_indices[group_i], current_layer_index,
+                                                bounds_affine_out)
 
                 # inp_bounds_icnn = bounds_layer_out[current_layer_index]
                 # ver.min_max_of_icnns([current_icnn], inp_bounds_icnn, [group_indices[group_i]], print_log=False)
                 # ver.min_max_of_icnns([current_icnn], inp_bounds_icnn, [group_indices[group_i]], print_log1, 23=False)
 
-
-                #visualisation for one single ReLu
-                """for index_neuron in group_indices[group_i]:
-                    gt0 = []
-                    leq0 = []
-                    gt_x = []
-                    leq_x = []
-                    x = np.linspace(bounds_affine_out[current_layer_index][0][index_neuron].item()*1.2, bounds_affine_out[current_layer_index][1][index_neuron].item()*1.2, 100)
-                    x_in = torch.tensor(x, dtype=data_type).to(device)
-                    for k, samp in enumerate(x_in):
-                        testsamp = torch.unsqueeze(samp, dim=0)
-                        testsamp = torch.unsqueeze(testsamp, dim=0)
-                        relu_out = torch.nn.ReLU()(testsamp)
-                        if current_icnn(testsamp) >= 0:
-                            gt0.append(samp)
-                            gt_x.append(relu_out)
-                        else:
-                            leq0.append(samp)
-                            leq_x.append(relu_out)
-
-                    plt.scatter(list(map(lambda x: x.detach().numpy(), gt0)),
-                                list(map(lambda x: x.detach().numpy(), gt_x)), c="#ff7f0e")
-                    plt.scatter(list(map(lambda x: x.detach().numpy(), leq0)),
-                                list(map(lambda x: x.detach().numpy(), leq_x)), c="#1f77b4")
-                    plt.title("My ReLU post overapprox")
-                    plt.show()"""
 
                 if break_after is not None and break_after == 0:
                     force_break = True
@@ -682,3 +672,29 @@ def get_min_max_x_y(values):
     min_x, max_x = xs.min(), xs.max()
     min_y, max_y = ys.min(), ys.max()
     return min_x, max_x, min_y, max_y
+
+
+def visualize_single_neuron(icnn, neuron_index, layer_index, bounds_affine_out):
+    gt0 = []
+    leq0 = []
+    gt_x = []
+    leq_x = []
+    x = np.linspace(bounds_affine_out[layer_index][0][neuron_index].item(), bounds_affine_out[layer_index][1][neuron_index].item(), 100)
+    x_in = torch.tensor(x, dtype=data_type).to(device)
+    for k, samp in enumerate(x_in):
+        testsamp = torch.unsqueeze(samp, dim=0)
+        testsamp = torch.unsqueeze(testsamp, dim=0)
+        relu_out = torch.nn.ReLU()(testsamp)
+        if icnn(testsamp) >= 0:
+            gt0.append(samp)
+            gt_x.append(relu_out)
+        else:
+            leq0.append(samp)
+            leq_x.append(relu_out)
+
+    plt.scatter(list(map(lambda x: x.detach().numpy(), gt0)),
+                list(map(lambda x: x.detach().numpy(), gt_x)), c="#ff7f0e")
+    plt.scatter(list(map(lambda x: x.detach().numpy(), leq0)),
+                list(map(lambda x: x.detach().numpy(), leq_x)), c="#1f77b4")
+    plt.title("ReLU")
+    plt.show()
