@@ -83,8 +83,9 @@ class Verifier(ABC):
 
 
 class SingleNeuronVerifier(Verifier):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, print_new_bounds=False, **kwargs):
         super().__init__(*args, **kwargs)
+        self.print_new_bounds = print_new_bounds
 
     def generate_constraints_for_net(self):
         m = grp.Model()
@@ -121,7 +122,7 @@ class SingleNeuronVerifier(Verifier):
             out_vars = m.addMVar(out_fet, lb=in_lb, ub=in_ub, name="affine_var" + str(i))
             const = m.addConstrs((W[i] @ in_var + b[i] == out_vars[i] for i in range(len(W))), name="affine_const" + str(i))
 
-            print("================ layer {} ===============".format(i // 2))
+            #print("================ layer {} ===============".format(i // 2))
             m.update()
             # todo code duplicat
             for neuron_to_optimize in range(len(out_vars.tolist())):
@@ -129,7 +130,7 @@ class SingleNeuronVerifier(Verifier):
                 m.optimize()
                 if m.Status == grp.GRB.OPTIMAL:
                     value = out_vars.getAttr("x")
-                    if abs(value[neuron_to_optimize] - bounds_affine_out[i // 2][0][neuron_to_optimize]) > 0.00001:
+                    if self.print_new_bounds and abs(value[neuron_to_optimize] - bounds_affine_out[i // 2][0][neuron_to_optimize]) > 0.00001:
                         print("        {}, lower: new {}, old {}".format(neuron_to_optimize, value[neuron_to_optimize],
                                                                      bounds_affine_out[i // 2][0][
                                                                          neuron_to_optimize]))
@@ -139,7 +140,7 @@ class SingleNeuronVerifier(Verifier):
                 m.optimize()
                 if m.Status == grp.GRB.OPTIMAL:
                     value = out_vars.getAttr("x")
-                    if abs(value[neuron_to_optimize] - bounds_affine_out[i // 2][1][neuron_to_optimize]) > 0.00001:
+                    if self.print_new_bounds and abs(value[neuron_to_optimize] - bounds_affine_out[i // 2][1][neuron_to_optimize]) > 0.00001:
                         print("        {}, upper: new {}, old {}".format(neuron_to_optimize, value[neuron_to_optimize],
                                                                      bounds_affine_out[i // 2][1][
                                                                          neuron_to_optimize]))

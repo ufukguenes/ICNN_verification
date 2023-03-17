@@ -45,10 +45,10 @@ def add_layer_to_model(model, affine_w, affine_b, curr_constraint_icnns, curr_gr
     out_vars = model.addMVar(out_fet, lb=out_lb, ub=out_ub, name="out_var_[{}]".format(current_layer_index))
 
     for neuron_index in curr_fixed_neuron_upper:
-        model.addConstr(out_vars[neuron_index] == 0)
+        model.addConstr(out_vars[neuron_index] == 0, name="fixed_upper_{}_{}".format(current_layer_index, neuron_index))
 
     for neuron_index in curr_fixed_neuron_lower:
-        model.addConstr(out_vars[neuron_index] == affine_var[neuron_index])
+        model.addConstr(out_vars[neuron_index] == affine_var[neuron_index], name="fixed_lower_{}_{}".format(current_layer_index, neuron_index))
 
 
     for k, constraint_icnn in enumerate(curr_constraint_icnns):
@@ -56,11 +56,24 @@ def add_layer_to_model(model, affine_w, affine_b, curr_constraint_icnns, curr_gr
         low = torch.index_select(curr_bounds_layer_out[0], 0, index_to_select)
         up = torch.index_select(curr_bounds_layer_out[1], 0, index_to_select)
         constraint_icnn_bounds_affine_out, constraint_icnn_bounds_layer_out = constraint_icnn.calculate_box_bounds([low, up])
-        current_in_vars = [out_vars[x] for x in curr_group_indices[k]]
+        current_in_vars = model.addMVar(len(curr_group_indices[k]), lb=low.detach().numpy(), ub=up.detach().numpy(), name="icnn_var_group_{}_{}".format(current_layer_index, curr_group_indices[k]))
+
+        """model.addConstrs(current_in_vars[i] >= affine_var[neuron_index] for i, neuron_index in enumerate(curr_group_indices[k]))
+        model.addConstrs(current_in_vars[i] >= 0 for i, neuron_index in enumerate(curr_group_indices[k]))"""
+
+        for i, neuron_index in enumerate(curr_group_indices[k]):
+            in_lb = curr_bounds_affine_out[0][neuron_index].item()
+            in_ub = curr_bounds_affine_out[1][neuron_index].item()
+            model.addConstr(current_in_vars[i] >= 0, name="snr_gt0" + str(current_layer_index) + "k" + str(neuron_index))
+            model.addConstr(current_in_vars[i] >= affine_var[neuron_index], name="snr_gtX" + str(current_layer_index) + "k" + str(neuron_index))
+            model.addConstr(current_in_vars[i] <= (in_ub * (affine_var[neuron_index] - in_lb)) / (in_ub - in_lb), name="snr_lt" + str(current_layer_index) + "k" + str(neuron_index))
+
         constraint_icnn.add_max_output_constraints(model, current_in_vars, constraint_icnn_bounds_affine_out,
                                                        constraint_icnn_bounds_layer_out)
 
-        in_var = out_vars
+        model.addConstrs((out_vars[neuron_index] == current_in_vars[i] for i, neuron_index in enumerate(curr_group_indices[k])), name="group_out_icnn_{}_{}".format(current_layer_index, curr_group_indices[k]))
+
+    in_var = out_vars
 
     for i, var in enumerate(in_var.tolist()):
         var.setAttr("varname", "output_layer_[{}]_[{}]".format(current_layer_index, i))

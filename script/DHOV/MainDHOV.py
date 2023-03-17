@@ -187,7 +187,7 @@ def net_2d():
                                 keep_ambient_space=False, data_grad_descent_steps=0, train_outer=False,
                                 preemptive_stop=False,
                                 even_gradient_training=False,
-                                should_plot="none", optimizer="adam", init_network=True, adapt_lambda="none")
+                                should_plot="detailed", optimizer="adam", init_network=True, adapt_lambda="none")
 
     milp_verifier = MILPVerifier(nn, test_image, 1)
     snv_verifier = SingleNeuronVerifier(nn, test_image, 1)
@@ -327,23 +327,23 @@ def multi_net2D():
     parameter_list = list(nn.parameters())"""
 
     group_size = 2
+
     icnn_factory = ICNNFactory("logical", [10, 10, 1], force_positive_init=False, with_two_layers=False,
-                               init_scaling=10, init_all_with_zeros=False)
-    """icnn_factory = ICNNFactory("standard", [10, 10, 1])"""
+                              init_scaling=10, init_all_with_zeros=False)
+    #icnn_factory = ICNNFactory("standard", [10, 10, 1], init_all_with_zeros=False)
     #icnn_factory = ICNNFactory("approx_max", [10, 10, 1])
     eps = 0.01
     #matplotlib.use('TkAgg')
 
     dhov_verifier = multidhov.MultiDHOV()
     dhov_verifier.start_verification(nn, test_image, icnn_factory, group_size, eps=eps, icnn_epochs=100,
-                                     icnn_batch_size=10000, sample_count=1000, sample_new=True, use_over_approximation=True, break_after=None,
+                                     icnn_batch_size=10000, sample_count=1000, sample_new=True, use_over_approximation=True, break_after=5,
                                      sample_over_input_space=False, sample_over_output_space=True, use_icnn_bounds=True,
                                      use_fixed_neurons=True, sampling_method="per_group_sampling",
                                      force_inclusion_steps=0, preemptive_stop=False, even_gradient_training=False,
                                      keep_ambient_space=True, data_grad_descent_steps=0, opt_steps_gd=100,
-                                     train_outer=False, print_training_loss=False,
-                                     should_plot="detailed", optimizer="SdLBFGS", init_network=True, adapt_lambda="none")
-
+                                     train_outer=False, print_training_loss=True, print_new_bounds=True,
+                                     should_plot="none", optimizer="SdLBFGS", init_network=True, adapt_lambda="included")
     return
     milp_verifier = MILPVerifier(nn, test_image, 1)
     snv_verifier = SingleNeuronVerifier(nn, test_image, 1)
