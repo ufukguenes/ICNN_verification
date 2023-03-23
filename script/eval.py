@@ -133,7 +133,7 @@ class Plots_for():
         #self._create_plot_true_convex_hull()
         plt.show()
 
-    def plt_mesh(self):
+    def plt_mesh(self, show=True):
         fig = plt.figure(figsize=(20, 10), facecolor="w")
         x = np.linspace(*self.x_range, 500)
         y = np.linspace(*self.y_range, 500)
@@ -149,7 +149,8 @@ class Plots_for():
         self._create_plot_convex_hull()
         self._create_plot_model()
         #self._create_plot_true_convex_hull()
-        plt.show()
+        if show:
+            plt.show()
 
     def plt_adversarial_initial(self):
         if self.adversarial is None or self.adversarial_values is None:
