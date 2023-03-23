@@ -122,43 +122,6 @@ def verification(icnn, model, affine_w, affine_b, index_to_select, curr_bounds_a
     if model.Status == GRB.OPTIMAL:
         print("        actual verification time {}".format(time.time() - t))
         inp = output_prev_layer.getAttr("x")
-        # inp = torch.tensor([[inp[0], inp[1]]], dtype=data_type).to(device)
-        # true_out = icnn(inp)
-        # print("optimum solution at: {}, with value {}, true output: {}".format(inp, output_var.getAttr("x"), 0))  #
-
-        """if center_eps_W_b is not None:
-            input = input_to_previous_layer.getAttr("x")
-            affine_verification_out = affine_out.getAttr("x")
-            relu_inp = relu_out.getAttr("x")
-            print("input for constraint icnn: {}, affine transform: {}, relu transform: {}".format(input, affine_verification_out, relu_inp))
-            input = torch.tensor([[input[0], input[1]]], dtype=data_type).to(device)
-            center = center_eps_W_b[0]
-            eps = center_eps_W_b[1]
-            affine_w =  torch.tensor(center_eps_W_b[2], dtype=data_type).to(device)
-            b =  torch.tensor(center_eps_W_b[3], dtype=data_type).to(device)
-            affine_out = torch.matmul(affine_w, input[0]) + b
-            print("affine output = {}".format(affine_out))
-
-        if icnn_W_b_c is not None:
-            constraint_icnn_input = input_to_previous_layer.getAttr("x")
-            #affine_inp = affine_out.getAttr("x")
-            #relu_inp = relu_out.getAttr("x")
-            #print("input for constraint icnn: {}, affine transform: {}, relu transform: {}".format(constraint_icnn_input, affine_inp, relu_inp))
-            print("input for constraint icnn: {}".format(constraint_icnn_input))
-            constraint_icnn_input = torch.tensor([[constraint_icnn_input[0], constraint_icnn_input[1]]], dtype=data_type).to(device)
-            constraint_icnn = icnn_W_b_c[0]
-            affine_w = torch.tensor(icnn_W_b_c[1], dtype=data_type).to(device)
-            b = torch.tensor(icnn_W_b_c[2], dtype=data_type).to(device)
-            c = icnn_W_b_c[3]
-            cons_out = constraint_icnn(constraint_icnn_input)
-            #affine_out = torch.matmul(affine_w, constraint_icnn_input[0]) + b
-            print("output of constraint icnn: {}".format(cons_out))"""
-
-        """for i in range(1, m.getAttr("SolCount")):
-            m.setParam("SolutionNumber", i)
-            inp = m.getAttr("Xn")
-            inp = [inp[0], inp[1]]
-            print("sub-optimal solution at: {}, with value {}".format(inp, m.getAttr("PoolObjVal")))"""
         return inp, output_var[0].X
 
 

@@ -91,14 +91,6 @@ def sample_max_radius(icnns, sample_size, group_indices, curr_bounds_layer_out, 
 
     for samp in samples:
         is_included = True
-        """
-        index_start = 0
-        index_end = 0
-        for group_i, icnn in enumerate(icnns):
-            index_end += len(group_indices[group_i])
-            index_to_select = torch.tensor(range(index_start, index_end)).to(device)
-            index_start = index_end
-        """
         samp = torch.unsqueeze(samp, 0)
         for group_i, icnn in enumerate(icnns):
             index_to_select = group_indices[group_i]
@@ -182,6 +174,7 @@ def sample_uniform_over_icnn(data_samples, amount, icnns, group_indices, curr_bo
     else:
         data_samples = random_samples
     return data_samples
+
 
 def sample_linspace(data_samples, amount, center, eps, keep_samples=True):
     step_number = 1  # math.floor(math.sqrt(amount))
@@ -425,6 +418,7 @@ def sample_alternate_min_max(data_samples, amount, affine_w, center, eps, keep_s
     all_samples.add_(center)
 
     return all_samples
+
 
 def sample_min_max_perturbation(data_samples, amount, affine_w, center, eps, keep_samples=True, swap_probability=0.2):
     samples_per_neuron = math.ceil(amount / affine_w.size(0))

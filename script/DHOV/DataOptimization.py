@@ -1,8 +1,5 @@
 import random
-import time
-
 import torch
-from functorch import vmap
 from script.settings import device, data_type
 
 

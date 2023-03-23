@@ -11,7 +11,7 @@ from script.settings import device, data_type
 
 class Verifier(ABC):
     def __init__(self, net, input_x, eps, time_limit=None, solver_bound=None, print_log=False):
-        self.time_limit=time_limit
+        self.time_limit = time_limit
         self.solver_bound = solver_bound
         self.net = net
         self.input_x = input_x
@@ -37,47 +37,18 @@ class Verifier(ABC):
 
         output_size = len(output_sample)
         out_vars = []
+        output_layer_index = (len(list(self.net.parameters())) - 2) // 2
         for i in range(output_size):
-            out_vars.append(model.getVarByName("last_affine_var[{}]".format(i)))
-
-        """
-        output_size = len(self.output_vars.tolist())
-
-        difference = model.addVars(output_size, lb=-float("inf"))
-        model.addConstrs(difference[i] == self.output_vars[i] - output_sample[i] for i in range(output_size))
-
-        abs_diff = model.addVars(output_size)
-        model.addConstrs(abs_diff[i] == abs_(difference[i]) for i in range(output_size))
-
-        max_var = model.addVar()
-        model.addConstr(max_var == grp.max_(abs_diff))"""
+            out_vars.append(model.getVarByName("affine_var{}[{}]".format(output_layer_index, i)))
 
         model.addConstrs(out_vars[i] == output_sample[i] for i in range(len(output_sample)))
 
         model.setObjective(out_vars[0], grp.GRB.MINIMIZE)
-
         model.update()
-
-        #print("constr generateion {}".format(time.time() - t))
-        #t = time.time()
         model.optimize()
 
         if model.Status == grp.GRB.OPTIMAL:
-            """out_val = []
-            for i in range(len(self.output_vars.tolist())):
-                out_val.append(self.output_vars.tolist()[i].getAttr("x"))
-
-            difference_val = []
-            for i in range(len(difference)):
-                difference_val.append(difference[i].getAttr("x"))
-
-            abs_value = []
-            for i in range(len(abs_diff)):
-                abs_value.append(abs_diff[i].getAttr("x"))"""
-
-            #print("solving {}".format(time.time() - t))
-            #max_var_value = max_var.getAttr("x")
-            return True #max_var_value <= 0
+            return True
 
         return False
 
