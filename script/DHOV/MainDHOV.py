@@ -326,7 +326,7 @@ def multi_net2D():
     test_image = torch.zeros((1, 500), dtype=data_type).to(device)
     parameter_list = list(nn.parameters())"""
 
-    group_size = 2
+    group_size = 4
 
     icnn_factory = ICNNFactory("logical", [10, 10, 1], force_positive_init=False, with_two_layers=False,
                               init_scaling=10, init_all_with_zeros=False)
@@ -336,14 +336,15 @@ def multi_net2D():
     #matplotlib.use('TkAgg')
 
     dhov_verifier = multidhov.MultiDHOV()
-    dhov_verifier.start_verification(nn, test_image, icnn_factory, group_size, eps=eps, icnn_epochs=100,
-                                     icnn_batch_size=10000, sample_count=1000, sample_new=True, use_over_approximation=True, break_after=5,
+    dhov_verifier.start_verification(nn, test_image, icnn_factory, group_size, eps=eps, icnn_epochs=0,
+                                     icnn_batch_size=10000, sample_count=10, sample_new=True, use_over_approximation=True, break_after=None,
                                      sample_over_input_space=False, sample_over_output_space=True, use_icnn_bounds=True,
                                      use_fixed_neurons=True, sampling_method="per_group_sampling",
                                      force_inclusion_steps=0, preemptive_stop=False, even_gradient_training=False,
                                      keep_ambient_space=True, data_grad_descent_steps=0, opt_steps_gd=100,
-                                     train_outer=False, print_training_loss=True, print_new_bounds=True,
+                                     train_outer=False, print_training_loss=False, print_new_bounds=True, grouping_method="random", group_num_multiplier=5,
                                      should_plot="none", optimizer="SdLBFGS", init_network=True, adapt_lambda="included")
+    print(dhov_verifier.all_group_indices)
     return
     milp_verifier = MILPVerifier(nn, test_image, 1)
     snv_verifier = SingleNeuronVerifier(nn, test_image, 1)
