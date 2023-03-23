@@ -29,7 +29,7 @@ def add_relu_constr(model, input_vars, number_of_out_features, in_lb, in_ub, out
 def add_affine_constr(model, affine_w, b, input_vars, lb, ub, i=0):
     out_fet = len(b)
     out_vars = model.addMVar(out_fet, lb=lb, ub=ub, name="affine_var" + str(i))
-    const = model.addConstrs((affine_w[i] @ input_vars + b[i] == out_vars[i] for i in range(len(affine_w))), name="affine_const"+str(i))
+    const = model.addConstr(affine_w @ input_vars + b == out_vars, name="affine_const_[{}]".format(i))
     return out_vars
 
 
@@ -55,12 +55,14 @@ def add_relu_as_lp(model, input_vars, number_of_out_features, out_lb, out_ub, i=
 
     return relu_vars
 
+
 def calc_affine_out_bound(affine_w, affine_b, neuron_min_value, neuron_max_value):
     w_plus = torch.maximum(affine_w, torch.tensor(0, dtype=data_type).to(device))
     w_minus = torch.minimum(affine_w, torch.tensor(0, dtype=data_type).to(device))
     affine_out_lb = torch.matmul(w_plus, neuron_min_value).add(torch.matmul(w_minus, neuron_max_value)).add(affine_b)
     affine_out_ub = torch.matmul(w_plus, neuron_max_value).add(torch.matmul(w_minus, neuron_min_value)).add(affine_b)
     return affine_out_lb, affine_out_ub
+
 
 def calc_relu_out_bound(neuron_min_value, neuron_max_value):
     relu_out_lb = torch.maximum(torch.tensor(0, dtype=data_type).to(device), neuron_min_value)

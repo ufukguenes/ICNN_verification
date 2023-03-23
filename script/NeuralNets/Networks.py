@@ -102,15 +102,13 @@ class SequentialNN(nn.Sequential, VerifiableNet):
             affine_ub = bounds_affine_out[int(i / 2)][1].detach().cpu().numpy()
             W, b = parameter_list[i].detach().cpu().numpy(), parameter_list[i + 1].detach().cpu().numpy()
 
-            out_fet = len(b)
-            out_vars = model.addMVar(out_fet, lb=affine_lb, ub=affine_ub, name="affine_var" + str(i))
-            const = model.addConstrs((W[i] @ in_var + b[i] == out_vars[i] for i in range(len(W))))
+            out_vars = verbas.add_affine_constr(model, W, b, in_var, affine_lb, affine_ub, i)
             in_var = out_vars
 
             if i < len(parameter_list) - 2:
                 out_lb = bounds_layer_out[int(i / 2)][0]
                 out_ub = bounds_layer_out[int(i / 2)][1]
-                relu_vars = verbas.add_relu_constr(model, in_var, out_fet, affine_lb, affine_ub, out_lb, out_ub, i)
+                relu_vars = verbas.add_relu_constr(model, in_var, len(b), affine_lb, affine_ub, out_lb, out_ub, i)
                 in_var = relu_vars
 
         return out_vars
@@ -301,9 +299,9 @@ class ICNN(nn.Module, VerifiableNet):
             if i != 0:
                 k = math.floor(i / 2) - 1
                 skip_W = us[k].detach().cpu().numpy()  # has no bias
-                skip_const = model.addConstrs((affine_w[i] @ in_var + affine_b[i] + skip_W[i] @ input_vars == affine_out_vars[i] for i in range(len(affine_w))), name="skip_constr")
+                skip_const = model.addConstr(affine_w @ in_var + affine_b + skip_W @ input_vars == affine_out_vars, name="skip_constr")
             else:
-                affine_no_skip_cons = model.addConstrs((affine_w[i] @ in_var + affine_b[i] == affine_out_vars[i] for i in range(len(affine_w))), name="not_skip_const")
+                affine_no_skip_cons = model.addConstr(affine_w @ in_var + affine_b == affine_out_vars, name="not_skip_const")
             out_vars = affine_out_vars
             in_var = affine_out_vars
 
@@ -427,8 +425,8 @@ class ICNNLogical(ICNN):
 
         lb, ub = verbas.calc_affine_out_bound(tensor_bb_w, tensor_bb_b, in_lb, in_ub)
 
-        bb_var = model.addMVar(len(bb_b), lb=lb, ub=ub, name="skip_var")
-        skip_const = model.addConstrs((bb_w[i] @ input_vars + bb_b[i] == bb_var[i] for i in range(len(bb_w))), name="bb_const")
+        bb_var = verbas.add_affine_constr(model, bb_w, bb_b, input_vars, lb, ub, "bb_const")
+
         max_var = model.addVar(lb=-float("inf"))
         model.addGenConstrMax(max_var, bb_var.tolist(), name="max_out_bb")
 
@@ -439,20 +437,17 @@ class ICNNLogical(ICNN):
         if self.with_two_layers:
             affine_w = ls[1].weight.data.detach().cpu().numpy()
             affine_var1 = model.addMVar(4, lb=-float("inf"))
-            affine_const = model.addConstrs(
-                affine_w[i] @ new_in == affine_var1[i] for i in range(len(affine_w)))
+            affine_const = model.addConstr(affine_w @ new_in == affine_var1)
 
             affine_W2 = ls[2].weight.data.detach().cpu().numpy()
             affine_var2 = model.addMVar(3, lb=-float("inf"))
-            affine_const = model.addConstrs(
-                affine_W2[i] @ affine_var1 == affine_var2[i] for i in range(len(affine_W2)))
+            affine_const = model.addConstr(affine_W2 @ affine_var1 == affine_var2)
             max_var2 = model.addVar(lb=-float("inf"))
             model.addGenConstrMax(max_var2, affine_var2.tolist())
         else:
             affine_w = ls[1].weight.data.detach().cpu().numpy()
             affine_var1 = model.addMVar(3, lb=-float("inf"))
-            affine_const = model.addConstrs(
-                (affine_w[i] @ new_in == affine_var1[i] for i in range(len(affine_w))), name="affine_w_bb")
+            affine_const = model.addConstr(affine_w @ new_in == affine_var1, name="affine_w_bb")
             max_var2 = model.addVar(lb=-float("inf"))
             model.addGenConstrMax(max_var2, affine_var1.tolist(), name="max_out1")
 
@@ -553,7 +548,7 @@ class ICNNApproxMax(ICNN):
         lb, ub = verbas.calc_affine_out_bound(tensor_bb_w, tensor_bb_b, in_lb, in_ub)
 
         bb_var = model.addMVar(4, lb=lb, ub=ub, name="skip_var")
-        skip_const = model.addConstrs(bb_w[i] @ input_vars + bb_b[i] == bb_var[i] for i in range(len(bb_w)))
+        skip_const = model.addConstr(bb_w @ input_vars + bb_b == bb_var)
         max_var = model.addVar(lb=-float("inf"))
         model.addGenConstrMax(max_var, bb_var.tolist())
 

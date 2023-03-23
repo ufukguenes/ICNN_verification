@@ -108,20 +108,17 @@ class SingleNeuronVerifier(Verifier):
 
         input_var = m.addMVar(input_size, lb=[elem - self.eps for elem in input_flattened],
                               ub=[elem + self.eps for elem in input_flattened], name="in_var")
-        m.addConstrs((input_var[i] <= input_flattened[i] + self.eps for i in range(input_size)), name="in_const0")
-        m.addConstrs((input_var[i] >= input_flattened[i] - self.eps for i in range(input_size)), name="in_const1")
 
 
         parameter_list = list(self.net.parameters())
         in_var = input_var
+        i = -2
         for i in range(0, len(parameter_list) - 2, 2):
             in_lb = bounds_affine_out[int(i / 2)][0].detach().cpu().numpy()
             in_ub = bounds_affine_out[int(i / 2)][1].detach().cpu().numpy()
             W, b = parameter_list[i].detach().cpu().numpy(), parameter_list[i + 1].detach().cpu().numpy()
 
-            out_fet = len(b)
-            out_vars = m.addMVar(out_fet, lb=in_lb, ub=in_ub, name="affine_var" + str(i))
-            const = m.addConstrs((W[i] @ in_var + b[i] == out_vars[i] for i in range(len(W))), name="affine_const" + str(i))
+            out_vars = verbas.add_affine_constr(m, W, b, in_var, in_lb, in_ub, i)
 
             #print("================ layer {} ===============".format(i // 2))
             if self.optimize_bounds:
@@ -157,19 +154,16 @@ class SingleNeuronVerifier(Verifier):
             relu_in_var = out_vars
             out_lb = bounds_layer_out[int(i / 2)][0].detach().cpu().numpy()
             out_ub = bounds_layer_out[int(i / 2)][1].detach().cpu().numpy()
-            relu_vars = verbas.add_single_neuron_constr(m, relu_in_var, out_fet, in_lb, in_ub, out_lb, out_ub, i=i)
+            relu_vars = verbas.add_single_neuron_constr(m, relu_in_var, len(b), in_lb, in_ub, out_lb, out_ub, i=i)
             in_var = relu_vars
-
-
 
 
         lb = bounds_affine_out[-1][0].detach().cpu().numpy()
         ub = bounds_affine_out[-1][1].detach().cpu().numpy()
         W, b = parameter_list[len(parameter_list) - 2].detach().cpu().numpy(), parameter_list[-1].detach().cpu().numpy()
 
-        out_fet = len(b)
-        out_vars = m.addMVar(out_fet, lb=lb, ub=ub, name="last_affine_var")
-        const = m.addConstrs((W[i] @ in_var + b[i] == out_vars[i] for i in range(len(W))), name="out_const")
+        out_vars = verbas.add_affine_constr(m, W, b, in_var, lb, ub, i+2)
+
         m.update()
         self.model = m
         self.output_vars = out_vars
@@ -200,28 +194,24 @@ class MILPVerifier(Verifier):
 
         input_var = m.addMVar(input_size, lb=[elem - self.eps for elem in input_flattened],
                               ub=[elem + self.eps for elem in input_flattened], name="in_var")
-        m.addConstrs(input_var[i] <= input_flattened[i] + self.eps for i in range(input_size))
-        m.addConstrs(input_var[i] >= input_flattened[i] - self.eps for i in range(input_size))
-
 
         parameter_list = list(self.net.parameters())
         in_var = input_var
         break_early = False
+        i = -2
         for i in range(0, len(parameter_list) - 2, 2):
-            if until_layer_neuron != None and until_layer_neuron[0] == i // 2:
+            if until_layer_neuron is not None and until_layer_neuron[0] == i // 2:
                 neuron_index = until_layer_neuron[1]
                 in_lb = [bounds_affine_out[int(i / 2)][0].detach().numpy()[neuron_index]]
                 in_ub = [bounds_affine_out[int(i / 2)][1].detach().numpy()[neuron_index]]
                 W, b = parameter_list[i].detach().numpy()[neuron_index], parameter_list[i + 1].detach().numpy()[neuron_index]
 
-                out_fet = 1
-                out_vars = m.addMVar(out_fet, lb=in_lb, ub=in_ub)
-                const = m.addConstr(W @ in_var + b == out_vars)
+                out_vars = verbas.add_affine_constr(m, W, b, in_var, in_lb, in_ub, i)
 
                 relu_in_var = out_vars
                 out_lb = [bounds_layer_out[int(i / 2)][0].detach().cpu().numpy()[neuron_index]]
                 out_ub = [bounds_layer_out[int(i / 2)][1].detach().cpu().numpy()[neuron_index]]
-                relu_vars = verbas.add_relu_constr(m, relu_in_var, out_fet, in_lb, in_ub, out_lb, out_ub, i=i)
+                relu_vars = verbas.add_relu_constr(m, relu_in_var, len(b), in_lb, in_ub, out_lb, out_ub, i=i)
                 in_var = relu_vars
                 break_early = True
                 break
@@ -230,14 +220,12 @@ class MILPVerifier(Verifier):
             in_ub = bounds_affine_out[int(i / 2)][1].detach().numpy()
             W, b = parameter_list[i].detach().numpy(), parameter_list[i + 1].detach().numpy()
 
-            out_fet = len(b)
-            out_vars = m.addMVar(out_fet, lb=in_lb, ub=in_ub, name="affine_var" + str(i))
-            const = m.addConstrs((W[i] @ in_var + b[i] == out_vars[i] for i in range(len(W))))
+            out_vars = verbas.add_affine_constr(m, W, b, in_var, in_lb, in_ub, i)
 
             relu_in_var = out_vars
             out_lb = bounds_layer_out[int(i / 2)][0].detach().cpu().numpy()
             out_ub = bounds_layer_out[int(i / 2)][1].detach().cpu().numpy()
-            relu_vars = verbas.add_relu_constr(m, relu_in_var, out_fet, in_lb, in_ub, out_lb, out_ub, i=i)
+            relu_vars = verbas.add_relu_constr(m, relu_in_var, len(b), in_lb, in_ub, out_lb, out_ub, i=i)
             in_var = relu_vars
 
         if not break_early:
@@ -245,9 +233,7 @@ class MILPVerifier(Verifier):
             ub = bounds_affine_out[-1][1].detach().numpy()
             W, b = parameter_list[len(parameter_list) - 2].detach().numpy(), parameter_list[-1].detach().numpy()
 
-            out_fet = len(b)
-            out_vars = m.addMVar(out_fet, lb=lb, ub=ub, name="last_affine_var")
-            const = m.addConstrs((W[i] @ in_var + b[i] == out_vars[i] for i in range(len(W))), name="out_const")
+            out_vars = verbas.add_affine_constr(m, W, b, in_var, lb, ub, i+2)
 
         m.update()
         self.model = m

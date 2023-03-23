@@ -593,12 +593,9 @@ class MultiDHOV:
         in_lb = bounds_affine_out[last_layer_index][0].detach().numpy()
         in_ub = bounds_affine_out[last_layer_index][1].detach().numpy()
 
-        out_fet = len(affine_b)
-        output_nn = nn_encoding_model.addMVar(out_fet, lb=in_lb, ub=in_ub,
-                                              name="output_layer_[{}]_".format(last_layer_index))
-        const = nn_encoding_model.addConstrs(
-            (affine_w[i] @ output_second_last_layer + affine_b[i] == output_nn[i] for i in range(len(affine_w))),
-            name="affine_const_[{}]".format(last_layer_index))
+        output_nn = verbas.add_affine_constr(nn_encoding_model, affine_w, affine_b, output_second_last_layer, in_lb, in_ub, i=last_layer_index)
+        for m, var in enumerate(output_nn.tolist()):
+            var.setAttr("varname", "output_layer_[{}]_[{}]".format(last_layer_index, m))
 
         nn_encoding_model.update()
 

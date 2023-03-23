@@ -18,8 +18,6 @@ def generate_model_center_eps(model, center, eps, layer_index):
     input_to_previous_layer_size = len(center)
     input_approx_layer = model.addMVar(input_to_previous_layer_size, lb=[elem - eps for elem in center],
                                         ub=[elem + eps for elem in center], name="output_layer_[{}]_".format(layer_index))
-    model.addConstrs(input_approx_layer[i] <= center[i] + eps for i in range(input_to_previous_layer_size))
-    model.addConstrs(input_approx_layer[i] >= center[i] - eps for i in range(input_to_previous_layer_size))
     return input_approx_layer
 
 
@@ -35,8 +33,7 @@ def add_layer_to_model(model, affine_w, affine_b, curr_constraint_icnns, curr_gr
     in_ub = curr_bounds_affine_out[1].detach().numpy()
 
     out_fet = len(affine_b)
-    affine_var = model.addMVar(out_fet, lb=in_lb, ub=in_ub, name="affine_var_[{}]".format(current_layer_index))
-    const = model.addConstrs((affine_w[i] @ output_prev_layer + affine_b[i] == affine_var[i] for i in range(len(affine_w))), name="affine_const_[{}]".format(current_layer_index))
+    affine_var = verbas.add_affine_constr(model, affine_w, affine_b, output_prev_layer, in_lb, in_ub, i=current_layer_index)
 
     out_lb = curr_bounds_layer_out[0].detach().numpy()
     out_ub = curr_bounds_layer_out[1].detach().numpy()

@@ -13,7 +13,7 @@ import DataSampling as ds
 import DHOV as dhov
 from torch.utils.data import DataLoader
 from script.NeuralNets.Networks import SequentialNN, ICNN, ICNNApproxMax, ICNNLogical
-from script.Verification.Verifier import SingleNeuronVerifier, MILPVerifier, DHOVVerifier
+from script.Verification.Verifier import SingleNeuronVerifier, MILPVerifier
 from script.dataInit import Rhombus, ConvexDataset
 import polytope as pc
 from script.settings import device, data_type
