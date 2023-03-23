@@ -36,21 +36,24 @@ class MultiDHOV:
         self.num_fixed_neurons_layer = None
         self.all_group_indices = None
         self.list_of_icnns = None
+        self.list_of_included_samples = []
+        self.list_of_ambient_samples = []
 
     def start_verification(self, nn: SequentialNN, input, icnn_factory, group_size, eps=0.001, icnn_batch_size=1000,
                            icnn_epochs=100, sample_count=1000, sampling_method="uniform",
                            break_after=None, use_icnn_bounds=False, use_fixed_neurons=False,
                            keep_ambient_space=False, sample_new=True, use_over_approximation=True, opt_steps_gd=100,
                            sample_over_input_space=False, sample_over_output_space=True, data_grad_descent_steps=0,
-                           train_outer=False, preemptive_stop=True, even_gradient_training=False,
-                           force_inclusion_steps=0,
+                           train_outer=False, preemptive_stop=True, even_gradient_training=False, store_samples=False,
+                           force_inclusion_steps=0, grouping_method="consecutive", group_num_multiplier=None,
                            init_network=False, adapt_lambda="none", should_plot='none', optimizer="adam",
-                           print_training_loss=False, print_new_bounds=False):
+                           print_training_loss=False, print_optimization_steps=False, print_new_bounds=False):
         valid_adapt_lambda = ["none", "high_low", "included"]
         valid_should_plot = ["none", "simple", "detailed", "verification", "output"]
         valid_optimizer = ["adam", "LBFGS", "SdLBFGS"]
         valid_sampling_methods = ["uniform", "linespace", "boarder", "sum_noise", "min_max_perturbation",
                                   "alternate_min_max", "per_group_sampling"]
+        valid_grouping_methods = ["consecutive", "random"]
 
         parameter_list = list(nn.parameters())
         force_break = False
@@ -58,17 +61,23 @@ class MultiDHOV:
 
         if adapt_lambda not in valid_adapt_lambda:
             raise AttributeError(
-                "Expected adaptive lambda mode one of: {}, actual: {}".format(valid_adapt_lambda, adapt_lambda))
+                "Expected adaptive lambda mode to be one of: {}, actual: {}".format(valid_adapt_lambda, adapt_lambda))
         if should_plot not in valid_should_plot:
-            raise AttributeError("Expected plotting mode one of: {}, actual: {}".format(valid_should_plot, should_plot))
+            raise AttributeError("Expected plotting mode to be one of: {}, actual: {}".format(valid_should_plot, should_plot))
         if optimizer not in valid_optimizer:
-            raise AttributeError("Expected optimizer one of: {}, actual: {}".format(valid_optimizer, optimizer))
+            raise AttributeError("Expected optimizer to be one of: {}, actual: {}".format(valid_optimizer, optimizer))
         if force_inclusion_steps < 0:
             raise AttributeError("Expected force_inclusion to be:  >= 0 , got: {}".format(force_inclusion_steps))
         if data_grad_descent_steps < 0 or data_grad_descent_steps > icnn_epochs:
             raise AttributeError(
                 "Expected data_grad_descent_steps to be:  >= {}} , got: {}".format(icnn_epochs,
                                                                                    data_grad_descent_steps))
+        if grouping_method not in valid_grouping_methods:
+            raise AttributeError("Expected grouping method to be one of: {}, actual: {}".format(valid_grouping_methods,
+                                                                                   grouping_method))
+        if grouping_method == "random" and group_num_multiplier is None and group_num_multiplier % 1 != 0:
+            raise AttributeError(
+                "Expected group_num_multiplier to be integer > 0 , got: {}".format(data_grad_descent_steps))
         if sampling_method not in valid_sampling_methods:
             raise AttributeError(
                 "Expected sampling method to be one of: {} , got: {}".format(valid_sampling_methods, sampling_method))
@@ -81,6 +90,9 @@ class MultiDHOV:
             warnings.warn("sample_over_input_space is True and sampling method is per_group_sampling. "
                           "Sampling over input space is not yet supported when using per group sampling. "
                           "Using sampling over output space instead...")
+        if group_num_multiplier is not None and grouping_method == "consecutive":
+            warnings.warn("value for group number multiplier is given with grouping method consecutive. "
+                          "consecutive grouping does not use variable number of groups")
 
         input_flattened = torch.flatten(input)
         center = input_flattened
@@ -89,7 +101,10 @@ class MultiDHOV:
         bounds_affine_out, bounds_layer_out = nn.calculate_box_bounds(eps_bounds)
 
         nn_encoding_model = grp.Model()
-        nn_encoding_model.Params.LogToConsole = 0
+        if print_optimization_steps:
+            nn_encoding_model.Params.LogToConsole = 1
+        else:
+            nn_encoding_model.Params.LogToConsole = 0
 
         included_space = torch.empty((0, input_flattened.size(0)), dtype=data_type).to(device)
 
@@ -154,6 +169,9 @@ class MultiDHOV:
             prev_layer_index = current_layer_index - 1
             print("")
             print("approximation of layer: {}".format(current_layer_index))
+            if store_samples:
+                self.list_of_included_samples.append([])
+                self.list_of_ambient_samples.append([])
 
             affine_w, affine_b = parameter_list[i], parameter_list[i + 1]
 
@@ -213,6 +231,10 @@ class MultiDHOV:
                                                                          bounds_layer_out[current_layer_index],
                                                                          padding=eps)
 
+                if store_samples:
+                    self.list_of_included_samples[current_layer_index].append(included_space)
+                    self.list_of_ambient_samples[current_layer_index].append(ambient_space)
+
                 if should_plot == "detailed" and included_space.size(1) == 2:
                     plt_inc_amb("enhanced ambient space " + str(i), included_space.tolist(), ambient_space.tolist())
                     plt_inc_amb("original enhanced ambient space " + str(i), original_included_space.tolist(),
@@ -252,13 +274,25 @@ class MultiDHOV:
             num_fixed_neurons_layer.append(len(fix_lower) + len(fix_upper))
             print("    number of fixed neurons for current layer: {}".format(len(fix_lower) + len(fix_upper)))
 
-            number_of_groups = get_num_of_groups(len(affine_b) - num_fixed_neurons_layer[current_layer_index],
-                                                 group_size)
-            group_indices = get_current_group_indices(len(affine_b), group_size,
-                                                      fixed_neuron_per_layer_lower[current_layer_index],
-                                                      fixed_neuron_per_layer_upper[current_layer_index])
+
+            if grouping_method == "consecutive":
+                number_of_groups = get_num_of_groups(len(affine_b) - num_fixed_neurons_layer[current_layer_index],
+                                                     group_size)
+                group_indices = get_current_group_indices(len(affine_b), group_size,
+                                                          fixed_neuron_per_layer_lower[current_layer_index],
+                                                          fixed_neuron_per_layer_upper[current_layer_index])
+            elif grouping_method == "random":
+                number_of_groups = get_num_of_groups(len(affine_b) - num_fixed_neurons_layer[current_layer_index],
+                                                     group_size)
+                number_of_groups = group_num_multiplier * number_of_groups
+                group_indices = get_random_groups(len(affine_b), number_of_groups, group_size,
+                                                          fixed_neuron_per_layer_lower[current_layer_index],
+                                                          fixed_neuron_per_layer_upper[current_layer_index])
 
             all_group_indices.append(group_indices)
+            if force_break:
+                print("aborting because of force break. Layer currently approximated is not ")
+                return
 
             list_of_icnns.append([])
             for group_i in range(number_of_groups):
@@ -341,6 +375,11 @@ class MultiDHOV:
                         ambient_space = ds.samples_uniform_over(ambient_space, amb_space_sample_count,
                                                                 bounds_layer_out[current_layer_index],
                                                                 padding=eps)
+
+                    if store_samples:
+                        self.list_of_included_samples[current_layer_index].append(included_space)
+                        self.list_of_ambient_samples[current_layer_index].append(ambient_space)
+
                 t = time.time()
                 group_inc_space = torch.index_select(included_space, 1, index_to_select)
                 group_amb_space = torch.index_select(ambient_space, 1, index_to_select)
@@ -492,11 +531,6 @@ class MultiDHOV:
 
                 if break_after is not None and break_after == 0:
                     force_break = True
-                    break
-
-            if force_break:
-                print("aborting because of force break. Layer currently approximated is not ")
-                break
 
             # add current layer to model
             curr_constraint_icnns = list_of_icnns[current_layer_index]
@@ -533,8 +567,6 @@ class MultiDHOV:
                                                                    ambient_space, group_indices)
             print("    time for regrouping method: {}".format(time.time() - t))
 
-        if force_break:
-            return
 
         if should_plot in valid_should_plot and should_plot != "none" and sampling_method != "per_group_sampling" and included_space.size(
                 1) == 2:
@@ -554,9 +586,9 @@ class MultiDHOV:
         affine_w, affine_b = parameter_list[-2].detach().numpy(), parameter_list[-1].detach().numpy()
         last_layer_index = current_layer_index + 1
         output_second_last_layer = []
-        for i in range(affine_w.shape[1]):
+        for m in range(affine_w.shape[1]):
             output_second_last_layer.append(
-                nn_encoding_model.getVarByName("output_layer_[{}]_[{}]".format(last_layer_index - 1, i)))
+                nn_encoding_model.getVarByName("output_layer_[{}]_[{}]".format(last_layer_index - 1, m)))
         output_second_last_layer = grp.MVar.fromlist(output_second_last_layer)
         in_lb = bounds_affine_out[last_layer_index][0].detach().numpy()
         in_ub = bounds_affine_out[last_layer_index][1].detach().numpy()
@@ -589,8 +621,9 @@ class MultiDHOV:
                         print("        {}, upper: new {}, old {}".format(neuron_to_optimize, value[neuron_to_optimize], bounds_affine_out[last_layer_index][1][neuron_to_optimize]))
                     bounds_affine_out[last_layer_index][1][neuron_to_optimize] = value[neuron_to_optimize]
 
-            relu_out_lb, relu_out_ub = verbas.calc_relu_out_bound(bounds_affine_out[last_layer_index][0],
-                                                                  bounds_affine_out[last_layer_index][1])
+            if i < len(parameter_list) - 2:
+                relu_out_lb, relu_out_ub = verbas.calc_relu_out_bound(bounds_affine_out[last_layer_index][0],
+                                                                      bounds_affine_out[last_layer_index][1])
             bounds_layer_out[last_layer_index][0] = relu_out_lb
             bounds_layer_out[last_layer_index][1] = relu_out_ub
 
@@ -663,6 +696,18 @@ def get_current_group_indices(num_neurons, group_size, fixed_neurons_lower, fixe
 
     if len(current_group) > 0:
         group_indices.append(current_group)
+    return group_indices
+
+def get_random_groups(num_neurons, num_groups, group_size, fixed_neurons_lower, fixed_neurons_upper):
+    group_indices = []
+    min_group_size = min(num_neurons, group_size)
+    fixed_neuron_index = (fixed_neurons_lower + fixed_neurons_upper)
+    neurons_to_group = [x for x in range(num_neurons) if x not in fixed_neuron_index]
+    for index in range(num_groups):
+        random.shuffle(neurons_to_group)
+        current_group = neurons_to_group[:min_group_size]
+        group_indices.append(current_group)
+
     return group_indices
 
 
