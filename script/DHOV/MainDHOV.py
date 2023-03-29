@@ -67,24 +67,29 @@ def multi_net2D():
     nn.load_state_dict(torch.load("../../mnist_fc.pth", map_location=torch.device('cpu')), strict=False)
 
     # start of DHOV
-    group_size = 4
 
-    icnn_factory = ICNNFactory("logical", [10, 10, 1], force_positive_init=False, with_two_layers=False,
-                              init_scaling=10, init_all_with_zeros=False)
-    #icnn_factory = ICNNFactory("standard", [10, 10, 1], init_all_with_zeros=False)
-    #icnn_factory = ICNNFactory("approx_max", [10, 10, 1])
-    eps = 0.01
+    eps = 0.02
     #matplotlib.use('TkAgg')
 
+    group_size = 2
+    icnn_factory = ICNNFactory("logical", [10, 1], always_use_logical_layer=False)
+    #icnn_factory = ICNNFactory("standard", [10, 1])
+    # icnn_factory = ICNNFactory("approx_max", [5, 1], maximum_function="SMU", function_parameter=0.3)
+
     dhov_verifier = multidhov.MultiDHOV()
-    dhov_verifier.start_verification(nn, test_image, icnn_factory, group_size, eps=eps, icnn_epochs=0,
-                                     icnn_batch_size=10000, sample_count=10, sample_new=True, use_over_approximation=True, break_after=None,
-                                     sample_over_input_space=False, sample_over_output_space=True, use_icnn_bounds=True,
+    dhov_verifier.start_verification(nn, test_image, icnn_factory, group_size, eps=eps, icnn_epochs=10,
+                                     icnn_batch_size=1000, sample_count=1000, sample_new=False,
+                                     use_over_approximation=True, break_after=None,
+                                     sample_over_input_space=False, sample_over_output_space=True,
+                                     use_icnn_bounds=True,
                                      use_fixed_neurons=True, sampling_method="per_group_sampling",
                                      force_inclusion_steps=0, preemptive_stop=False, even_gradient_training=False,
-                                     keep_ambient_space=True, data_grad_descent_steps=0, opt_steps_gd=100,
-                                     train_outer=False, print_training_loss=False, print_new_bounds=True, grouping_method="random", group_num_multiplier=5,
-                                     should_plot="none", optimizer="SdLBFGS", init_network=True, adapt_lambda="included")
+                                     keep_ambient_space=True, data_grad_descent_steps=0, opt_steps_gd=200,
+                                     train_outer=False, print_training_loss=False, print_new_bounds=False,
+                                     grouping_method="consecutive", group_num_multiplier=5, store_samples=False,
+                                     print_optimization_steps=False,
+                                     should_plot="detailed", optimizer="SdLBFGS", init_network=True,
+                                     adapt_lambda="included")
     print(dhov_verifier.all_group_indices)
 
 
