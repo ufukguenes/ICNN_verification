@@ -63,9 +63,8 @@ def add_layer_to_model(model, affine_w, affine_b, curr_constraint_icnns, curr_gr
         constraint_icnn_bounds_affine_out, constraint_icnn_bounds_layer_out = constraint_icnn.calculate_box_bounds([low, up])
         current_in_vars = model.addMVar(len(curr_group_indices[k]), lb=low.detach().numpy(), ub=up.detach().numpy(), name="icnn_var_group_{}_{}".format(current_layer_index, curr_group_indices[k]))
 
-
         constraint_icnn.add_max_output_constraints(model, current_in_vars, constraint_icnn_bounds_affine_out,
-                                                       constraint_icnn_bounds_layer_out)
+                                                   constraint_icnn_bounds_layer_out)
 
         model.addConstrs((out_vars[neuron_index] == current_in_vars[i] for i, neuron_index in enumerate(curr_group_indices[k])), name="group_out_icnn_{}_{}".format(current_layer_index, curr_group_indices[k]))
 
