@@ -86,7 +86,7 @@ def train_icnn(model, train_loader, ambient_loader, epochs=10, optimizer="adam",
 
         cyclic_index = epoch % window_size
         moving_avg_loss[cyclic_index] = loss
-        avg_loss = moving_avg_loss.mean()
+        avg_loss = torch.abs(moving_avg_loss - moving_avg_loss.mean()).max()
         if preemptive_stop and avg_loss <= min_loss_change:
             break
 
