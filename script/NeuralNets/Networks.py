@@ -338,7 +338,7 @@ class ICNN(nn.Module, VerifiableNet):
 
 class ICNNLogical(ICNN):
 
-    def __init__(self, *args, with_two_layers=False, **kwargs):
+    def __init__(self, *args, with_two_layers=False, always_use_logical_layer=True, use_training_setup=True, **kwargs):
         """
         layer_widths - ([int]) list of layer widths **including** input and output dim
         """
@@ -346,6 +346,8 @@ class ICNNLogical(ICNN):
 
         self.with_two_layers = with_two_layers
         self.ls = []
+        self.use_training_setup = use_training_setup
+        self.always_use_logical_layer = always_use_logical_layer
 
         self.ls.append(nn.Linear(self.layer_widths[0], 2 * self.layer_widths[0], bias=True, dtype=data_type).to(device))
         if self.with_two_layers:
@@ -370,19 +372,23 @@ class ICNNLogical(ICNN):
 
     def forward(self, x):
         icnn_out = super().forward(x)
-        box_out = self.ls[0](x)
-        box_out = torch.max(box_out, dim=1, keepdim=True)[0]
-        x_in = torch.cat([icnn_out, box_out], dim=1)
 
-        if self.with_two_layers:
-            x_in = self.ls[1](x_in)
-            # x_in = nn.ReLU()(x_in)
-            x_in = self.ls[2](x_in)
-            out = torch.max(x_in, dim=1)[0]
-        else:
-            x_in = self.ls[1](x_in)
-            out = torch.max(x_in, dim=1)[0]
-        return out
+        if self.use_training_setup or self.always_use_logical_layer:
+            box_out = self.ls[0](x)
+            box_out = torch.max(box_out, dim=1, keepdim=True)[0]
+            x_in = torch.cat([icnn_out, box_out], dim=1)
+            if self.with_two_layers:
+                x_in = self.ls[1](x_in)
+                # x_in = nn.ReLU()(x_in)
+                x_in = self.ls[2](x_in)
+                out = torch.max(x_in, dim=1)[0]
+            else:
+                x_in = self.ls[1](x_in)
+                out = torch.max(x_in, dim=1)[0]
+            return out
+
+        return icnn_out
+
 
     def init_with_box_bounds(self, lower_bounds, upper_bounds):
         with torch.no_grad():
@@ -414,46 +420,50 @@ class ICNNLogical(ICNN):
     def add_max_output_constraints(self, model, input_vars, bounds_affine_out, bounds_layer_out, as_lp=True):
         icnn_output_var = super().add_constraints(model, input_vars, bounds_affine_out, bounds_layer_out, as_lp=as_lp)
         model.update()
+        if self.use_training_setup or self.always_use_logical_layer:
+            ls = self.ls
+            bb_w, bb_b = ls[0].weight.data.detach().cpu().numpy(), ls[0].bias.data.detach().cpu().numpy()
 
-        ls = self.ls
-        bb_w, bb_b = ls[0].weight.data.detach().cpu().numpy(), ls[0].bias.data.detach().cpu().numpy()
+            in_lb = torch.tensor([var.getAttr("lb").item() for var in input_vars], dtype=data_type).to(device)
+            in_ub = torch.tensor([var.getAttr("ub").item() for var in input_vars], dtype=data_type).to(device)
+            tensor_bb_w = torch.tensor(bb_w, dtype=data_type).to(device)
+            tensor_bb_b = torch.tensor(bb_b, dtype=data_type).to(device)
 
-        in_lb = torch.tensor([var.getAttr("lb").item() for var in input_vars], dtype=data_type).to(device)
-        in_ub = torch.tensor([var.getAttr("ub").item() for var in input_vars], dtype=data_type).to(device)
-        tensor_bb_w = torch.tensor(bb_w, dtype=data_type).to(device)
-        tensor_bb_b = torch.tensor(bb_b, dtype=data_type).to(device)
+            lb, ub = verbas.calc_affine_out_bound(tensor_bb_w, tensor_bb_b, in_lb, in_ub)
 
-        lb, ub = verbas.calc_affine_out_bound(tensor_bb_w, tensor_bb_b, in_lb, in_ub)
+            bb_var = verbas.add_affine_constr(model, bb_w, bb_b, input_vars, lb, ub, "bb_const")
 
-        bb_var = verbas.add_affine_constr(model, bb_w, bb_b, input_vars, lb, ub, "bb_const")
+            max_var = model.addVar(lb=-float("inf"))
+            model.addGenConstrMax(max_var, bb_var.tolist(), name="max_out_bb")
 
-        max_var = model.addVar(lb=-float("inf"))
-        model.addGenConstrMax(max_var, bb_var.tolist(), name="max_out_bb")
+            new_in = model.addMVar(2, lb=-float('inf'))
+            model.addConstr(new_in[0] == icnn_output_var[0], name="new_in0")
+            model.addConstr(new_in[1] == max_var, name="new_in1")
 
-        new_in = model.addMVar(2, lb=-float('inf'))
-        model.addConstr(new_in[0] == icnn_output_var[0], name="new_in0")
-        model.addConstr(new_in[1] == max_var, name="new_in1")
+            if self.with_two_layers:
+                affine_w = ls[1].weight.data.detach().cpu().numpy()
+                affine_var1 = model.addMVar(4, lb=-float("inf"))
+                affine_const = model.addConstr(affine_w @ new_in == affine_var1)
 
-        if self.with_two_layers:
-            affine_w = ls[1].weight.data.detach().cpu().numpy()
-            affine_var1 = model.addMVar(4, lb=-float("inf"))
-            affine_const = model.addConstr(affine_w @ new_in == affine_var1)
+                affine_W2 = ls[2].weight.data.detach().cpu().numpy()
+                affine_var2 = model.addMVar(3, lb=-float("inf"))
+                affine_const = model.addConstr(affine_W2 @ affine_var1 == affine_var2)
+                max_var2 = model.addVar(lb=-float("inf"))
+                model.addGenConstrMax(max_var2, affine_var2.tolist())
+            else:
+                affine_w = ls[1].weight.data.detach().cpu().numpy()
+                affine_var1 = model.addMVar(3, lb=-float("inf"))
+                affine_const = model.addConstr(affine_w @ new_in == affine_var1, name="affine_w_bb")
+                max_var2 = model.addVar(lb=-float("inf"))
+                model.addGenConstrMax(max_var2, affine_var1.tolist(), name="max_out1")
 
-            affine_W2 = ls[2].weight.data.detach().cpu().numpy()
-            affine_var2 = model.addMVar(3, lb=-float("inf"))
-            affine_const = model.addConstr(affine_W2 @ affine_var1 == affine_var2)
-            max_var2 = model.addVar(lb=-float("inf"))
-            model.addGenConstrMax(max_var2, affine_var2.tolist())
+            model.addConstr(max_var2 <= 0, name="max<0")
+
+            return max_var2
         else:
-            affine_w = ls[1].weight.data.detach().cpu().numpy()
-            affine_var1 = model.addMVar(3, lb=-float("inf"))
-            affine_const = model.addConstr(affine_w @ new_in == affine_var1, name="affine_w_bb")
-            max_var2 = model.addVar(lb=-float("inf"))
-            model.addGenConstrMax(max_var2, affine_var1.tolist(), name="max_out1")
+            model.addConstr(icnn_output_var[0] <= 0)
 
-        model.addConstr(max_var2 <= 0, name="max<0")
-
-        return max_var2
+        return icnn_output_var
 
     def apply_normalisation(self, mean, std):
         super().apply_normalisation(mean, std)
