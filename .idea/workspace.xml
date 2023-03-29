@@ -1,17 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="6d238203-6334-43f4-afee-09b5387b5116" name="Changes" comment="changing names of last layer var">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/script/DHOV/DataSampling.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/DHOV/DataSampling.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/script/DHOV/MainDHOV.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/DHOV/MainDHOV.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/script/DHOV/MultiDHOV.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/DHOV/MultiDHOV.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/script/Experiments/MNIST_Test.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/script/Experiments/MNIST_Test.ipynb" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/script/NeuralNets/Networks.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/NeuralNets/Networks.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/script/NeuralNets/trainFunction.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/NeuralNets/trainFunction.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/script/Verification/Verification.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/Verification/Verification.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/script/Verification/Verifier.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/Verification/Verifier.py" afterDir="false" />
-    </list>
+    <list default="true" id="6d238203-6334-43f4-afee-09b5387b5116" name="Changes" comment="training" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -172,70 +162,7 @@
       <workItem from="1679752888959" duration="2635000" />
       <workItem from="1679839267912" duration="41453000" />
       <workItem from="1680003865709" duration="2428000" />
-      <workItem from="1680087633634" duration="7324000" />
-    </task>
-    <task id="LOCAL-00052" summary="added linspace sampling">
-      <created>1678051243008</created>
-      <option name="number" value="00052" />
-      <option name="presentableId" value="LOCAL-00052" />
-      <option name="project" value="LOCAL" />
-      <updated>1678051243008</updated>
-    </task>
-    <task id="LOCAL-00053" summary="new sampling methods">
-      <created>1678115630481</created>
-      <option name="number" value="00053" />
-      <option name="presentableId" value="LOCAL-00053" />
-      <option name="project" value="LOCAL" />
-      <updated>1678115630481</updated>
-    </task>
-    <task id="LOCAL-00054" summary="added new sampling method min_max_perturbation">
-      <created>1678130993010</created>
-      <option name="number" value="00054" />
-      <option name="presentableId" value="LOCAL-00054" />
-      <option name="project" value="LOCAL" />
-      <updated>1678130993010</updated>
-    </task>
-    <task id="LOCAL-00055" summary="added changing sign to min_max_pertubation">
-      <created>1678353831126</created>
-      <option name="number" value="00055" />
-      <option name="presentableId" value="LOCAL-00055" />
-      <option name="project" value="LOCAL" />
-      <updated>1678353831126</updated>
-    </task>
-    <task id="LOCAL-00056" summary="new sampling method (alternate min max) and verification on mnist">
-      <created>1678367391525</created>
-      <option name="number" value="00056" />
-      <option name="presentableId" value="LOCAL-00056" />
-      <option name="project" value="LOCAL" />
-      <updated>1678367391525</updated>
-    </task>
-    <task id="LOCAL-00057" summary="using noise for alternate min max sampling">
-      <created>1678368142891</created>
-      <option name="number" value="00057" />
-      <option name="presentableId" value="LOCAL-00057" />
-      <option name="project" value="LOCAL" />
-      <updated>1678368142891</updated>
-    </task>
-    <task id="LOCAL-00058" summary="new sampling method: per_group_sampling">
-      <created>1678379843645</created>
-      <option name="number" value="00058" />
-      <option name="presentableId" value="LOCAL-00058" />
-      <option name="project" value="LOCAL" />
-      <updated>1678379843645</updated>
-    </task>
-    <task id="LOCAL-00059" summary="new sampling method: per_group_sampling">
-      <created>1678382136557</created>
-      <option name="number" value="00059" />
-      <option name="presentableId" value="LOCAL-00059" />
-      <option name="project" value="LOCAL" />
-      <updated>1678382136557</updated>
-    </task>
-    <task id="LOCAL-00060" summary="per_group_sampling for second layer">
-      <created>1678448275214</created>
-      <option name="number" value="00060" />
-      <option name="presentableId" value="LOCAL-00060" />
-      <option name="project" value="LOCAL" />
-      <updated>1678448275214</updated>
+      <workItem from="1680087633634" duration="7877000" />
     </task>
     <task id="LOCAL-00061" summary="randomizing per group sampling">
       <created>1678458276645</created>
@@ -517,7 +444,70 @@
       <option name="project" value="LOCAL" />
       <updated>1679540192825</updated>
     </task>
-    <option name="localTasksCounter" value="101" />
+    <task id="LOCAL-00101" summary="fixing bug in preemptive stopping">
+      <created>1680103243346</created>
+      <option name="number" value="00101" />
+      <option name="presentableId" value="LOCAL-00101" />
+      <option name="project" value="LOCAL" />
+      <updated>1680103243361</updated>
+    </task>
+    <task id="LOCAL-00102" summary="added sampling method at 0">
+      <created>1680103340425</created>
+      <option name="number" value="00102" />
+      <option name="presentableId" value="LOCAL-00102" />
+      <option name="project" value="LOCAL" />
+      <updated>1680103340425</updated>
+    </task>
+    <task id="LOCAL-00103" summary="added sampling method at 0">
+      <created>1680103447625</created>
+      <option name="number" value="00103" />
+      <option name="presentableId" value="LOCAL-00103" />
+      <option name="project" value="LOCAL" />
+      <updated>1680103447625</updated>
+    </task>
+    <task id="LOCAL-00104" summary="printing current layer when printing optimized bounds">
+      <created>1680103536582</created>
+      <option name="number" value="00104" />
+      <option name="presentableId" value="LOCAL-00104" />
+      <option name="project" value="LOCAL" />
+      <updated>1680103536582</updated>
+    </task>
+    <task id="LOCAL-00105" summary="printing current layer when printing optimized bounds">
+      <created>1680103563761</created>
+      <option name="number" value="00105" />
+      <option name="presentableId" value="LOCAL-00105" />
+      <option name="project" value="LOCAL" />
+      <updated>1680103563761</updated>
+    </task>
+    <task id="LOCAL-00106" summary="faster verification">
+      <created>1680103633155</created>
+      <option name="number" value="00106" />
+      <option name="presentableId" value="LOCAL-00106" />
+      <option name="project" value="LOCAL" />
+      <updated>1680103633155</updated>
+    </task>
+    <task id="LOCAL-00107" summary="printing current layer when printing new bounds">
+      <created>1680103655681</created>
+      <option name="number" value="00107" />
+      <option name="presentableId" value="LOCAL-00107" />
+      <option name="project" value="LOCAL" />
+      <updated>1680103655681</updated>
+    </task>
+    <task id="LOCAL-00108" summary="making usage of logical part in ICNN optional after training">
+      <created>1680103694526</created>
+      <option name="number" value="00108" />
+      <option name="presentableId" value="LOCAL-00108" />
+      <option name="project" value="LOCAL" />
+      <updated>1680103694526</updated>
+    </task>
+    <task id="LOCAL-00109" summary="training">
+      <created>1680103704334</created>
+      <option name="number" value="00109" />
+      <option name="presentableId" value="LOCAL-00109" />
+      <option name="project" value="LOCAL" />
+      <updated>1680103704334</updated>
+    </task>
+    <option name="localTasksCounter" value="110" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -567,13 +557,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="ensuring we don't exceed sampling count limit" />
-    <MESSAGE value="making MultiDHOV a class" />
-    <MESSAGE value="adding last affine transformation to model" />
-    <MESSAGE value="removing printing of new bounds" />
-    <MESSAGE value="removing duplicate constraints" />
-    <MESSAGE value="adapting output" />
-    <MESSAGE value="experiments" />
     <MESSAGE value="adding bound optimization" />
     <MESSAGE value="making preemptive stop average over windows of fixed size" />
     <MESSAGE value="adding affine constraints for last layer and adapting print output" />
@@ -592,7 +575,14 @@
     <MESSAGE value="simplifying constraints" />
     <MESSAGE value="code cleanup" />
     <MESSAGE value="changing names of last layer var" />
-    <option name="LAST_COMMIT_MESSAGE" value="changing names of last layer var" />
+    <MESSAGE value="fixing bug in preemptive stopping" />
+    <MESSAGE value="added sampling method at 0" />
+    <MESSAGE value="printing current layer when printing optimized bounds" />
+    <MESSAGE value="faster verification" />
+    <MESSAGE value="printing current layer when printing new bounds" />
+    <MESSAGE value="making usage of logical part in ICNN optional after training" />
+    <MESSAGE value="training" />
+    <option name="LAST_COMMIT_MESSAGE" value="training" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -616,11 +606,6 @@
           <url>file://$PROJECT_DIR$/script/DHOV/DataSampling.py</url>
           <line>337</line>
           <option name="timeStamp" value="998" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/script/NeuralNets/trainFunction.py</url>
-          <line>89</line>
-          <option name="timeStamp" value="1019" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="jupyter-line">
           <url>notebook://C:/Users/Ufuk/Documents/Programming/ICNN_verification/script/Experiments/NeuronBounds.ipynb</url>
