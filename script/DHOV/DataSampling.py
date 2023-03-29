@@ -7,7 +7,6 @@ import gurobipy as grp
 from script.settings import device, data_type
 import script.Verification.VerificationBasics as verbas
 
-
 def sample_max_radius(icnns, sample_size, group_indices, curr_bounds_layer_out, fixed_neuron_lower, fixed_neuron_upper):
     center_values = torch.zeros(len(curr_bounds_layer_out[0]), dtype=data_type).to(device)
     eps_values = torch.zeros(len(curr_bounds_layer_out[0]), dtype=data_type).to(device)
@@ -295,6 +294,48 @@ def sample_per_group_as_lp(data_samples, amount, affine_w, affine_b, index_to_se
         data_samples = samples
     return data_samples
 
+
+def sample_at_0(data_samples, amount, affine_w, affine_b, index_to_select, model, curr_bounds_affine_out, prev_layer_index):
+
+    output_prev_layer = []
+    for i in range(affine_w.shape[1]):
+        output_prev_layer.append(model.getVarByName("output_layer_[{}]_[{}]".format(prev_layer_index, i)))
+    output_prev_layer = grp.MVar.fromlist(output_prev_layer)
+
+    lb = curr_bounds_affine_out[0].detach().cpu().numpy()
+    ub = curr_bounds_affine_out[1].detach().cpu().numpy()
+    numpy_affine_w = affine_w.detach().cpu().numpy()
+    numpy_affine_b = affine_b.detach().cpu().numpy()
+    output_var = verbas.add_affine_constr(model, numpy_affine_w, numpy_affine_b, output_prev_layer, lb, ub, i=0)
+    model.update()
+
+    max_x_value_by_index = []
+    for i, index in enumerate(index_to_select):
+        to_be_removed = []
+        indices_leq_0 = index_to_select.tolist()
+        indices_leq_0.pop(i)
+        for const in indices_leq_0:
+            to_be_removed.append(model.addConstr(output_var[const] <= 0))
+
+        model.setObjective(output_var[index], grp.GRB.MAXIMIZE)
+        model.update()
+
+        model.optimize()
+        if model.Status == grp.GRB.OPTIMAL:
+            max_x_value_by_index.append(torch.tensor(output_var[index].getAttr("X"), dtype=data_type).to(device))
+        else:
+            print("Model unfeasible?")
+        model.remove(to_be_removed)
+
+    amount_per_max = amount // len(max_x_value_by_index)
+    for index, max_val in enumerate(max_x_value_by_index):
+        new_samples = torch.zeros((amount_per_max, affine_b.size(0)), dtype=data_type).to(device)
+        line_space = torch.linspace(0, max_val, amount_per_max, dtype=data_type)
+        max_val_index = index_to_select[index]
+        new_samples[:, max_val_index] = line_space
+        data_samples = torch.cat([data_samples, new_samples], dim=0)
+
+    return data_samples
 
 def sample_per_group(data_samples, amount, affine_w, center, eps, index_to_select, keep_samples=True, rand_samples_percent=0, rand_sample_alternation_percent=0.2, with_noise=False, with_sign_swap=False):
     samples_per_bound = amount // 2
