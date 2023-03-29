@@ -2,6 +2,7 @@
 import math
 import random
 import time
+import multiprocessing
 
 from matplotlib import pyplot as plt
 from torch.utils.data import DataLoader
@@ -327,20 +328,15 @@ class MultiDHOV:
                         # included_space = ds.sample_per_group(included_space, inc_space_sample_count // 2, parameter_list[0], center, eps, index_to_select, with_noise=True, with_sign_swap=False)
                         print("        time for sampling for one group: {}".format(time.time() - t_group))
                     else:
-                        copy_model = nn_encoding_model.copy()
                         t_group = time.time()
-                        included_space = ds.sample_per_group_as_lp(included_space, inc_space_sample_count // 2,
+                        copy_model = nn_encoding_model.copy()
+                        included_space = ds.sample_per_group_as_lp(included_space, inc_space_sample_count,
                                                                    affine_w, affine_b,
                                                                    index_to_select, copy_model,
                                                                    bounds_affine_out[current_layer_index],
                                                                    prev_layer_index,
                                                                    rand_samples_percent=0.2,
                                                                    rand_sample_alternation_percent=0.2)
-                        included_space = ds.sample_uniform_over_icnn(included_space, inc_space_sample_count // 2,
-                                                                     list_of_icnns[current_layer_index - 1],
-                                                                     all_group_indices[current_layer_index - 1],
-                                                                     bounds_layer_out[current_layer_index - 1],
-                                                                     keep_samples=True)
                         print("        time for sampling for one group: {}".format(time.time() - t_group))
 
                     if should_plot in valid_should_plot and should_plot not in ["none", "verification"] and len(
@@ -356,6 +352,14 @@ class MultiDHOV:
 
                     included_space = ds.apply_affine_transform(affine_w, affine_b, included_space)
                     ambient_space = ds.apply_affine_transform(affine_w, affine_b, ambient_space)
+
+                    if False and sampling_method == "per_group_sampling" and i != 0:
+                        copy_model = nn_encoding_model.copy()
+                        included_space = ds.sample_at_0(included_space, inc_space_sample_count // 2,
+                                                        affine_w, affine_b,
+                                                        index_to_select, copy_model,
+                                                        bounds_affine_out[current_layer_index],
+                                                        prev_layer_index)
 
                     if should_plot in valid_should_plot and should_plot not in ["none", "verification"] and len(
                             group_indices[group_i]) == 2:
