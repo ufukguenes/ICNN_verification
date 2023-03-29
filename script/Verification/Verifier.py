@@ -90,8 +90,8 @@ class SingleNeuronVerifier(Verifier):
             W, b = parameter_list[i].detach().cpu().numpy(), parameter_list[i + 1].detach().cpu().numpy()
 
             out_vars = verbas.add_affine_constr(m, W, b, in_var, in_lb, in_ub, i)
-
-            #print("================ layer {} ===============".format(i // 2))
+            if self.print_new_bounds:
+                print("================ layer {} ===============".format(i // 2))
             if self.optimize_bounds:
                 m.update()
                 # todo code duplicat
