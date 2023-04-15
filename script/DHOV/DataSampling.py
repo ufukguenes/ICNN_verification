@@ -1,5 +1,6 @@
 import math
 import random
+import time
 
 import numpy as np
 import torch
@@ -294,6 +295,61 @@ def sample_per_group_as_lp(data_samples, amount, affine_w, affine_b, index_to_se
         data_samples = samples
     return data_samples
 
+def sample_feasible(data_samples, amount, affine_w, affine_b, index_to_select, model, curr_bounds_affine_out, curr_bounds_layer_out, prev_layer_index, keep_samples=True):
+
+    out_samples_1 = torch.empty((0, len(index_to_select)))
+    bounds_of_group_lb = torch.index_select(curr_bounds_layer_out[0], 0, index_to_select)
+    bounds_of_group_ub = torch.index_select(curr_bounds_layer_out[1], 0, index_to_select)
+    out_samples_1 = samples_uniform_over(out_samples_1, amount // 2, [bounds_of_group_lb, bounds_of_group_ub])
+
+    out_samples_2 = torch.empty((0, len(index_to_select)))
+    bounds_of_group_lb = torch.index_select(curr_bounds_affine_out[0], 0, index_to_select)
+    bounds_of_group_ub = torch.index_select(curr_bounds_affine_out[1], 0, index_to_select)
+    out_samples_2 = samples_uniform_over(out_samples_2, amount // 2, [bounds_of_group_lb, bounds_of_group_ub])
+
+    out_samples = torch.cat([out_samples_1, out_samples_2], dim=0)
+
+    output_prev_layer = []
+    for i in range(affine_w.shape[1]):
+        output_prev_layer.append(model.getVarByName("output_layer_[{}]_[{}]".format(prev_layer_index, i)))
+    output_prev_layer = grp.MVar.fromlist(output_prev_layer)
+
+    lb = curr_bounds_affine_out[0].detach().cpu().numpy()
+    ub = curr_bounds_affine_out[1].detach().cpu().numpy()
+    numpy_affine_w = affine_w.detach().cpu().numpy()
+    numpy_affine_b = affine_b.detach().cpu().numpy()
+    output_var = verbas.add_affine_constr(model, numpy_affine_w, numpy_affine_b, output_prev_layer, lb, ub, i=0)
+    """out_lb = curr_bounds_layer_out[0].detach().cpu().numpy()
+    out_ub = curr_bounds_layer_out[1].detach().cpu().numpy()
+    output_var = verbas.add_relu_constr(model, output_var, len(affine_b), lb, ub, out_lb, out_ub)"""
+    model.update()
+
+    samples = torch.empty((0, affine_w.size(1)), dtype=data_type).to(device)
+    overall_time = 0
+    for progress, sample in enumerate(out_samples):
+        sample = sample.detach().cpu().numpy()
+        to_be_deleted = model.addConstrs(output_var[actual_index] == sample[count_i] for count_i, actual_index in enumerate(index_to_select))
+        model.setObjective(output_var[index_to_select[0]], grp.GRB.MAXIMIZE)
+
+        t = time.time()
+        model.optimize()
+        overall_time += time.time() - t
+
+        if model.Status == grp.GRB.OPTIMAL:
+            in_sample = torch.tensor(output_prev_layer.getAttr("X"), dtype=data_type).to(device)
+            samples = torch.cat([samples, torch.unsqueeze(in_sample, 0)], dim=0)
+            #print("worked: {}".format(progress))
+        else:
+            pass
+            #print("Model unfeasible?")
+        model.remove(to_be_deleted)
+
+    print("        optimimim: {}".format(overall_time))
+    if keep_samples and data_samples.size(0) > 0:
+        data_samples = torch.cat([data_samples, samples], dim=0)
+    else:
+        data_samples = samples
+    return data_samples
 
 def sample_at_0(data_samples, amount, affine_w, affine_b, index_to_select, model, curr_bounds_affine_out, prev_layer_index):
 

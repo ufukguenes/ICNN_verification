@@ -53,7 +53,7 @@ class MultiDHOV:
         valid_should_plot = ["none", "simple", "detailed", "verification", "output"]
         valid_optimizer = ["adam", "LBFGS", "SdLBFGS"]
         valid_sampling_methods = ["uniform", "linespace", "boarder", "sum_noise", "min_max_perturbation",
-                                  "alternate_min_max", "per_group_sampling"]
+                                  "alternate_min_max", "per_group_sampling", "per_group_feasible"]
         valid_grouping_methods = ["consecutive", "random"]
 
         parameter_list = list(nn.parameters())
@@ -116,7 +116,7 @@ class MultiDHOV:
         else:
             amb_space_sample_count = sample_count // 2
 
-        if sampling_method != "per_group_sampling":
+        if sampling_method not in ["per_group_sampling", "per_group_feasible"]:
             if sampling_method == "uniform":
                 included_space = ds.samples_uniform_over(included_space, inc_space_sample_count, eps_bounds)
             elif sampling_method == "linespace":
@@ -176,7 +176,7 @@ class MultiDHOV:
 
             affine_w, affine_b = parameter_list[i], parameter_list[i + 1]
 
-            if sampling_method != "per_group_sampling":
+            if sampling_method not in ["per_group_sampling", "per_group_feasible"]:
                 if not keep_ambient_space:
                     ambient_space = torch.empty((0, nn.layer_widths[current_layer_index]), dtype=data_type).to(device)
 
@@ -317,7 +317,7 @@ class MultiDHOV:
                 current_icnn = icnn_factory.get_new_icnn(size_of_icnn_input)
                 list_of_icnns[current_layer_index].append(current_icnn)
 
-                if sampling_method == "per_group_sampling":
+                if sampling_method in ["per_group_sampling", "per_group_feasible"]:
                     included_space = torch.empty((0, affine_w.size(1)), dtype=data_type).to(device)
                     ambient_space = torch.empty((0, affine_w.size(1)), dtype=data_type).to(device)
 
@@ -340,13 +340,20 @@ class MultiDHOV:
                     else:
                         t_group = time.time()
                         copy_model = nn_encoding_model.copy()
-                        included_space = ds.sample_per_group_as_lp(included_space, inc_space_sample_count,
-                                                                   affine_w, affine_b,
-                                                                   index_to_select, copy_model,
-                                                                   bounds_affine_out[current_layer_index],
-                                                                   prev_layer_index,
-                                                                   rand_samples_percent=0.2,
-                                                                   rand_sample_alternation_percent=0.2)
+                        if sampling_method == "per_group_sampling":
+                            included_space = ds.sample_per_group_as_lp(included_space, inc_space_sample_count,
+                                                                       affine_w, affine_b,
+                                                                       index_to_select, copy_model,
+                                                                       bounds_affine_out[current_layer_index],
+                                                                       prev_layer_index,
+                                                                       rand_samples_percent=0.2,
+                                                                       rand_sample_alternation_percent=0.2)
+                        elif sampling_method == "per_group_feasible":
+                            included_space = ds.sample_feasible(included_space, inc_space_sample_count,
+                                                                affine_w, affine_b, index_to_select, copy_model,
+                                                                bounds_affine_out[current_layer_index],
+                                                                bounds_layer_out[current_layer_index],
+                                                                prev_layer_index)
                         print("        time for sampling for one group: {}".format(time.time() - t_group))
 
                     if should_plot in valid_should_plot and should_plot not in ["none", "verification"] and len(

@@ -65,6 +65,7 @@ def multi_net2D():
 
     nn = SequentialNN([28*28*1, 100, 30, 10])
     nn.load_state_dict(torch.load("../../mnist_fc.pth", map_location=torch.device('cpu')), strict=False)
+    pred = nn(test_image)
 
     # start of DHOV
 
@@ -78,7 +79,7 @@ def multi_net2D():
 
     dhov_verifier = multidhov.MultiDHOV()
     dhov_verifier.start_verification(nn, test_image, icnn_factory, group_size, eps=eps, icnn_epochs=10,
-                                     icnn_batch_size=1000, sample_count=1000, sample_new=False,
+                                     icnn_batch_size=1000, sample_count=1000, sample_new=True,
                                      use_over_approximation=True, break_after=None,
                                      sample_over_input_space=False, sample_over_output_space=True,
                                      use_icnn_bounds=True,
