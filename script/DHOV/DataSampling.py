@@ -326,6 +326,7 @@ def sample_feasible(data_samples, amount, affine_w, affine_b, index_to_select, m
 
     samples = torch.empty((0, affine_w.size(1)), dtype=data_type).to(device)
     overall_time = 0
+    only_feasible_time = 0
     for progress, sample in enumerate(out_samples):
         sample = sample.detach().cpu().numpy()
         to_be_deleted = model.addConstrs(output_var[actual_index] == sample[count_i] for count_i, actual_index in enumerate(index_to_select))
@@ -336,6 +337,7 @@ def sample_feasible(data_samples, amount, affine_w, affine_b, index_to_select, m
         overall_time += time.time() - t
 
         if model.Status == grp.GRB.OPTIMAL:
+            only_feasible_time += time.time() - t
             in_sample = torch.tensor(output_prev_layer.getAttr("X"), dtype=data_type).to(device)
             samples = torch.cat([samples, torch.unsqueeze(in_sample, 0)], dim=0)
             #print("worked: {}".format(progress))
@@ -344,7 +346,8 @@ def sample_feasible(data_samples, amount, affine_w, affine_b, index_to_select, m
             #print("Model unfeasible?")
         model.remove(to_be_deleted)
 
-    print("        optimimim: {}".format(overall_time))
+    print("        overall time for feasible test: {}".format(overall_time))
+    print("        time for only feasible points: {}".format(only_feasible_time))
     if keep_samples and data_samples.size(0) > 0:
         data_samples = torch.cat([data_samples, samples], dim=0)
     else:
