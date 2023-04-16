@@ -78,19 +78,19 @@ def multi_net2D():
     # icnn_factory = ICNNFactory("approx_max", [5, 1], maximum_function="SMU", function_parameter=0.3)
 
     dhov_verifier = multidhov.MultiDHOV()
-    dhov_verifier.start_verification(nn, test_image, icnn_factory, group_size, eps=eps, icnn_epochs=10,
+    dhov_verifier.start_verification(nn, test_image, icnn_factory, group_size, eps=eps, icnn_epochs=100,
                                      icnn_batch_size=1000, sample_count=1000, sample_new=True,
                                      use_over_approximation=True, break_after=None,
                                      sample_over_input_space=False, sample_over_output_space=True,
                                      use_icnn_bounds=True,
-                                     use_fixed_neurons=True, sampling_method="per_group_sampling",
+                                     use_fixed_neurons=False, sampling_method="per_group_sampling",
                                      force_inclusion_steps=0, preemptive_stop=False, even_gradient_training=False,
                                      keep_ambient_space=True, data_grad_descent_steps=0, opt_steps_gd=200,
                                      train_outer=False, print_training_loss=False, print_new_bounds=False,
                                      grouping_method="consecutive", group_num_multiplier=5, store_samples=False,
                                      print_optimization_steps=False,
-                                     should_plot="detailed", optimizer="SdLBFGS", init_network=True,
-                                     adapt_lambda="included")
+                                     should_plot="simple", optimizer="SdLBFGS", init_network=True,
+                                     adapt_lambda="included", hyper_lambda=1)
     print(dhov_verifier.all_group_indices)
 
 
