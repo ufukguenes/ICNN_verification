@@ -41,7 +41,7 @@ class MultiDHOV:
         self.list_of_ambient_samples = []
 
     def start_verification(self, nn: SequentialNN, input, icnn_factory, group_size, eps=0.001, icnn_batch_size=1000,
-                           icnn_epochs=100, sample_count=1000, sampling_method="uniform",
+                           icnn_epochs=100, sample_count=1000, sampling_method="uniform", hyper_lambda=1,
                            break_after=None, use_icnn_bounds=False, use_fixed_neurons=False,
                            keep_ambient_space=False, sample_new=True, use_over_approximation=True, opt_steps_gd=100,
                            sample_over_input_space=False, sample_over_output_space=True, data_grad_descent_steps=0,
@@ -323,15 +323,24 @@ class MultiDHOV:
 
                     if i == 0:
                         t_group = time.time()
-                        """included_space = ds.sample_per_group(included_space, sample_count // 2, affine_w, center,
-                                                             eps, index_to_select)"""
-                        included_space = ds.sample_per_group(included_space, inc_space_sample_count // 2, affine_w,
-                                                             center,
-                                                             eps, index_to_select, rand_samples_percent=0.2,
-                                                             rand_sample_alternation_percent=0.01)
-                        included_space = ds.samples_uniform_over(included_space, inc_space_sample_count // 2,
-                                                                 eps_bounds,
-                                                                 keep_samples=True)
+                        if sampling_method == "per_group_sampling":
+                            """included_space = ds.sample_per_group(included_space, sample_count // 2, affine_w, center,
+                                                                 eps, index_to_select)"""
+                            included_space = ds.sample_per_group(included_space, inc_space_sample_count // 2, affine_w,
+                                                                 center,
+                                                                 eps, index_to_select, rand_samples_percent=0.2,
+                                                                 rand_sample_alternation_percent=0.01)
+                            included_space = ds.samples_uniform_over(included_space, inc_space_sample_count // 2,
+                                                                     eps_bounds,
+                                                                     keep_samples=True)
+
+                        elif sampling_method == "per_group_feasible":
+                            copy_model = nn_encoding_model.copy()
+                            included_space = ds.sample_feasible(included_space, inc_space_sample_count,
+                                                                affine_w, affine_b, index_to_select, copy_model,
+                                                                bounds_affine_out[current_layer_index],
+                                                                bounds_layer_out[current_layer_index],
+                                                                prev_layer_index)
                         # included_space = ds.sample_min_max_perturbation(included_space, inc_space_sample_count // 2, affine_w, center, eps, keep_samples=True, swap_probability=0.2)
                         # included_space = ds.sample_per_group(included_space, inc_space_sample_count // 2, parameter_list[0], center, eps, index_to_select, with_noise=True, with_sign_swap=True)
                         # included_space = ds.sample_per_group(included_space, inc_space_sample_count // 2, parameter_list[0], center, eps, index_to_select, with_noise=False, with_sign_swap=True)
@@ -448,7 +457,7 @@ class MultiDHOV:
                             else:
                                 epochs_in_run = epochs_per_inclusion // data_grad_descent_steps
                             print("===== grad descent =====")
-                            train_icnn(current_icnn, train_loader, ambient_loader, epochs=epochs_in_run, hyper_lambda=1,
+                            train_icnn(current_icnn, train_loader, ambient_loader, epochs=epochs_in_run, hyper_lambda=hyper_lambda,
                                        optimizer=optimizer, adapt_lambda=adapt_lambda, preemptive_stop=preemptive_stop,
                                        verbose=print_training_loss)
 
@@ -486,7 +495,7 @@ class MultiDHOV:
 
                     else:
                         train_icnn(current_icnn, train_loader, ambient_loader, epochs=epochs_per_inclusion,
-                                   hyper_lambda=1,
+                                   hyper_lambda=hyper_lambda,
                                    optimizer=optimizer, adapt_lambda=adapt_lambda, preemptive_stop=preemptive_stop,
                                    verbose=print_training_loss)
 
@@ -724,6 +733,9 @@ def get_random_groups(num_neurons, num_groups, group_size, fixed_neurons_lower, 
     for index in range(num_groups):
         random.shuffle(neurons_to_group)
         current_group = neurons_to_group[:min_group_size]
+        current_group.sort()
+        #todo die reihnfolge der elemente in group ist wichtig, deswegen .sort(), das ist ein Bug, das sollte ich fixen,
+        # über all wo index_select angewandt wird werden die bounds vertauscht weil torch bei index select so zurückgibt wie in der liste angegeben
         group_indices.append(current_group)
 
     return group_indices
