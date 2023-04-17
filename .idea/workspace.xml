@@ -1,13 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="6d238203-6334-43f4-afee-09b5387b5116" name="Changes" comment="added new sampling method, feasible_solution sampling">
+    <list default="true" id="6d238203-6334-43f4-afee-09b5387b5116" name="Changes" comment="testing">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/script/DHOV/DataSampling.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/DHOV/DataSampling.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/script/DHOV/MainDHOV.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/DHOV/MainDHOV.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/script/DHOV/MultiDHOV.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/DHOV/MultiDHOV.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/script/Experiments/MNIST_Test.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/script/Experiments/MNIST_Test.ipynb" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/script/Verification/Verification.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/Verification/Verification.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -44,18 +42,18 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "RunOnceActivity.OpenProjectViewOnStart": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "WebServerToolWindowFactoryState": "false",
-    "last_opened_file_path": "C:/Users/Ufuk/Desktop",
-    "node.js.detected.package.eslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "settings.editor.selected.configurable": "preferences.sourceCode.Python",
-    "two.files.diff.last.used.file": "C:/Users/Ufuk/Documents/Programming/ICNN_verification/script/t2"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/Ufuk/Desktop&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.sourceCode.Python&quot;,
+    &quot;two.files.diff.last.used.file&quot;: &quot;C:/Users/Ufuk/Documents/Programming/ICNN_verification/script/t2&quot;
   }
-}]]></component>
+}</component>
   <component name="RunManager" selected="Python.MainDHOV">
     <configuration name="ComparissionMILPSNV" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
       <module name="DeepHull" />
@@ -178,28 +176,9 @@
       <workItem from="1681255015172" duration="327000" />
       <workItem from="1681388764577" duration="1401000" />
       <workItem from="1681518196331" duration="6101000" />
-      <workItem from="1681568148269" duration="19810000" />
-    </task>
-    <task id="LOCAL-00063" summary="removing unnecessary parameters">
-      <created>1678481689773</created>
-      <option name="number" value="00063" />
-      <option name="presentableId" value="LOCAL-00063" />
-      <option name="project" value="LOCAL" />
-      <updated>1678481689773</updated>
-    </task>
-    <task id="LOCAL-00064" summary="removing unnecessary parameter">
-      <created>1678481802097</created>
-      <option name="number" value="00064" />
-      <option name="presentableId" value="LOCAL-00064" />
-      <option name="project" value="LOCAL" />
-      <updated>1678481802097</updated>
-    </task>
-    <task id="LOCAL-00065" summary="testing">
-      <created>1678481808747</created>
-      <option name="number" value="00065" />
-      <option name="presentableId" value="LOCAL-00065" />
-      <option name="project" value="LOCAL" />
-      <updated>1678481808747</updated>
+      <workItem from="1681568148269" duration="20100000" />
+      <workItem from="1681649078000" duration="2019000" />
+      <workItem from="1681748493123" duration="4893000" />
     </task>
     <task id="LOCAL-00066" summary="fix for encoding fixed neurons">
       <created>1678539980603</created>
@@ -523,7 +502,28 @@
       <option name="project" value="LOCAL" />
       <updated>1681523274285</updated>
     </task>
-    <option name="localTasksCounter" value="112" />
+    <task id="LOCAL-00112" summary="setting hyper lambda, quick fixing bug with random grouping, allowing feasible sampling strategy for first layer">
+      <created>1681619068058</created>
+      <option name="number" value="00112" />
+      <option name="presentableId" value="LOCAL-00112" />
+      <option name="project" value="LOCAL" />
+      <updated>1681619068058</updated>
+    </task>
+    <task id="LOCAL-00113" summary="timing verification">
+      <created>1681619078742</created>
+      <option name="number" value="00113" />
+      <option name="presentableId" value="LOCAL-00113" />
+      <option name="project" value="LOCAL" />
+      <updated>1681619078742</updated>
+    </task>
+    <task id="LOCAL-00114" summary="testing">
+      <created>1681619086906</created>
+      <option name="number" value="00114" />
+      <option name="presentableId" value="LOCAL-00114" />
+      <option name="project" value="LOCAL" />
+      <updated>1681619086906</updated>
+    </task>
+    <option name="localTasksCounter" value="115" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -573,8 +573,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="adding affine constraints for last layer and adapting print output" />
-    <MESSAGE value="adapting print output" />
     <MESSAGE value="message for unfeasible model" />
     <MESSAGE value="optimizing plots" />
     <MESSAGE value="making and testing group input encoding as single-neuron-relaxation" />
@@ -584,7 +582,6 @@
     <MESSAGE value="removing redundant dhov verifier" />
     <MESSAGE value="adding SNR to every layer for dhov" />
     <MESSAGE value="removed prohibition of the use of constraints other than exact max for approx max" />
-    <MESSAGE value="testing" />
     <MESSAGE value="allowing to stor samples, making logs optional, added random grouping" />
     <MESSAGE value="simplifying constraints" />
     <MESSAGE value="code cleanup" />
@@ -598,7 +595,10 @@
     <MESSAGE value="training" />
     <MESSAGE value="allowing fixed neurons to be used in icnn training while still fixing them in single neuron relaxation" />
     <MESSAGE value="added new sampling method, feasible_solution sampling" />
-    <option name="LAST_COMMIT_MESSAGE" value="added new sampling method, feasible_solution sampling" />
+    <MESSAGE value="setting hyper lambda, quick fixing bug with random grouping, allowing feasible sampling strategy for first layer" />
+    <MESSAGE value="timing verification" />
+    <MESSAGE value="testing" />
+    <option name="LAST_COMMIT_MESSAGE" value="testing" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -619,14 +619,19 @@
           <option name="timeStamp" value="998" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/script/Verification/Verification.py</url>
-          <line>144</line>
-          <option name="timeStamp" value="1002" />
+          <url>file://$PROJECT_DIR$/script/DHOV/MultiDHOV.py</url>
+          <line>780</line>
+          <option name="timeStamp" value="1004" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/script/DHOV/MultiDHOV.py</url>
-          <line>740</line>
-          <option name="timeStamp" value="1004" />
+          <line>204</line>
+          <option name="timeStamp" value="1006" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/script/DHOV/MultiDHOV.py</url>
+          <line>236</line>
+          <option name="timeStamp" value="1007" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="jupyter-line">
           <url>notebook://C:/Users/Ufuk/Documents/Programming/ICNN_verification/script/Experiments/NeuronBounds.ipynb</url>
@@ -677,12 +682,6 @@
         </breakpoint>
       </default-breakpoints>
     </breakpoint-manager>
-    <watches-manager>
-      <configuration name="PythonConfigurationType">
-        <watch expression="moving_avg_loss" language="Python" />
-        <watch expression="avg_loss" language="Python" />
-      </configuration>
-    </watches-manager>
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/ICNN_verification$VerificationMethod.coverage" NAME="VerificationMethod Coverage Results" MODIFIED="1670197619802" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script" />
@@ -693,7 +692,7 @@
     <SUITE FILE_PATH="coverage/ICNN_verification$main.coverage" NAME="main Coverage Results" MODIFIED="1670249050825" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ICNN_verification$DHOV.coverage" NAME="DHOV Coverage Results" MODIFIED="1674467903275" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script" />
     <SUITE FILE_PATH="coverage/ICNN_verification$MainMainDHOV.coverage" NAME="MainMainDHOV Coverage Results" MODIFIED="1676474643544" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script/DHOV" />
-    <SUITE FILE_PATH="coverage/ICNN_verification$MainDHOV.coverage" NAME="MainDHOV Coverage Results" MODIFIED="1681606020797" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script/DHOV" />
+    <SUITE FILE_PATH="coverage/ICNN_verification$MainDHOV.coverage" NAME="MainDHOV Coverage Results" MODIFIED="1681751793827" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script/DHOV" />
     <SUITE FILE_PATH="coverage/DeepHull$Verification.coverage" NAME="Verification Coverage Results" MODIFIED="1669122239179" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script" />
     <SUITE FILE_PATH="coverage/ICNN_verification$test.coverage" NAME="test Coverage Results" MODIFIED="1673302337900" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script" />
     <SUITE FILE_PATH="coverage/DeepHull$eval.coverage" NAME="eval Coverage Results" MODIFIED="1668723858367" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />

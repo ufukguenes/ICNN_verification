@@ -42,7 +42,7 @@ class MultiDHOV:
 
     def start_verification(self, nn: SequentialNN, input, icnn_factory, group_size, eps=0.001, icnn_batch_size=1000,
                            icnn_epochs=100, sample_count=1000, sampling_method="uniform", hyper_lambda=1,
-                           break_after=None, use_icnn_bounds=False, use_fixed_neurons=False,
+                           break_after=None, tighten_bounds=False, use_fixed_neurons_in_grouping=False, layers_as_milp=[], layers_as_snr=[],
                            keep_ambient_space=False, sample_new=True, use_over_approximation=True, opt_steps_gd=100,
                            sample_over_input_space=False, sample_over_output_space=True, data_grad_descent_steps=0,
                            train_outer=False, preemptive_stop=True, even_gradient_training=False, store_samples=False,
@@ -176,6 +176,70 @@ class MultiDHOV:
 
             affine_w, affine_b = parameter_list[i], parameter_list[i + 1]
 
+            if tighten_bounds and i != 0:
+                t = time.time()
+                copy_model = nn_encoding_model.copy()
+                ver.update_bounds_with_icnns(copy_model, bounds_affine_out, bounds_layer_out,
+                                             current_layer_index, affine_w.detach().numpy(),
+                                             affine_b.detach().numpy(), print_new_bounds=print_new_bounds)
+                print("    time for icnn_bound calculation: {}".format(time.time() - t))
+
+            fix_upper = []
+            fix_lower = []
+
+            for neuron_index, (lb, ub) in enumerate(
+                    zip(bounds_affine_out[current_layer_index][0], bounds_affine_out[current_layer_index][1])):
+                if ub <= 0:
+                    fix_upper.append(neuron_index)
+                    number_of_fixed_neurons += 1
+                elif lb >= 0:
+                    fix_lower.append(neuron_index)
+                    number_of_fixed_neurons += 1
+            fixed_neuron_per_layer_lower.append(fix_lower)
+            fixed_neuron_per_layer_upper.append(fix_upper)
+            num_fixed_neurons_layer.append(len(fix_lower) + len(fix_upper))
+            print("    number of fixed neurons for current layer: {}".format(len(fix_lower) + len(fix_upper)))
+
+
+            if current_layer_index in layers_as_milp or current_layer_index in layers_as_snr:
+                all_group_indices.append([])
+                list_of_icnns.append([])
+                self.list_of_included_samples.append([])
+                self.list_of_ambient_samples.append([])
+
+                prev_layer_index = current_layer_index - 1
+                output_prev_layer = []
+                for k in range(affine_w.shape[1]):
+                    output_prev_layer.append(nn_encoding_model.getVarByName("output_layer_[{}]_[{}]".format(prev_layer_index, k)))
+                output_prev_layer = grp.MVar.fromlist(output_prev_layer)
+
+                affine_out = verbas.add_affine_constr(nn_encoding_model, affine_w.detach().cpu().numpy(), affine_b.detach().cpu().numpy(), output_prev_layer,
+                                                      bounds_affine_out[current_layer_index][0].detach().cpu().numpy(),
+                                                      bounds_affine_out[current_layer_index][1].detach().cpu().numpy(),
+                                                      i=current_layer_index)
+                if current_layer_index in layers_as_milp:
+                    print("encode layer {} as MILP".format(current_layer_index))
+                    relu_out = verbas.add_relu_constr(nn_encoding_model, affine_out, len(affine_b),
+                                                      bounds_affine_out[current_layer_index][0].detach().cpu().numpy(),
+                                                      bounds_affine_out[current_layer_index][1].detach().cpu().numpy(),
+                                                      bounds_layer_out[current_layer_index][0].detach().cpu().numpy(),
+                                                      bounds_layer_out[current_layer_index][1].detach().cpu().numpy(),
+                                                      i=current_layer_index)
+
+                elif current_layer_index in layers_as_snr:
+                    print("encode layer {} as SNR".format(current_layer_index))
+                    relu_out = verbas.add_single_neuron_constr(nn_encoding_model, affine_out, len(affine_b),
+                                                               bounds_affine_out[current_layer_index][0].detach().cpu().numpy(),
+                                                               bounds_affine_out[current_layer_index][1].detach().cpu().numpy(),
+                                                               bounds_layer_out[current_layer_index][0].detach().cpu().numpy(),
+                                                               bounds_layer_out[current_layer_index][1].detach().cpu().numpy(),
+                                                               i=current_layer_index)
+                for k, var in enumerate(relu_out.tolist()):
+                    var.setAttr("varname", "output_layer_[{}]_[{}]".format(current_layer_index, k))
+
+                nn_encoding_model.update()
+                continue
+
             if sampling_method not in ["per_group_sampling", "per_group_feasible"]:
                 if not keep_ambient_space:
                     ambient_space = torch.empty((0, nn.layer_widths[current_layer_index]), dtype=data_type).to(device)
@@ -251,33 +315,9 @@ class MultiDHOV:
                                                              all_group_indices, bounds_affine_out, bounds_layer_out,
                                                              fixed_neuron_per_layer_lower, fixed_neuron_per_layer_upper)"""
 
-            if use_icnn_bounds and i != 0:
-                t = time.time()
-                copy_model = nn_encoding_model.copy()
-                ver.update_bounds_with_icnns(copy_model, bounds_affine_out, bounds_layer_out,
-                                             current_layer_index, affine_w.detach().numpy(),
-                                             affine_b.detach().numpy(), print_new_bounds=print_new_bounds)
-                print("    time for icnn_bound calculation: {}".format(time.time() - t))
-
-            fix_upper = []
-            fix_lower = []
-
-            for neuron_index, (lb, ub) in enumerate(
-                    zip(bounds_affine_out[current_layer_index][0], bounds_affine_out[current_layer_index][1])):
-                if ub <= 0:
-                    fix_upper.append(neuron_index)
-                    number_of_fixed_neurons += 1
-                elif lb >= 0:
-                    fix_lower.append(neuron_index)
-                    number_of_fixed_neurons += 1
-            fixed_neuron_per_layer_lower.append(fix_lower)
-            fixed_neuron_per_layer_upper.append(fix_upper)
-            num_fixed_neurons_layer.append(len(fix_lower) + len(fix_upper))
-            print("    number of fixed neurons for current layer: {}".format(len(fix_lower) + len(fix_upper)))
-
 
             if grouping_method == "consecutive":
-                if use_fixed_neurons:
+                if use_fixed_neurons_in_grouping:
                     number_of_groups = get_num_of_groups(len(affine_b) - num_fixed_neurons_layer[current_layer_index],
                                                          group_size)
                     group_indices = get_current_group_indices(len(affine_b), group_size,
@@ -288,7 +328,7 @@ class MultiDHOV:
                     group_indices = get_current_group_indices(len(affine_b), group_size, [], [])
 
             elif grouping_method == "random":
-                if use_fixed_neurons:
+                if use_fixed_neurons_in_grouping:
                     number_of_groups = get_num_of_groups(len(affine_b) - num_fixed_neurons_layer[current_layer_index],
                                                          group_size)
                     number_of_groups = group_num_multiplier * number_of_groups
@@ -629,7 +669,7 @@ class MultiDHOV:
 
         nn_encoding_model.update()
 
-        if use_icnn_bounds:
+        if tighten_bounds:
             #todo this is a code duplicat
             for neuron_to_optimize in range(len(output_nn.tolist())):
                 nn_encoding_model.setObjective(output_nn[neuron_to_optimize], grp.GRB.MINIMIZE)
