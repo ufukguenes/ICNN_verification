@@ -89,7 +89,7 @@ def multi_net2D():
                                      train_outer=False, print_training_loss=False, print_new_bounds=True,
                                      grouping_method="consecutive", group_num_multiplier=5, store_samples=False,
                                      print_optimization_steps=False,
-                                     should_plot="none", optimizer="SdLBFGS", init_network=True,
+                                     should_plot="detailed", optimizer="SdLBFGS", init_network=True,
                                      adapt_lambda="included", hyper_lambda=1)
     print(dhov_verifier.all_group_indices)
 

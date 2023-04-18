@@ -295,7 +295,7 @@ def sample_per_group_as_lp(data_samples, amount, affine_w, affine_b, index_to_se
         data_samples = samples
     return data_samples
 
-def sample_feasible(data_samples, amount, affine_w, affine_b, index_to_select, model, curr_bounds_affine_out, curr_bounds_layer_out, prev_layer_index, keep_samples=True):
+def sample_feasible(included_space, amount, affine_w, affine_b, index_to_select, model, curr_bounds_affine_out, curr_bounds_layer_out, prev_layer_index, keep_samples=True):
 
     out_samples_1 = torch.empty((0, len(index_to_select)))
     bounds_of_group_lb = torch.index_select(curr_bounds_layer_out[0], 0, index_to_select)
@@ -321,18 +321,19 @@ def sample_feasible(data_samples, amount, affine_w, affine_b, index_to_select, m
     output_var = verbas.add_affine_constr(model, numpy_affine_w, numpy_affine_b, output_prev_layer, lb, ub, i=0)
     """out_lb = curr_bounds_layer_out[0].detach().cpu().numpy()
     out_ub = curr_bounds_layer_out[1].detach().cpu().numpy()
-    output_var = verbas.add_relu_constr(model, output_var, len(affine_b), lb, ub, out_lb, out_ub)"""
+    output_var = verbas.add_relu_as_lp(model, output_var, len(affine_b), out_lb, out_ub)"""
     model.update()
 
-    samples = torch.empty((0, affine_w.size(1)), dtype=data_type).to(device)
+    in_samples = torch.empty((0, affine_w.size(1)), dtype=data_type).to(device)
+    ambient_samples = torch.empty((0, len(index_to_select)), dtype=data_type).to(device)
     overall_time = 0
     only_feasible_time = 0
     for progress, sample in enumerate(out_samples):
-        sample = sample.detach().cpu().numpy()
+        sample_np = sample.detach().cpu().numpy()
 
         for count_i, actual_index in enumerate(index_to_select):
-            output_var[actual_index].setAttr("LB", sample[count_i])
-            output_var[actual_index].setAttr("UB", sample[count_i])
+            output_var[actual_index].setAttr("LB", sample_np[count_i])
+            output_var[actual_index].setAttr("UB", sample_np[count_i])
 
         model.setObjective(output_var[index_to_select[0]], grp.GRB.MAXIMIZE)
 
@@ -343,19 +344,21 @@ def sample_feasible(data_samples, amount, affine_w, affine_b, index_to_select, m
         if model.Status == grp.GRB.OPTIMAL:
             only_feasible_time += time.time() - t
             in_sample = torch.tensor(output_prev_layer.getAttr("X"), dtype=data_type).to(device)
-            samples = torch.cat([samples, torch.unsqueeze(in_sample, 0)], dim=0)
+            in_samples = torch.cat([in_samples, torch.unsqueeze(in_sample, 0)], dim=0)
             #print("worked: {}".format(progress))
         else:
+            ambient_samples = torch.cat([ambient_samples, torch.unsqueeze(sample, 0)], dim=0)
             pass
             #print("Model unfeasible?")
 
     print("        overall time for feasible test: {}".format(overall_time))
     print("        time for only feasible points: {}".format(only_feasible_time))
-    if keep_samples and data_samples.size(0) > 0:
-        data_samples = torch.cat([data_samples, samples], dim=0)
+    if keep_samples and included_space.size(0) > 0:
+        included_space = torch.cat([included_space, in_samples], dim=0)
     else:
-        data_samples = samples
-    return data_samples
+        included_space = in_samples
+
+    return included_space, ambient_samples
 
 def sample_at_0(data_samples, amount, affine_w, affine_b, index_to_select, model, curr_bounds_affine_out, prev_layer_index):
 

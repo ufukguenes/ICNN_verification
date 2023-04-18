@@ -376,7 +376,7 @@ class MultiDHOV:
 
                         elif sampling_method == "per_group_feasible":
                             copy_model = nn_encoding_model.copy()
-                            included_space = ds.sample_feasible(included_space, inc_space_sample_count,
+                            included_space, ambient_samples_after_activation = ds.sample_feasible(included_space, inc_space_sample_count,
                                                                 affine_w, affine_b, index_to_select, copy_model,
                                                                 bounds_affine_out[current_layer_index],
                                                                 bounds_layer_out[current_layer_index],
@@ -398,7 +398,7 @@ class MultiDHOV:
                                                                        rand_samples_percent=0.2,
                                                                        rand_sample_alternation_percent=0.2)
                         elif sampling_method == "per_group_feasible":
-                            included_space = ds.sample_feasible(included_space, inc_space_sample_count,
+                            included_space, ambient_samples_after_activation = ds.sample_feasible(included_space, inc_space_sample_count,
                                                                 affine_w, affine_b, index_to_select, copy_model,
                                                                 bounds_affine_out[current_layer_index],
                                                                 bounds_layer_out[current_layer_index],
@@ -453,6 +453,13 @@ class MultiDHOV:
                 t = time.time()
                 group_inc_space = torch.index_select(included_space, 1, index_to_select)
                 group_amb_space = torch.index_select(ambient_space, 1, index_to_select)
+
+                if sampling_method == "per_group_feasible":
+                    group_amb_space = torch.cat([group_amb_space, ambient_samples_after_activation], dim=0)
+
+                    if should_plot in valid_should_plot and should_plot not in ["none", "verification"] and len(
+                            group_indices[group_i]) == 2:
+                        plt_inc_amb("group output ", group_inc_space.tolist(), group_amb_space.tolist())
 
                 mean = norm.get_mean(group_inc_space, group_amb_space)
                 std = norm.get_std(group_inc_space, group_amb_space)
