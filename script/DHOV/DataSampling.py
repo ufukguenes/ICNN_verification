@@ -329,7 +329,11 @@ def sample_feasible(data_samples, amount, affine_w, affine_b, index_to_select, m
     only_feasible_time = 0
     for progress, sample in enumerate(out_samples):
         sample = sample.detach().cpu().numpy()
-        to_be_deleted = model.addConstrs(output_var[actual_index] == sample[count_i] for count_i, actual_index in enumerate(index_to_select))
+
+        for count_i, actual_index in enumerate(index_to_select):
+            output_var[actual_index].setAttr("LB", sample[count_i])
+            output_var[actual_index].setAttr("UB", sample[count_i])
+
         model.setObjective(output_var[index_to_select[0]], grp.GRB.MAXIMIZE)
 
         t = time.time()
@@ -344,7 +348,6 @@ def sample_feasible(data_samples, amount, affine_w, affine_b, index_to_select, m
         else:
             pass
             #print("Model unfeasible?")
-        model.remove(to_be_deleted)
 
     print("        overall time for feasible test: {}".format(overall_time))
     print("        time for only feasible points: {}".format(only_feasible_time))

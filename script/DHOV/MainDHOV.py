@@ -20,7 +20,7 @@ def multi_net2D():
     b3 = [3., 0.] """
 
     # 2D-NN
-    nn = SequentialNN([2, 2, 2, 2])
+    """nn = SequentialNN([2, 2, 2, 2])
 
     with torch.no_grad():
         parameter_list = list(nn.parameters())
@@ -31,7 +31,7 @@ def multi_net2D():
         parameter_list[4].data = torch.tensor([[-1, 1], [1, 1]], dtype=data_type).to(device)
         parameter_list[5].data = torch.tensor([3, 0], dtype=data_type).to(device)
 
-    test_image = torch.tensor([[0, 0]], dtype=data_type).to(device)
+    test_image = torch.tensor([[0, 0]], dtype=data_type).to(device)"""
 
     # random-NN
     """nn = SequentialNN([500, 500, 50, 7])
@@ -51,7 +51,7 @@ def multi_net2D():
     nn.load_state_dict(torch.load("../../cifar_fc.pth", map_location=torch.device('cpu')), strict=False)"""
 
     # MNIST-NN
-    """transform = Compose([ToTensor(),
+    transform = Compose([ToTensor(),
                          Normalize(0.5, 0.5)]
                         )
 
@@ -65,11 +65,11 @@ def multi_net2D():
 
     nn = SequentialNN([28*28*1, 100, 30, 10])
     nn.load_state_dict(torch.load("../../mnist_fc.pth", map_location=torch.device('cpu')), strict=False)
-    pred = nn(test_image)"""
+    pred = nn(test_image)
 
     # start of DHOV
 
-    eps = 1
+    eps = 0.02
     #matplotlib.use('TkAgg')
 
     group_size = 2
@@ -82,8 +82,8 @@ def multi_net2D():
                                      icnn_batch_size=1000, sample_count=1000, sample_new=True,
                                      use_over_approximation=True, break_after=None,
                                      sample_over_input_space=False, sample_over_output_space=True,
-                                     tighten_bounds=True, layers_as_snr=[0, 1, 2, 3, 4], layers_as_milp=[],
-                                     use_fixed_neurons_in_grouping=True, sampling_method="uniform",
+                                     tighten_bounds=True, layers_as_snr=[], layers_as_milp=[],
+                                     use_fixed_neurons_in_grouping=True, sampling_method="per_group_feasible",
                                      force_inclusion_steps=0, preemptive_stop=False, even_gradient_training=False,
                                      keep_ambient_space=True, data_grad_descent_steps=0, opt_steps_gd=200,
                                      train_outer=False, print_training_loss=False, print_new_bounds=True,

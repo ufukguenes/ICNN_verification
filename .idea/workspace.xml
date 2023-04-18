@@ -1,11 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="6d238203-6334-43f4-afee-09b5387b5116" name="Changes" comment="testing">
+    <list default="true" id="6d238203-6334-43f4-afee-09b5387b5116" name="Changes" comment="renaming parameters, allowing to encode layer as SNR or MILP in DHOV">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/script/DHOV/MainDHOV.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/DHOV/MainDHOV.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/script/DHOV/MultiDHOV.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/DHOV/MultiDHOV.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/script/Experiments/MNIST_Test.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/script/Experiments/MNIST_Test.ipynb" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -178,14 +175,7 @@
       <workItem from="1681518196331" duration="6101000" />
       <workItem from="1681568148269" duration="20100000" />
       <workItem from="1681649078000" duration="2019000" />
-      <workItem from="1681748493123" duration="4893000" />
-    </task>
-    <task id="LOCAL-00066" summary="fix for encoding fixed neurons">
-      <created>1678539980603</created>
-      <option name="number" value="00066" />
-      <option name="presentableId" value="LOCAL-00066" />
-      <option name="project" value="LOCAL" />
-      <updated>1678539980603</updated>
+      <workItem from="1681748493123" duration="6047000" />
     </task>
     <task id="LOCAL-00067" summary="fixed bug in bound calculation with icnns">
       <created>1678549513585</created>
@@ -523,7 +513,14 @@
       <option name="project" value="LOCAL" />
       <updated>1681619086906</updated>
     </task>
-    <option name="localTasksCounter" value="115" />
+    <task id="LOCAL-00115" summary="renaming parameters, allowing to encode layer as SNR or MILP in DHOV">
+      <created>1681757167443</created>
+      <option name="number" value="00115" />
+      <option name="presentableId" value="LOCAL-00115" />
+      <option name="project" value="LOCAL" />
+      <updated>1681757167443</updated>
+    </task>
+    <option name="localTasksCounter" value="116" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -573,7 +570,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="message for unfeasible model" />
     <MESSAGE value="optimizing plots" />
     <MESSAGE value="making and testing group input encoding as single-neuron-relaxation" />
     <MESSAGE value="new test for complete net" />
@@ -598,7 +594,8 @@
     <MESSAGE value="setting hyper lambda, quick fixing bug with random grouping, allowing feasible sampling strategy for first layer" />
     <MESSAGE value="timing verification" />
     <MESSAGE value="testing" />
-    <option name="LAST_COMMIT_MESSAGE" value="testing" />
+    <MESSAGE value="renaming parameters, allowing to encode layer as SNR or MILP in DHOV" />
+    <option name="LAST_COMMIT_MESSAGE" value="renaming parameters, allowing to encode layer as SNR or MILP in DHOV" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
