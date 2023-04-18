@@ -218,7 +218,7 @@ class MultiDHOV:
                                                       bounds_affine_out[current_layer_index][1].detach().cpu().numpy(),
                                                       i=current_layer_index)
                 if current_layer_index in layers_as_milp:
-                    print("encode layer {} as MILP".format(current_layer_index))
+                    print("    encode layer {} as MILP".format(current_layer_index))
                     relu_out = verbas.add_relu_constr(nn_encoding_model, affine_out, len(affine_b),
                                                       bounds_affine_out[current_layer_index][0].detach().cpu().numpy(),
                                                       bounds_affine_out[current_layer_index][1].detach().cpu().numpy(),
@@ -227,7 +227,7 @@ class MultiDHOV:
                                                       i=current_layer_index)
 
                 elif current_layer_index in layers_as_snr:
-                    print("encode layer {} as SNR".format(current_layer_index))
+                    print("    encode layer {} as SNR".format(current_layer_index))
                     relu_out = verbas.add_single_neuron_constr(nn_encoding_model, affine_out, len(affine_b),
                                                                bounds_affine_out[current_layer_index][0].detach().cpu().numpy(),
                                                                bounds_affine_out[current_layer_index][1].detach().cpu().numpy(),
@@ -318,27 +318,27 @@ class MultiDHOV:
 
             if grouping_method == "consecutive":
                 if use_fixed_neurons_in_grouping:
+                    number_of_groups = get_num_of_groups(len(affine_b), group_size)
+                    group_indices = get_current_group_indices(len(affine_b), group_size, [], [])
+                else:
                     number_of_groups = get_num_of_groups(len(affine_b) - num_fixed_neurons_layer[current_layer_index],
                                                          group_size)
                     group_indices = get_current_group_indices(len(affine_b), group_size,
                                                               fixed_neuron_per_layer_lower[current_layer_index],
                                                               fixed_neuron_per_layer_upper[current_layer_index])
-                else:
-                    number_of_groups = get_num_of_groups(len(affine_b), group_size)
-                    group_indices = get_current_group_indices(len(affine_b), group_size, [], [])
 
             elif grouping_method == "random":
                 if use_fixed_neurons_in_grouping:
+                    number_of_groups = get_num_of_groups(len(affine_b), group_size)
+                    number_of_groups = group_num_multiplier * number_of_groups
+                    group_indices = get_random_groups(len(affine_b), number_of_groups, group_size, [], [])
+                else:
                     number_of_groups = get_num_of_groups(len(affine_b) - num_fixed_neurons_layer[current_layer_index],
                                                          group_size)
                     number_of_groups = group_num_multiplier * number_of_groups
                     group_indices = get_random_groups(len(affine_b), number_of_groups, group_size,
-                                                              fixed_neuron_per_layer_lower[current_layer_index],
-                                                              fixed_neuron_per_layer_upper[current_layer_index])
-                else:
-                    number_of_groups = get_num_of_groups(len(affine_b), group_size)
-                    number_of_groups = group_num_multiplier * number_of_groups
-                    group_indices = get_random_groups(len(affine_b), number_of_groups, group_size, [], [])
+                                                      fixed_neuron_per_layer_lower[current_layer_index],
+                                                      fixed_neuron_per_layer_upper[current_layer_index])
 
             all_group_indices.append(group_indices)
             if force_break:
