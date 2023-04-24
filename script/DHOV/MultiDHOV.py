@@ -412,6 +412,18 @@ class MultiDHOV:
                                                                        prev_layer_index,
                                                                        rand_samples_percent=0.2,
                                                                        rand_sample_alternation_percent=0.2)
+
+                            """
+                            copy_model.write("temp_model.lp")
+                            included_space = ds.parallel_per_group_as_lp(inc_space_sample_count,
+                                                                       affine_w, affine_b,
+                                                                       index_to_select,
+                                                                       bounds_affine_out[current_layer_index],
+                                                                       prev_layer_index,
+                                                                       rand_samples_percent=0.2,
+                                                                       rand_sample_alternation_percent=0.2)"""
+                            ab = 1
+
                         elif sampling_method == "per_group_feasible":
                             included_space, ambient_samples_after_activation = ds.sample_feasible(included_space, inc_space_sample_count,
                                                                 affine_w, affine_b, index_to_select, copy_model,

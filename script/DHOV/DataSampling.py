@@ -2,12 +2,13 @@ import math
 import random
 import time
 
+import gurobipy
 import numpy as np
 import torch
 import gurobipy as grp
 from script.settings import device, data_type
 import script.Verification.VerificationBasics as verbas
-
+from multiprocessing.dummy import Pool
 
 def sample_max_radius(icnns, sample_size, group_indices, curr_bounds_layer_out, keep_ambient_space=False):
     input_size = len(curr_bounds_layer_out[0])
@@ -585,3 +586,108 @@ def apply_relu_transform(data_samples):
     transformed_samples = relu(data_samples)
 
     return transformed_samples
+
+def parallel_per_group_as_lp(inc_space_sample_count, affine_w, affine_b, index_to_select, curr_bounds_affine_out, prev_layer_index, rand_samples_percent=0, rand_sample_alternation_percent=0.2):
+    num_processes = 1
+    pool = Pool(num_processes)
+
+    args = []
+    for i in range(num_processes):
+        detached_bounds = [[x.detach().numpy() for x in curr_bounds_affine_out[0]],
+                           [x.detach().numpy() for x in curr_bounds_affine_out[1]]]
+        args.append([inc_space_sample_count // num_processes, affine_w.detach().clone(), affine_b.detach().clone(), index_to_select,
+             detached_bounds, prev_layer_index, rand_samples_percent, rand_sample_alternation_percent])
+
+    results = pool.map(parallel_helper, args)
+    return torch.cat(results, dim=0)
+
+def parallel_helper(args):
+    keep_samples = False
+    amount = args[0]
+    affine_w = args[1]
+    data_samples = torch.empty((0, affine_w.size(1)), dtype=data_type).to(device).detach()
+    affine_b = args[2]
+    index_to_select= args[3]
+    curr_bounds_affine_out= args[4]
+    prev_layer_index= args[5]
+    rand_samples_percent = args[6]
+    rand_sample_alternation_percent = args[7]
+    env = gurobipy.Env("")
+    model = gurobipy.read("temp_model.lp", env)
+    model.Params.LogToConsole = 0
+    upper = 1
+    lower = - 1
+
+
+    cs_temp = (upper - lower) * torch.rand((amount, len(index_to_select)),
+                                           dtype=data_type).to(device) + lower
+
+    cs = torch.zeros((amount, affine_w.size(0)), dtype=data_type).to(device)
+
+    samples = torch.empty((amount, affine_w.size(1)), dtype=data_type).to(device)
+
+
+    for i in range(amount):
+        for k, index in enumerate(index_to_select):
+            cs[i][index] = cs_temp[i][k]
+
+    num_rand_samples = math.floor(amount * rand_samples_percent)
+    alternations_per_sample = math.floor(affine_w.size(0) * rand_sample_alternation_percent)
+    if num_rand_samples > 0 and alternations_per_sample > 0:
+        rand_index = torch.randperm(affine_w.size(0))
+        rand_index = rand_index[:alternations_per_sample]
+        rand_samples = (upper - lower) * torch.rand((num_rand_samples, alternations_per_sample),
+                                                    dtype=data_type).to(device) + lower
+        for i in range(num_rand_samples):
+            for k, index in enumerate(rand_index):
+                cs[i][index] = rand_samples[i][k]
+
+    output_prev_layer = []
+    for i in range(affine_w.shape[1]):
+        output_prev_layer.append(model.getVarByName("output_layer_[{}]_[{}]".format(prev_layer_index, i)))
+    output_prev_layer = grp.MVar.fromlist(output_prev_layer)
+
+    lb = curr_bounds_affine_out[0]
+    ub = curr_bounds_affine_out[1]
+    numpy_affine_w = affine_w.detach().cpu().numpy()
+    numpy_affine_b = affine_b.detach().cpu().numpy()
+    output_var = verbas.add_affine_constr(model, numpy_affine_w, numpy_affine_b, output_prev_layer, lb, ub, i=0)
+
+    model.update()
+    for index, c in enumerate(cs):
+        c = c.detach().cpu().numpy()
+        model.setObjective(c @ output_var, grp.GRB.MAXIMIZE)
+
+        model.optimize()
+        if model.Status == grp.GRB.OPTIMAL:
+            samples[index] = torch.tensor(output_prev_layer.getAttr("X"), dtype=data_type).to(device)
+        else:
+            model.computeIIS()
+            print("constraint")
+            all_constr = model.getConstrs()
+
+            for const in all_constr:
+                if const.IISConstr:
+                    print(const)
+
+            print("lower bound")
+            all_var = model.getVars()
+            for var in all_var:
+                if var.IISLB:
+                    print(var)
+
+            print("upper bound")
+            all_var = model.getVars()
+            for var in all_var:
+                if var.IISUB:
+                    print(var)
+            return
+
+    if keep_samples and data_samples.size(0) > 0:
+        data_samples = torch.cat([data_samples, samples], dim=0)
+    else:
+        data_samples = samples
+    return data_samples
+
+
+

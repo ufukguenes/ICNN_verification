@@ -139,5 +139,5 @@ def plt_inc_amb(caption, points, is_true):
     plt.title(caption)
     plt.show()
 
-
-multi_net2D()
+if __name__ == "__main__":
+    multi_net2D()
