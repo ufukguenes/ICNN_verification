@@ -63,8 +63,11 @@ def multi_net2D():
     test_image, test_label = torch.unsqueeze(images, 0).to(dtype=data_type).to(device), torch.unsqueeze(
         torch.tensor(labels), 0).to(dtype=data_type).to(device)
 
-    nn = SequentialNN([28*28*1, 100, 30, 10])
-    nn.load_state_dict(torch.load("../../mnist_fc.pth", map_location=torch.device('cpu')), strict=False)
+    """nn = SequentialNN([28*28*1, 100, 30, 10])
+    nn.load_state_dict(torch.load("../../mnist_fc.pth", map_location=torch.device('cpu')), strict=False)"""
+
+    nn = SequentialNN([28 * 28 * 1, 256, 256, 256, 256, 10])
+    nn.load_state_dict(torch.load("../../mnist_fc 4x256.pth", map_location=torch.device('cpu')), strict=False)
     pred = nn(test_image)
 
     # start of DHOV
@@ -72,17 +75,17 @@ def multi_net2D():
     eps = 0.02
     #matplotlib.use('TkAgg')
 
-    group_size = 2
+    group_size = 15
     icnn_factory = ICNNFactory("logical", [5, 1], always_use_logical_layer=False)
     #icnn_factory = ICNNFactory("standard", [10, 1])
     # icnn_factory = ICNNFactory("approx_max", [5, 1], maximum_function="SMU", function_parameter=0.3)
 
     dhov_verifier = multidhov.MultiDHOV()
-    dhov_verifier.start_verification(nn, test_image, icnn_factory, group_size, eps=eps, icnn_epochs=100,
-                                     icnn_batch_size=1000, sample_count=300, sample_new=True,
+    dhov_verifier.start_verification(nn, test_image, icnn_factory, group_size, eps=eps, icnn_epochs=10,
+                                     icnn_batch_size=1000, sample_count=1000, sample_new=True,
                                      use_over_approximation=True, break_after=None,
                                      sample_over_input_space=False, sample_over_output_space=True,
-                                     tighten_bounds=True, layers_as_snr=[], layers_as_milp=[2],
+                                     tighten_bounds=True, layers_as_snr=[], layers_as_milp=[],
                                      use_fixed_neurons_in_grouping=False, sampling_method="per_group_sampling",
                                      force_inclusion_steps=0, preemptive_stop=False, even_gradient_training=False,
                                      keep_ambient_space=True, data_grad_descent_steps=0, opt_steps_gd=200,

@@ -228,6 +228,155 @@ def sample_per_group_as_lp(data_samples, amount, affine_w, affine_b, index_to_se
         data_samples = samples
     return data_samples
 
+
+
+
+
+def sample_per_group_two(data_samples, amount, affine_w, affine_b, index_to_select, curr_bounds_affine_out, curr_bounds_layer_out, prev_icnns, prev_group_indices, prev_bounds_affine_out, prev_bounds_layer_out, prev_prev_layer_out, prev_affine_w, prev_affine_b, prev_fixed_lower, prev_fixed_upper, rand_samples_percent=0, rand_sample_alternation_percent=0.2, keep_samples=True):
+
+    model = gurobipy.Model()
+    model.Params.LogToConsole = 0
+
+    prev_layer_in_size = len(prev_prev_layer_out[0])
+    prev_layer_in = model.addMVar(prev_layer_in_size, lb=prev_prev_layer_out[0].detach().numpy(), ub=prev_prev_layer_out[1].detach().numpy())
+    affine_out = verbas.add_affine_constr(model, prev_affine_w.detach().numpy(), prev_affine_b.detach().numpy(), prev_layer_in, prev_bounds_affine_out[0].detach().numpy(), prev_bounds_affine_out[1].detach().numpy())
+
+    out_fet = len(prev_bounds_affine_out[0])
+    out_vars = model.addMVar(out_fet, lb=prev_bounds_layer_out[0].detach().numpy(), ub=prev_bounds_layer_out[1].detach().numpy(), name="out_var".format())
+
+    for neuron_index in prev_fixed_upper:
+        model.addConstr(out_vars[neuron_index] == 0, name="fixed_upper_{}".format(neuron_index))
+
+    for neuron_index in prev_fixed_lower:
+        model.addConstr(out_vars[neuron_index] == affine_out[neuron_index], name="fixed_lower_{}".format(neuron_index))
+
+    not_fixed_neurons = [x for x in range(out_fet) if x not in (prev_fixed_lower + prev_fixed_upper)]
+    for neuron_index in not_fixed_neurons:
+        in_lb = prev_bounds_affine_out[0][neuron_index].item()
+        in_ub = prev_bounds_affine_out[1][neuron_index].item()
+        model.addConstr(out_vars[neuron_index] >= 0, name="snr_gt0" + "k" + str(neuron_index))
+        model.addConstr(out_vars[neuron_index] >= affine_out[neuron_index],
+                        name="snr_gtX" + "k" + str(neuron_index))
+        model.addConstr(out_vars[neuron_index] <= (in_ub * (affine_out[neuron_index] - in_lb)) / (in_ub - in_lb),
+                        name="snr_lt" + "k" + str(neuron_index))
+
+
+    for k, constraint_icnn in enumerate(prev_icnns):
+        index_select = torch.tensor(prev_group_indices[k]).to(device)
+        low = torch.index_select(prev_bounds_layer_out[0], 0, index_select)
+        up = torch.index_select(prev_bounds_layer_out[1], 0, index_select)
+        constraint_icnn_bounds_affine_out, constraint_icnn_bounds_layer_out = constraint_icnn.calculate_box_bounds([low, up])
+        current_in_vars = model.addMVar(len(prev_group_indices[k]), lb=low.detach().numpy(), ub=up.detach().numpy(), name="icnn_var_group_{}".format(prev_group_indices[k]))
+
+        constraint_icnn.add_max_output_constraints(model, current_in_vars, constraint_icnn_bounds_affine_out,
+                                                   constraint_icnn_bounds_layer_out)
+
+        model.addConstrs((out_vars[neuron_index] == current_in_vars[i] for i, neuron_index in enumerate(prev_group_indices[k])), name="group_out_icnn_{}".format(prev_group_indices[k]))
+
+    output_prev_layer = out_vars
+    upper = 1
+    lower = - 1
+    cs_temp = (upper - lower) * torch.rand((amount, len(index_to_select)),
+                                           dtype=data_type).to(device) + lower
+
+    cs = torch.zeros((amount, affine_w.size(0)), dtype=data_type).to(device)
+
+    samples = torch.empty((amount, affine_w.size(1)), dtype=data_type).to(device)
+
+    for i in range(amount):
+        for k, index in enumerate(index_to_select):
+            cs[i][index] = cs_temp[i][k]
+
+    num_rand_samples = math.floor(amount * rand_samples_percent)
+    alternations_per_sample = math.floor(affine_w.size(0) * rand_sample_alternation_percent)
+    if num_rand_samples > 0 and alternations_per_sample > 0:
+        rand_index = torch.randperm(affine_w.size(0))
+        rand_index = rand_index[:alternations_per_sample]
+        rand_samples = (upper - lower) * torch.rand((num_rand_samples, alternations_per_sample),
+                                                    dtype=data_type).to(device) + lower
+        for i in range(num_rand_samples):
+            for k, index in enumerate(rand_index):
+                cs[i][index] = rand_samples[i][k]
+
+    lb = curr_bounds_affine_out[0].detach().cpu().numpy()
+    ub = curr_bounds_affine_out[1].detach().cpu().numpy()
+    numpy_affine_w = affine_w.detach().cpu().numpy()
+    numpy_affine_b = affine_b.detach().cpu().numpy()
+    output_var = verbas.add_affine_constr(model, numpy_affine_w, numpy_affine_b, output_prev_layer, lb, ub, i=0)
+
+    model.update()
+    for index, c in enumerate(cs):
+        c = c.detach().cpu().numpy()
+        model.setObjective(c @ output_var, grp.GRB.MAXIMIZE)
+
+        model.optimize()
+        if model.Status == grp.GRB.OPTIMAL:
+            samples[index] = torch.tensor(output_prev_layer.getAttr("X"), dtype=data_type).to(device)
+        else:
+            print("Model unfeasible?")
+
+    if keep_samples and data_samples.size(0) > 0:
+        data_samples = torch.cat([data_samples, samples], dim=0)
+    else:
+        data_samples = samples
+    return data_samples
+
+
+def sample_per_group_three(data_samples, amount, affine_w, affine_b, index_to_select, curr_bounds_affine_out, model, rand_samples_percent=0, rand_sample_alternation_percent=0.2, keep_samples=True):
+    output_prev_layer = []
+    for i in range(affine_w.shape[1]):
+        output_prev_layer.append(model.getVarByName("output_prev_layer_[{}]".format(i)))
+    output_prev_layer = grp.MVar.fromlist(output_prev_layer)
+
+    upper = 1
+    lower = - 1
+    cs_temp = (upper - lower) * torch.rand((amount, len(index_to_select)),
+                                           dtype=data_type).to(device) + lower
+
+    cs = torch.zeros((amount, affine_w.size(0)), dtype=data_type).to(device)
+
+    samples = torch.empty((amount, affine_w.size(1)), dtype=data_type).to(device)
+
+    for i in range(amount):
+        for k, index in enumerate(index_to_select):
+            cs[i][index] = cs_temp[i][k]
+
+    num_rand_samples = math.floor(amount * rand_samples_percent)
+    alternations_per_sample = math.floor(affine_w.size(0) * rand_sample_alternation_percent)
+    if num_rand_samples > 0 and alternations_per_sample > 0:
+        rand_index = torch.randperm(affine_w.size(0))
+        rand_index = rand_index[:alternations_per_sample]
+        rand_samples = (upper - lower) * torch.rand((num_rand_samples, alternations_per_sample),
+                                                    dtype=data_type).to(device) + lower
+        for i in range(num_rand_samples):
+            for k, index in enumerate(rand_index):
+                cs[i][index] = rand_samples[i][k]
+
+    lb = curr_bounds_affine_out[0].detach().cpu().numpy()
+    ub = curr_bounds_affine_out[1].detach().cpu().numpy()
+    numpy_affine_w = affine_w.detach().cpu().numpy()
+    numpy_affine_b = affine_b.detach().cpu().numpy()
+    output_var = verbas.add_affine_constr(model, numpy_affine_w, numpy_affine_b, output_prev_layer, lb, ub, i=0)
+
+    model.update()
+    for index, c in enumerate(cs):
+        c = c.detach().cpu().numpy()
+        model.setObjective(c @ output_var, grp.GRB.MAXIMIZE)
+
+        model.optimize()
+        if model.Status == grp.GRB.OPTIMAL:
+            samples[index] = torch.tensor(output_prev_layer.getAttr("X"), dtype=data_type).to(device)
+        else:
+            print("Model unfeasible?")
+
+    if keep_samples and data_samples.size(0) > 0:
+        data_samples = torch.cat([data_samples, samples], dim=0)
+    else:
+        data_samples = samples
+    return data_samples
+
+
+
 def sample_feasible(included_space, amount, affine_w, affine_b, index_to_select, model, curr_bounds_affine_out, curr_bounds_layer_out, prev_layer_index, keep_samples=True):
 
     out_samples_1 = torch.empty((0, len(index_to_select)))

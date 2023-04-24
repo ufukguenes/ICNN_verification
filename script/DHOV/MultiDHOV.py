@@ -41,7 +41,7 @@ class MultiDHOV:
         self.list_of_ambient_samples = []
 
     def start_verification(self, nn: SequentialNN, input, icnn_factory, group_size, eps=0.001, icnn_batch_size=1000,
-                           icnn_epochs=100, sample_count=1000, sampling_method="uniform", hyper_lambda=1,
+                           icnn_epochs=100, sample_count=1000, sampling_method="uniform", hyper_lambda=1, init_affine_bounds=None, init_layer_bounds=None,
                            break_after=None, tighten_bounds=False, use_fixed_neurons_in_grouping=False, layers_as_milp=[], layers_as_snr=[],
                            keep_ambient_space=False, sample_new=True, use_over_approximation=True, opt_steps_gd=100,
                            sample_over_input_space=False, sample_over_output_space=True, data_grad_descent_steps=0,
@@ -100,6 +100,12 @@ class MultiDHOV:
         eps_bounds = [input_flattened.add(-eps), input_flattened.add(eps)]
 
         bounds_affine_out, bounds_layer_out = nn.calculate_box_bounds(eps_bounds)
+
+        if init_affine_bounds is not None:
+            bounds_affine_out = init_affine_bounds
+
+        if init_layer_bounds is not None:
+            bounds_layer_out = init_layer_bounds
 
         nn_encoding_model = grp.Model()
         if print_optimization_steps:
@@ -405,6 +411,14 @@ class MultiDHOV:
                         t_group = time.time()
                         copy_model = nn_encoding_model.copy()
                         if sampling_method == "per_group_sampling":
+
+                            """included_space = ds.sample_per_group_two(included_space, inc_space_sample_count, affine_w, affine_b, index_to_select,
+                                                                     bounds_affine_out[current_layer_index], bounds_layer_out[current_layer_index], list_of_icnns[prev_layer_index],
+                                                                     all_group_indices[prev_layer_index], bounds_affine_out[prev_layer_index], bounds_layer_out[prev_layer_index],
+                                                                     prev_prev_layer_out, parameter_list[i-2], parameter_list[i-1],
+                                                                     fixed_neuron_per_layer_lower[prev_layer_index], fixed_neuron_per_layer_upper[prev_layer_index],
+                                                                     rand_samples_percent=0.2, rand_sample_alternation_percent=0.2)"""
+
                             included_space = ds.sample_per_group_as_lp(included_space, inc_space_sample_count,
                                                                        affine_w, affine_b,
                                                                        index_to_select, copy_model,
@@ -422,7 +436,7 @@ class MultiDHOV:
                                                                        prev_layer_index,
                                                                        rand_samples_percent=0.2,
                                                                        rand_sample_alternation_percent=0.2)"""
-                            ab = 1
+
 
                         elif sampling_method == "per_group_feasible":
                             included_space, ambient_samples_after_activation = ds.sample_feasible(included_space, inc_space_sample_count,
