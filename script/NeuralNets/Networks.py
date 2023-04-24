@@ -135,7 +135,7 @@ class SequentialNN(nn.Sequential, VerifiableNet):
 class ICNN(nn.Module, VerifiableNet):
 
     def __init__(self, layer_widths, force_positive_init=False, activation_function="ReLU",
-                 init_scaling=10, init_all_with_zeros=False):
+                 init_scaling=10, init_all_with_zeros=False, use_training_setup=False):
 
         """
     layer_widths - ([int]) list of layer widths **including** input and output dim
@@ -163,6 +163,7 @@ class ICNN(nn.Module, VerifiableNet):
         self.us = nn.ParameterList([])  # weights tied to inputs
         self.layer_widths = layer_widths
         self.ws.append(nn.Linear(layer_widths[0], layer_widths[1], bias=True, dtype=data_type).to(device))
+        self.use_training_setup = use_training_setup # this is only a dummy value
 
         d_in = layer_widths[1]
 
@@ -557,7 +558,7 @@ class ICNNApproxMax(ICNN):
         tensor_bb_b = torch.tensor(bb_b, dtype=data_type).to(device)
         lb, ub = verbas.calc_affine_out_bound(tensor_bb_w, tensor_bb_b, in_lb, in_ub)
 
-        bb_var = model.addMVar(4, lb=lb, ub=ub, name="skip_var")
+        bb_var = model.addMVar(len(lb), lb=lb, ub=ub, name="skip_var")
         skip_const = model.addConstr(bb_w @ input_vars + bb_b == bb_var)
         max_var = model.addVar(lb=-float("inf"))
         model.addGenConstrMax(max_var, bb_var.tolist())
