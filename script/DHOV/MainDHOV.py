@@ -73,7 +73,7 @@ def multi_net2D():
     #matplotlib.use('TkAgg')
 
     group_size = 2
-    icnn_factory = ICNNFactory("logical", [10, 1], always_use_logical_layer=False)
+    icnn_factory = ICNNFactory("logical", [5, 1], always_use_logical_layer=False)
     #icnn_factory = ICNNFactory("standard", [10, 1])
     # icnn_factory = ICNNFactory("approx_max", [5, 1], maximum_function="SMU", function_parameter=0.3)
 
@@ -82,11 +82,11 @@ def multi_net2D():
                                      icnn_batch_size=1000, sample_count=300, sample_new=True,
                                      use_over_approximation=True, break_after=None,
                                      sample_over_input_space=False, sample_over_output_space=True,
-                                     tighten_bounds=True, layers_as_snr=[], layers_as_milp=[],
-                                     use_fixed_neurons_in_grouping=True, sampling_method="per_group_feasible",
+                                     tighten_bounds=True, layers_as_snr=[], layers_as_milp=[2],
+                                     use_fixed_neurons_in_grouping=False, sampling_method="per_group_sampling",
                                      force_inclusion_steps=0, preemptive_stop=False, even_gradient_training=False,
                                      keep_ambient_space=True, data_grad_descent_steps=0, opt_steps_gd=200,
-                                     train_outer=False, print_training_loss=False, print_new_bounds=True,
+                                     train_outer=False, print_training_loss=False, print_new_bounds=False,
                                      grouping_method="consecutive", group_num_multiplier=5, store_samples=False,
                                      print_optimization_steps=False,
                                      should_plot="none", optimizer="SdLBFGS", init_network=True,

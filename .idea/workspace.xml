@@ -1,11 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="6d238203-6334-43f4-afee-09b5387b5116" name="Changes" comment="adding unfeasible samples to the ambient space for per_group_feasible">
+    <list default="true" id="6d238203-6334-43f4-afee-09b5387b5116" name="Changes" comment="bug fix, mixed up including fixed neurons or not in grouping">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/script/DHOV/DataSampling.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/DHOV/DataSampling.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/script/DHOV/MainDHOV.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/DHOV/MainDHOV.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/script/DHOV/MultiDHOV.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/DHOV/MultiDHOV.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/script/Experiments/GenerativeExperiment.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/script/Experiments/GenerativeExperiment.ipynb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/script/Experiments/GenerativeMaxDistanceLoss.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/script/Experiments/GenerativeMaxDistanceLoss.ipynb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/script/Experiments/GenerativeWithoutICNNExperiment.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/script/Experiments/GenerativeWithoutICNNExperiment.ipynb" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/script/Experiments/MNIST_Test.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/script/Experiments/MNIST_Test.ipynb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/script/NeuralNets/ICNNFactory.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/NeuralNets/ICNNFactory.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/script/NeuralNets/Networks.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/NeuralNets/Networks.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/script/NeuralNets/trainFunction.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/NeuralNets/trainFunction.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/script/Verification/Verifier.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/Verification/Verifier.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/script/eval.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/eval.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -50,7 +59,7 @@
     &quot;last_opened_file_path&quot;: &quot;C:/Users/Ufuk/Desktop&quot;,
     &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
     &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.sourceCode.Python&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;Jupyter Settings&quot;,
     &quot;two.files.diff.last.used.file&quot;: &quot;C:/Users/Ufuk/Documents/Programming/ICNN_verification/script/t2&quot;
   }
 }</component>
@@ -179,14 +188,15 @@
       <workItem from="1681568148269" duration="20100000" />
       <workItem from="1681649078000" duration="2019000" />
       <workItem from="1681748493123" duration="6047000" />
-      <workItem from="1681808509137" duration="3793000" />
-    </task>
-    <task id="LOCAL-00069" summary="experiments">
-      <created>1678553104322</created>
-      <option name="number" value="00069" />
-      <option name="presentableId" value="LOCAL-00069" />
-      <option name="project" value="LOCAL" />
-      <updated>1678553104322</updated>
+      <workItem from="1681808509137" duration="7519000" />
+      <workItem from="1681829678375" duration="8996000" />
+      <workItem from="1681855068403" duration="1679000" />
+      <workItem from="1681909423459" duration="11909000" />
+      <workItem from="1681987442017" duration="26662000" />
+      <workItem from="1682091965530" duration="4000000" />
+      <workItem from="1682170202633" duration="25785000" />
+      <workItem from="1682280441420" duration="5086000" />
+      <workItem from="1682292492118" duration="5530000" />
     </task>
     <task id="LOCAL-00070" summary="building model for nn layer by layer">
       <created>1678626271758</created>
@@ -524,7 +534,14 @@
       <option name="project" value="LOCAL" />
       <updated>1681810248281</updated>
     </task>
-    <option name="localTasksCounter" value="118" />
+    <task id="LOCAL-00118" summary="bug fix, mixed up including fixed neurons or not in grouping">
+      <created>1681823487383</created>
+      <option name="number" value="00118" />
+      <option name="presentableId" value="LOCAL-00118" />
+      <option name="project" value="LOCAL" />
+      <updated>1681823487383</updated>
+    </task>
+    <option name="localTasksCounter" value="119" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -574,7 +591,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="new test for complete net" />
     <MESSAGE value="make plotting optional" />
     <MESSAGE value="usage of optimized bounds optional" />
     <MESSAGE value="removing redundant dhov verifier" />
@@ -599,7 +615,8 @@
     <MESSAGE value="renaming parameters, allowing to encode layer as SNR or MILP in DHOV" />
     <MESSAGE value="making per feasible sampling faster by using bounds instead of constraints" />
     <MESSAGE value="adding unfeasible samples to the ambient space for per_group_feasible" />
-    <option name="LAST_COMMIT_MESSAGE" value="adding unfeasible samples to the ambient space for per_group_feasible" />
+    <MESSAGE value="bug fix, mixed up including fixed neurons or not in grouping" />
+    <option name="LAST_COMMIT_MESSAGE" value="bug fix, mixed up including fixed neurons or not in grouping" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -611,18 +628,13 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/script/NeuralNets/trainFunction.py</url>
-          <line>250</line>
+          <line>260</line>
           <option name="timeStamp" value="905" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/script/DHOV/DataSampling.py</url>
-          <line>402</line>
+          <line>334</line>
           <option name="timeStamp" value="998" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/script/DHOV/MultiDHOV.py</url>
-          <line>787</line>
-          <option name="timeStamp" value="1004" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/script/DHOV/MultiDHOV.py</url>
@@ -630,14 +642,19 @@
           <option name="timeStamp" value="1006" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/script/DHOV/MultiDHOV.py</url>
-          <line>236</line>
-          <option name="timeStamp" value="1007" />
+          <url>file://$PROJECT_DIR$/script/NeuralNets/trainFunction.py</url>
+          <line>49</line>
+          <option name="timeStamp" value="1028" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/script/NeuralNets/Networks.py</url>
+          <line>548</line>
+          <option name="timeStamp" value="1039" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/script/DHOV/DataSampling.py</url>
-          <line>333</line>
-          <option name="timeStamp" value="1009" />
+          <line>40</line>
+          <option name="timeStamp" value="1041" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="jupyter-line">
           <url>notebook://C:/Users/Ufuk/Documents/Programming/ICNN_verification/script/Experiments/NeuronBounds.ipynb</url>
@@ -670,14 +687,14 @@
           <option name="timeStamp" value="968" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="jupyter-line">
-          <url>notebook://C:/Users/Ufuk/Documents/Programming/ICNN_verification/script/Experiments/MNIST_Test.ipynb</url>
-          <line>146</line>
-          <option name="timeStamp" value="986" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="jupyter-line">
           <url>notebook://C:/Users/Ufuk/Documents/Programming/ICNN_verification/script/Experiments/ICNNVerification.ipynb</url>
           <line>36</line>
           <option name="timeStamp" value="999" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="jupyter-line">
+          <url>notebook://C:/Users/Ufuk/Documents/Programming/ICNN_verification/script/Experiments/MNIST_Test.ipynb</url>
+          <line>1</line>
+          <option name="timeStamp" value="1034" />
         </line-breakpoint>
       </breakpoints>
       <default-breakpoints>
@@ -698,7 +715,7 @@
     <SUITE FILE_PATH="coverage/ICNN_verification$main.coverage" NAME="main Coverage Results" MODIFIED="1670249050825" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ICNN_verification$DHOV.coverage" NAME="DHOV Coverage Results" MODIFIED="1674467903275" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script" />
     <SUITE FILE_PATH="coverage/ICNN_verification$MainMainDHOV.coverage" NAME="MainMainDHOV Coverage Results" MODIFIED="1676474643544" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script/DHOV" />
-    <SUITE FILE_PATH="coverage/ICNN_verification$MainDHOV.coverage" NAME="MainDHOV Coverage Results" MODIFIED="1681810449210" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script/DHOV" />
+    <SUITE FILE_PATH="coverage/ICNN_verification$MainDHOV.coverage" NAME="MainDHOV Coverage Results" MODIFIED="1681951922529" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script/DHOV" />
     <SUITE FILE_PATH="coverage/DeepHull$Verification.coverage" NAME="Verification Coverage Results" MODIFIED="1669122239179" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script" />
     <SUITE FILE_PATH="coverage/ICNN_verification$test.coverage" NAME="test Coverage Results" MODIFIED="1673302337900" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script" />
     <SUITE FILE_PATH="coverage/DeepHull$eval.coverage" NAME="eval Coverage Results" MODIFIED="1668723858367" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
