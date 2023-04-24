@@ -58,6 +58,8 @@ class SingleNeuronVerifier(Verifier):
         super().__init__(*args, **kwargs)
         self.print_new_bounds = print_new_bounds
         self.optimize_bounds = optimize_bounds
+        self.bounds_affine_out = None
+        self.bounds_layer_out = None
 
     def generate_constraints_for_net(self):
         m = grp.Model()
@@ -74,6 +76,8 @@ class SingleNeuronVerifier(Verifier):
         input_flattened = torch.flatten(self.input_x)
         input_size = input_flattened.size(0)
         bounds_affine_out, bounds_layer_out = self.net.calculate_box_bounds([input_flattened.add(-self.eps), input_flattened.add(self.eps)])
+
+        self.bounds_affine_out, self.bounds_layer_out = bounds_affine_out, bounds_layer_out
 
         input_flattened = input_flattened.cpu().numpy()
 
