@@ -48,7 +48,7 @@ class MultiDHOV:
                            train_outer=False, preemptive_stop=True, even_gradient_training=False, store_samples=False,
                            force_inclusion_steps=0, grouping_method="consecutive", group_num_multiplier=None,
                            init_network=False, adapt_lambda="none", should_plot='none', optimizer="adam",
-                           print_training_loss=False, print_optimization_steps=False, print_new_bounds=False):
+                           print_training_loss=False, print_last_loss=False, print_optimization_steps=False, print_new_bounds=False):
         valid_adapt_lambda = ["none", "high_low", "included"]
         valid_should_plot = ["none", "simple", "detailed", "verification", "output"]
         valid_optimizer = ["adam", "LBFGS", "SdLBFGS"]
@@ -241,6 +241,21 @@ class MultiDHOV:
                 continue
 
             if sampling_method not in ["per_group_sampling", "per_group_feasible"]:
+                if current_layer_index != 0:
+                    # sample neue punkte
+                    t = time.time()
+                    if sample_new:
+                        included_space, ambient_space = ds.sample_max_radius(list_of_icnns[current_layer_index - 1],
+                                                                             sample_count // 2, group_indices,
+                                                                             bounds_layer_out[current_layer_index - 1],
+                                                                             keep_ambient_space=keep_ambient_space)
+
+                    else:
+                        # re-grouping
+                        included_space, ambient_space = ds.regroup_samples(list_of_icnns[current_layer_index],
+                                                                           included_space, ambient_space, group_indices)
+                    print("    time for regrouping method: {}".format(time.time() - t))
+
                 if not keep_ambient_space:
                     ambient_space = torch.empty((0, nn.layer_widths[current_layer_index]), dtype=data_type).to(device)
 
@@ -506,7 +521,7 @@ class MultiDHOV:
                             print("===== grad descent =====")
                             train_icnn(current_icnn, train_loader, ambient_loader, epochs=epochs_in_run, hyper_lambda=hyper_lambda,
                                        optimizer=optimizer, adapt_lambda=adapt_lambda, preemptive_stop=preemptive_stop,
-                                       verbose=print_training_loss)
+                                       verbose=print_training_loss, print_last_loss=print_last_loss)
 
                             for v in range(optimization_steps):
                                 # normalized_ambient_space =
@@ -544,7 +559,7 @@ class MultiDHOV:
                         train_icnn(current_icnn, train_loader, ambient_loader, epochs=epochs_per_inclusion,
                                    hyper_lambda=hyper_lambda,
                                    optimizer=optimizer, adapt_lambda=adapt_lambda, preemptive_stop=preemptive_stop,
-                                   verbose=print_training_loss)
+                                   verbose=print_training_loss, print_last_loss=print_last_loss)
 
                 if train_outer:  # todo will ich train outer behalten oder einfach verwerfen?
                     for k in range(icnn_epochs):
@@ -608,6 +623,7 @@ class MultiDHOV:
 
                 if break_after is not None and break_after == 0:
                     force_break = True
+                    return
 
             # add current layer to model
             curr_constraint_icnns = list_of_icnns[current_layer_index]
@@ -622,27 +638,6 @@ class MultiDHOV:
                                    curr_fixed_neuron_lower, curr_fixed_neuron_upper,
                                    current_layer_index)
             nn_encoding_model.update()
-
-            # entweder oder:
-            # nutze die samples weiter (dafür muss man dann das ReLU layer anwenden), und man muss schauen ob die
-            # samples jetzt von ambient_space zu included_space gewechselt haben (wegen überapproximation)
-            # damit könnte man gut den Fehler messen, da man ganz genau weiß wie viele elemente aus Ambient space
-            # in Icluded space übergegenagen sind
-
-            # oder sample neue punkte
-            t = time.time()
-            if sample_new and sampling_method != "per_group_sampling":
-                included_space, ambient_space = ds.sample_max_radius(list_of_icnns[current_layer_index], sample_count,
-                                                                     group_indices,
-                                                                     bounds_layer_out[current_layer_index],
-                                                                     fixed_neuron_per_layer_lower[current_layer_index],
-                                                                     fixed_neuron_per_layer_upper[current_layer_index])
-
-            elif sampling_method != "per_group_sampling":
-                # re-grouping
-                included_space, ambient_space = ds.regroup_samples(list_of_icnns[current_layer_index], included_space,
-                                                                   ambient_space, group_indices)
-            print("    time for regrouping method: {}".format(time.time() - t))
 
 
         if should_plot in valid_should_plot and should_plot != "none" and sampling_method != "per_group_sampling" and included_space.size(
@@ -659,7 +654,7 @@ class MultiDHOV:
                               [min_x, max_x], [min_y, max_y],
                               extr=original_included_space.detach().cpu())
             plots.plt_initial()
-
+        t = time.time()
         affine_w, affine_b = parameter_list[-2].detach().numpy(), parameter_list[-1].detach().numpy()
         last_layer_index = current_layer_index + 1
         output_second_last_layer = []
@@ -669,14 +664,13 @@ class MultiDHOV:
         output_second_last_layer = grp.MVar.fromlist(output_second_last_layer)
         in_lb = bounds_affine_out[last_layer_index][0].detach().numpy()
         in_ub = bounds_affine_out[last_layer_index][1].detach().numpy()
-
         output_nn = verbas.add_affine_constr(nn_encoding_model, affine_w, affine_b, output_second_last_layer, in_lb, in_ub, i=last_layer_index)
         for m, var in enumerate(output_nn.tolist()):
             var.setAttr("varname", "output_layer_[{}]_[{}]".format(last_layer_index, m))
 
         nn_encoding_model.update()
 
-        if tighten_bounds:
+        """if tighten_bounds:
             #todo this is a code duplicat
             for neuron_to_optimize in range(len(output_nn.tolist())):
                 nn_encoding_model.setObjective(output_nn[neuron_to_optimize], grp.GRB.MINIMIZE)
@@ -699,8 +693,8 @@ class MultiDHOV:
                 relu_out_lb, relu_out_ub = verbas.calc_relu_out_bound(bounds_affine_out[last_layer_index][0],
                                                                       bounds_affine_out[last_layer_index][1])
             bounds_layer_out[last_layer_index][0] = relu_out_lb
-            bounds_layer_out[last_layer_index][1] = relu_out_ub
-
+            bounds_layer_out[last_layer_index][1] = relu_out_ub"""
+        print("time for icnn_bound calculation (last layer):{}".format(time.time() - t))
         self.output_var = output_nn
         print("done...")
         return
