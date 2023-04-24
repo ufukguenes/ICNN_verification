@@ -112,17 +112,17 @@ class Plots_for():
             y.append(self.true_extremal[0][1])
             plt.plot(x, y, 'ro-')
 
-    def plt_initial(self):
+    def plt_initial(self, title=""):
         fig = plt.figure(figsize=(20, 10))
 
         self._create_plot_convex_hull()
         plt.scatter(self.included_space[:, 0], self.included_space[:, 1])
         plt.scatter(self.ambient_space[:, 0], self.ambient_space[:, 1])
         self._create_plot_true_convex_hull()
-
+        plt.title(title)
         plt.show()
 
-    def plt_dotted(self):
+    def plt_dotted(self, title=""):
         in_convex = np.asarray(self.in_convex)
         not_in_convex = np.asarray(self.not_in_convex)
 
@@ -131,9 +131,10 @@ class Plots_for():
         self._create_plot_convex_hull()
         self._create_plot_model()
         #self._create_plot_true_convex_hull()
+        plt.title(title)
         plt.show()
 
-    def plt_mesh(self, show=True):
+    def plt_mesh(self, show=True, title=""):
         fig = plt.figure(figsize=(20, 10), facecolor="w")
         x = np.linspace(*self.x_range, 500)
         y = np.linspace(*self.y_range, 500)
@@ -149,10 +150,11 @@ class Plots_for():
         self._create_plot_convex_hull()
         self._create_plot_model()
         #self._create_plot_true_convex_hull()
+        plt.title(title)
         if show:
             plt.show()
 
-    def plt_adversarial_initial(self):
+    def plt_adversarial_initial(self, title=""):
         if self.adversarial is None or self.adversarial_values is None:
             return
 
@@ -170,9 +172,10 @@ class Plots_for():
 
         plt.scatter(pred_x_arr, pred_y_arr)
         self._create_plot_true_convex_hull()
+        plt.title(title)
         plt.show()
 
-    def plt_adversarial_dotted(self):
+    def plt_adversarial_dotted(self, title=""):
         if self.adversarial is None or self.adversarial_values is None:
             return
 
@@ -206,5 +209,5 @@ class Plots_for():
 
         plt.scatter(x_s, y_s)
         self._create_plot_true_convex_hull()
-
+        plt.title(title)
         plt.show()
