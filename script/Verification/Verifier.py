@@ -85,14 +85,16 @@ class SingleNeuronVerifier(Verifier):
         in_var = input_var
         i = -2
         for i in range(0, len(parameter_list) - 2, 2):
+
             in_lb = bounds_affine_out[int(i / 2)][0].detach().cpu().numpy()
             in_ub = bounds_affine_out[int(i / 2)][1].detach().cpu().numpy()
             W, b = parameter_list[i].detach().cpu().numpy(), parameter_list[i + 1].detach().cpu().numpy()
 
             out_vars = verbas.add_affine_constr(m, W, b, in_var, in_lb, in_ub, i)
+
             if self.print_new_bounds:
                 print("================ layer {} ===============".format(i // 2))
-            if self.optimize_bounds:
+            if self.optimize_bounds and i != 0:
                 m.update()
                 # todo code duplicat
                 for neuron_to_optimize in range(len(out_vars.tolist())):
@@ -121,12 +123,14 @@ class SingleNeuronVerifier(Verifier):
                 bounds_layer_out[i // 2][0] = relu_out_lb
                 bounds_layer_out[i // 2][1] = relu_out_ub
 
-
+            for var_index, var in enumerate(out_vars):
+                var.setAttr("LB", bounds_affine_out[i//2][0][var_index])
+                var.setAttr("UB", bounds_affine_out[i//2][1][var_index])
             relu_in_var = out_vars
             out_lb = bounds_layer_out[int(i / 2)][0].detach().cpu().numpy()
             out_ub = bounds_layer_out[int(i / 2)][1].detach().cpu().numpy()
-            relu_vars = verbas.add_single_neuron_constr(m, relu_in_var, len(b), in_lb, in_ub, out_lb, out_ub, i=i)
-            in_var = relu_vars
+            out_vars = verbas.add_single_neuron_constr(m, relu_in_var, len(b), in_lb, in_ub, out_lb, out_ub, i=i)
+            in_var = out_vars
 
 
         lb = bounds_affine_out[-1][0].detach().cpu().numpy()
