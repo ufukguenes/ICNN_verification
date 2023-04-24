@@ -13,7 +13,7 @@ import script.DHOV.DataOptimization as dop
 from script.settings import device, data_type
 
 def train_icnn(model, train_loader, ambient_loader, epochs=10, optimizer="adam", return_history=False,
-               sequential=False, adapt_lambda="none",  hyper_lambda=1, preemptive_stop=True, min_loss_change=1e-3, verbose=False):
+               sequential=False, force_convex=True,  adapt_lambda="none",  hyper_lambda=1, preemptive_stop=True, min_loss_change=1e-3, verbose=False, print_last_loss=False):
     history = []
 
     params_to_train = model.parameters()
@@ -26,8 +26,8 @@ def train_icnn(model, train_loader, ambient_loader, epochs=10, optimizer="adam",
 
     loss = 0
     low = True
-    window_size = 5
-    moving_avg_loss = torch.zeros(5)
+    window_size = 10
+    moving_avg_loss = torch.zeros(window_size)
     for epoch in range(epochs):
         train_loss = 0
         train_n = 0
@@ -54,19 +54,20 @@ def train_icnn(model, train_loader, ambient_loader, epochs=10, optimizer="adam",
                 loss.backward()
                 opt.step()
 
-            if not sequential:
-                with torch.no_grad():
-                    for w in model.ws:
-                        for p in w.parameters():
+            if force_convex:
+                if not sequential:
+                    with torch.no_grad():
+                        for w in model.ws:
+                            for p in w.parameters():
+                                if len(p.size()) > 1:  # we have a matrix
+                                    # only want positive entries
+                                    p[:] = torch.maximum(torch.Tensor([0]).to(device), p)
+                else:
+                    with torch.no_grad():
+                        for p in model.parameters():
                             if len(p.size()) > 1:  # we have a matrix
                                 # only want positive entries
                                 p[:] = torch.maximum(torch.Tensor([0]).to(device), p)
-            else:
-                with torch.no_grad():
-                    for p in model.parameters():
-                        if len(p.size()) > 1:  # we have a matrix
-                            # only want positive entries
-                            p[:] = torch.maximum(torch.Tensor([0]).to(device), p)
 
             last_loss = loss
 
@@ -88,6 +89,7 @@ def train_icnn(model, train_loader, ambient_loader, epochs=10, optimizer="adam",
         moving_avg_loss[cyclic_index] = loss
         avg_loss = torch.abs(moving_avg_loss - moving_avg_loss.mean()).max()
         if preemptive_stop and avg_loss <= min_loss_change:
+            # print("preemptive stop at epoch {}".format(epoch))
             break
 
 
@@ -115,8 +117,16 @@ def train_icnn(model, train_loader, ambient_loader, epochs=10, optimizer="adam",
                 hyper_lambda = 1.2
                 low = True
 
-    if verbose:
-        test_icnn(model, train_loader, ambient_loader, critic=deep_hull_simple_loss, hyper_lambda=1)
+    if verbose or print_last_loss:
+        print("Stop after {} Epochs".format(epoch))
+        print("test for test setup")
+        test_icnn(model, train_loader, ambient_loader, critic=deep_hull_simple_loss, hyper_lambda=hyper_lambda)
+
+        print("test for without test setup")
+        old_state = model.use_training_setup
+        model.use_training_setup = False
+        test_icnn(model, train_loader, ambient_loader, critic=deep_hull_simple_loss, hyper_lambda=hyper_lambda)
+        model.use_training_setup = old_state
     if return_history:
         return history
 
@@ -276,7 +286,7 @@ def train_sequential(model, train_data, test_data, loss_fn=nn.CrossEntropyLoss()
         print("Time: {}".format(current))
 
 
-def train_sequential_2(model, train_loader, ambient_loader, epochs=10, return_history=False):
+def train_sequential_2(model, train_loader, ambient_loader, epochs=10, return_history=False, verbose=False):
     history = []
 
     opt = torch.optim.Adam(model.parameters())
@@ -285,7 +295,8 @@ def train_sequential_2(model, train_loader, ambient_loader, epochs=10, return_hi
         train_loss = 0
         train_n = 0
 
-        print("=== Epoch: {}===".format(epoch))
+        if verbose:
+            print("=== Epoch: {}===".format(epoch))
 
         for i, (x_included, x_ambient) in enumerate(zip(train_loader, ambient_loader)):
             output_included = model(x_included)
@@ -305,10 +316,11 @@ def train_sequential_2(model, train_loader, ambient_loader, epochs=10, return_hi
             if return_history:
                 history.append(train_loss / train_n)
 
-            if i % 100 == 0:
+            if i % 100 == 0 and verbose:
                 print("batch = {}, mean loss = {}".format(i, train_loss / train_n))
 
-        print("batch = {}, mean loss = {}".format(len(train_loader), train_loss / train_n))
+        if verbose:
+            print("batch = {}, mean loss = {}".format(len(train_loader), train_loss / train_n))
 
     if return_history:
         return history
