@@ -2,7 +2,7 @@ from script.NeuralNets.Networks import ICNN, ICNNLogical, ICNNApproxMax
 
 
 class ICNNFactory():
-    def __init__(self, icnn_type, layer_width, adapt_layer_for_init=False, *args, **kwargs):
+    def __init__(self, icnn_type, layer_width, adapt_layer_for_init=True, *args, **kwargs):
         self.args = args
         self.kwargs = kwargs
         self.icnn_type = icnn_type

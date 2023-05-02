@@ -1,0 +1,1768 @@
+0/17 | image index 0 ===========================================================================================
+
+approximation of layer: 0
+    number of fixed neurons for current layer: 182
+    layer progress, group 1 of 4
+        time for sampling for one group: 0.0
+        time for training: 0.28950977325439453
+        actual verification time 0.47292137145996094
+        time for verification: 0.5738933086395264
+    layer progress, group 2 of 4
+        time for sampling for one group: 0.0
+        time for training: 0.22358465194702148
+        actual verification time 1.537365198135376
+        time for verification: 1.6480271816253662
+    layer progress, group 3 of 4
+        time for sampling for one group: 0.0
+        time for training: 0.21160364151000977
+        actual verification time 1.7165532112121582
+        time for verification: 1.8373112678527832
+    layer progress, group 4 of 4
+        time for sampling for one group: 0.0
+        time for training: 0.2808248996734619
+        actual verification time 0.47865796089172363
+        time for verification: 0.580500602722168
+
+approximation of layer: 1
+    time for icnn_bound calculation: 21.57001805305481
+    number of fixed neurons for current layer: 196
+    layer progress, group 1 of 3
+        time for sampling for one group: 1.1654503345489502
+        time for training: 0.21994709968566895
+        actual verification time 6.89080548286438
+        time for verification: 6.993526935577393
+    layer progress, group 2 of 3
+        time for sampling for one group: 0.9659981727600098
+        time for training: 0.25804710388183594
+        actual verification time 7.036211013793945
+        time for verification: 7.1471357345581055
+    layer progress, group 3 of 3
+        time for sampling for one group: 0.9214038848876953
+        time for training: 0.21170544624328613
+        actual verification time 10.690418243408203
+        time for verification: 10.820577144622803
+
+approximation of layer: 2
+    time for icnn_bound calculation: 53.65647602081299
+    number of fixed neurons for current layer: 205
+    layer progress, group 1 of 3
+        time for sampling for one group: 2.613063097000122
+        time for training: 0.270648717880249
+        actual verification time 7.150198459625244
+        time for verification: 7.283193111419678
+    layer progress, group 2 of 3
+        time for sampling for one group: 2.643059492111206
+        time for training: 0.2526388168334961
+        actual verification time 15.311259508132935
+        time for verification: 15.432079792022705
+    layer progress, group 3 of 3
+        time for sampling for one group: 2.8277487754821777
+        time for training: 0.4227406978607178
+        actual verification time 4.828762054443359
+        time for verification: 4.911296844482422
+
+approximation of layer: 3
+    time for icnn_bound calculation: 106.9152467250824
+    number of fixed neurons for current layer: 197
+    encode layer 3 as MILP
+time for icnn_bound calculation (last layer):0.0
+done...
+var 0: -2.3277302309003645
+var 1: 2.677343752648187
+var 2: 1.7663079904644157
+var 3: 11.052828801201748
+var 4: -10.709299708381023
+var 5: 9.219885685064709
+var 6: -7.716081663483868
+var 7: 0.44279786135390786
+var 8: -1.5960094605213442
+var 9: -0.027637751183137382
+property NOT verified with max difference 1.8329431161370393
+overall time: 261.4196057319641
+2/17 | image index 2 ===========================================================================================
+
+approximation of layer: 0
+    number of fixed neurons for current layer: 163
+    layer progress, group 1 of 5
+        time for sampling for one group: 0.003068685531616211
+        time for training: 0.2502024173736572
+        actual verification time 0.6273174285888672
+        time for verification: 0.7655010223388672
+    layer progress, group 2 of 5
+        time for sampling for one group: 0.01562643051147461
+        time for training: 0.25655341148376465
+        actual verification time 1.4299139976501465
+        time for verification: 1.5407781600952148
+    layer progress, group 3 of 5
+        time for sampling for one group: 0.0
+        time for training: 0.2972903251647949
+        actual verification time 1.1551012992858887
+        time for verification: 1.276275873184204
+    layer progress, group 4 of 5
+        time for sampling for one group: 0.0
+        time for training: 0.2837543487548828
+        actual verification time 1.3543777465820312
+        time for verification: 1.4653236865997314
+    layer progress, group 5 of 5
+        time for sampling for one group: 0.0
+        time for training: 0.25466060638427734
+        actual verification time 0.3169729709625244
+        time for verification: 0.39762091636657715
+
+approximation of layer: 1
+    time for icnn_bound calculation: 22.407001972198486
+    number of fixed neurons for current layer: 165
+    layer progress, group 1 of 5
+        time for sampling for one group: 1.0535662174224854
+        time for training: 0.22182917594909668
+        actual verification time 2.031381845474243
+        time for verification: 2.1442296504974365
+    layer progress, group 2 of 5
+        time for sampling for one group: 1.0616886615753174
+        time for training: 0.20365166664123535
+        actual verification time 12.82770586013794
+        time for verification: 12.944682359695435
+    layer progress, group 3 of 5
+        time for sampling for one group: 1.0731477737426758
+        time for training: 0.25198936462402344
+        actual verification time 3.655578136444092
+        time for verification: 3.7846686840057373
+    layer progress, group 4 of 5
+        time for sampling for one group: 1.037761926651001
+        time for training: 0.2241361141204834
+        actual verification time 16.459482431411743
+        time for verification: 16.581119775772095
+    layer progress, group 5 of 5
+        time for sampling for one group: 1.0708279609680176
+        time for training: 0.30068230628967285
+        actual verification time 2.68974232673645
+        time for verification: 2.7604410648345947
+
+approximation of layer: 2
+    time for icnn_bound calculation: 70.45235252380371
+    number of fixed neurons for current layer: 171
+    layer progress, group 1 of 5
+        time for sampling for one group: 3.678154706954956
+        time for training: 0.2457132339477539
+        actual verification time 8.045832872390747
+        time for verification: 8.152589797973633
+    layer progress, group 2 of 5
+        time for sampling for one group: 4.01455545425415
+        time for training: 0.2364802360534668
+        actual verification time 5.152922868728638
+        time for verification: 5.265837669372559
+    layer progress, group 3 of 5
+        time for sampling for one group: 3.7781951427459717
+        time for training: 0.25382208824157715
+        actual verification time 4.750849723815918
+        time for verification: 4.876646518707275
+    layer progress, group 4 of 5
+        time for sampling for one group: 3.8780124187469482
+        time for training: 0.24165582656860352
+        actual verification time 22.386569261550903
+        time for verification: 22.510467529296875
+    layer progress, group 5 of 5
+        time for sampling for one group: 4.0564491748809814
+        time for training: 0.5449683666229248
+        actual verification time 3.0354273319244385
+        time for verification: 3.1069788932800293
+
+approximation of layer: 3
+    time for icnn_bound calculation: 163.85420942306519
+    number of fixed neurons for current layer: 155
+    encode layer 3 as MILP
+time for icnn_bound calculation (last layer):0.0020475387573242188
+done...
+var 0: -2.550594242599068
+var 1: -1.4778175715480613
+var 2: 4.77235960623303
+var 3: 1.337786820241754
+var 4: 3.6065938122998302
+var 5: -2.460694025021792
+var 6: -0.6403742048884142
+var 7: 2.018305014579617
+var 8: -3.439810695579279
+var 9: -1.0337711115616512
+property NOT verified with max difference 1.1657657939331996
+overall time: 399.330157995224
+4/17 | image index 4 ===========================================================================================
+
+approximation of layer: 0
+    number of fixed neurons for current layer: 169
+    layer progress, group 1 of 5
+        time for sampling for one group: 0.00203704833984375
+        time for training: 0.2923305034637451
+        actual verification time 2.8710885047912598
+        time for verification: 3.002031087875366
+    layer progress, group 2 of 5
+        time for sampling for one group: 0.0
+        time for training: 0.2531721591949463
+        actual verification time 0.49544668197631836
+        time for verification: 0.6266124248504639
+    layer progress, group 3 of 5
+        time for sampling for one group: 0.0
+        time for training: 0.2677185535430908
+        actual verification time 0.4142489433288574
+        time for verification: 0.5608341693878174
+    layer progress, group 4 of 5
+        time for sampling for one group: 0.0
+        time for training: 0.2736365795135498
+        actual verification time 2.3477303981781006
+        time for verification: 2.458564043045044
+    layer progress, group 5 of 5
+        time for sampling for one group: 0.01561737060546875
+        time for training: 0.5024936199188232
+        actual verification time 0.07056236267089844
+        time for verification: 0.14110684394836426
+
+approximation of layer: 1
+    time for icnn_bound calculation: 23.115588426589966
+    number of fixed neurons for current layer: 186
+    layer progress, group 1 of 4
+        time for sampling for one group: 0.9988865852355957
+        time for training: 0.2801401615142822
+        actual verification time 5.558403968811035
+        time for verification: 5.689625024795532
+    layer progress, group 2 of 4
+        time for sampling for one group: 1.0764830112457275
+        time for training: 0.2298741340637207
+        actual verification time 6.866370916366577
+        time for verification: 6.997451066970825
+    layer progress, group 3 of 4
+        time for sampling for one group: 1.0500755310058594
+        time for training: 0.2215571403503418
+        actual verification time 14.68058967590332
+        time for verification: 14.791372537612915
+    layer progress, group 4 of 4
+        time for sampling for one group: 1.0768232345581055
+        time for training: 0.37310266494750977
+        actual verification time 2.147321939468384
+        time for verification: 2.256272554397583
+
+approximation of layer: 2
+    time for icnn_bound calculation: 61.63649272918701
+    number of fixed neurons for current layer: 196
+    layer progress, group 1 of 3
+        time for sampling for one group: 3.151726007461548
+        time for training: 0.24150872230529785
+        actual verification time 8.036425352096558
+        time for verification: 8.145184993743896
+    layer progress, group 2 of 3
+        time for sampling for one group: 3.227264642715454
+        time for training: 0.41135406494140625
+        actual verification time 4.939875364303589
+        time for verification: 5.091078996658325
+    layer progress, group 3 of 3
+        time for sampling for one group: 3.7904465198516846
+        time for training: 0.32083725929260254
+        actual verification time 22.109752655029297
+        time for verification: 22.28118324279785
+
+approximation of layer: 3
+    time for icnn_bound calculation: 133.52673649787903
+    number of fixed neurons for current layer: 190
+    encode layer 3 as MILP
+time for icnn_bound calculation (last layer):0.004193782806396484
+done...
+var 0: -6.667579352024642
+var 1: -1.955946446105866
+var 2: -4.501106334187082
+var 3: 0.14557082669068322
+var 4: 4.047251577060678
+var 5: 2.6176690533320315
+var 6: -7.251450495308264
+var 7: -1.7012364280350596
+var 8: 7.501898289513081
+var 9: 7.549421489132278
+property verified with max difference -0.0475231996191976
+overall time: 333.1818332672119
+14/17 | image index 14 ===========================================================================================
+
+approximation of layer: 0
+    number of fixed neurons for current layer: 168
+    layer progress, group 1 of 5
+        time for sampling for one group: 0.0020246505737304688
+        time for training: 0.36338019371032715
+        actual verification time 0.6437327861785889
+        time for verification: 0.8133068084716797
+    layer progress, group 2 of 5
+        time for sampling for one group: 0.007486581802368164
+        time for training: 0.34877657890319824
+        actual verification time 1.103132724761963
+        time for verification: 1.2745649814605713
+    layer progress, group 3 of 5
+        time for sampling for one group: 0.0
+        time for training: 0.3855268955230713
+        actual verification time 2.382141590118408
+        time for verification: 2.5414249897003174
+    layer progress, group 4 of 5
+        time for sampling for one group: 0.015649080276489258
+        time for training: 0.352431058883667
+        actual verification time 1.6054613590240479
+        time for verification: 1.763174057006836
+    layer progress, group 5 of 5
+        time for sampling for one group: 0.0
+        time for training: 0.3804347515106201
+        actual verification time 0.11924338340759277
+        time for verification: 0.20998573303222656
+
+approximation of layer: 1
+    time for icnn_bound calculation: 24.19564986228943
+    number of fixed neurons for current layer: 162
+    layer progress, group 1 of 5
+        time for sampling for one group: 1.0599493980407715
+        time for training: 0.31334853172302246
+        actual verification time 3.1363420486450195
+        time for verification: 3.286008358001709
+    layer progress, group 2 of 5
+        time for sampling for one group: 1.0587987899780273
+        time for training: 0.3056521415710449
+        actual verification time 5.693415880203247
+        time for verification: 5.849201440811157
+    layer progress, group 3 of 5
+        time for sampling for one group: 1.026413917541504
+        time for training: 0.32566404342651367
+        actual verification time 7.658822536468506
+        time for verification: 7.82786750793457
+    layer progress, group 4 of 5
+        time for sampling for one group: 1.21742844581604
+        time for training: 0.4045591354370117
+        actual verification time 9.492553234100342
+        time for verification: 9.684612035751343
+    layer progress, group 5 of 5
+        time for sampling for one group: 1.079653263092041
+        time for training: 0.2961716651916504
+        actual verification time 3.999228000640869
+        time for verification: 4.116112947463989
+
+approximation of layer: 2
+    time for icnn_bound calculation: 74.9848735332489
+    number of fixed neurons for current layer: 192
+    layer progress, group 1 of 4
+        time for sampling for one group: 4.099400281906128
+        time for training: 0.31293559074401855
+        actual verification time 24.457974195480347
+        time for verification: 24.599190950393677
+    layer progress, group 2 of 4
+        time for sampling for one group: 4.3190624713897705
+        time for training: 0.31251025199890137
+        actual verification time 36.48763608932495
+        time for verification: 36.639615297317505
+    layer progress, group 3 of 4
+        time for sampling for one group: 4.718680381774902
+        time for training: 0.36291933059692383
+        actual verification time 12.609145879745483
+        time for verification: 12.770725727081299
+    layer progress, group 4 of 4
+        time for sampling for one group: 4.882991313934326
+        time for training: 1.6369435787200928
+        actual verification time 2.5513010025024414
+        time for verification: 2.6220755577087402
+
+approximation of layer: 3
+    time for icnn_bound calculation: 160.94326496124268
+    number of fixed neurons for current layer: 165
+    encode layer 3 as MILP
+time for icnn_bound calculation (last layer):0.0020415782928466797
+done...
+var 0: -6.909593358565863
+var 1: 7.8044695584616415
+var 2: 0.11998659199728046
+var 3: 1.6585899339961099
+var 4: -2.626140020437165
+var 5: 0.002258018116340743
+var 6: -1.9060156468745033
+var 7: -1.3358278850464833
+var 8: 6.510744717869198
+var 9: -1.121462722455095
+property verified with max difference -1.2937248405924437
+overall time: 437.6032147407532
+18/17 | image index 18 ===========================================================================================
+
+approximation of layer: 0
+    number of fixed neurons for current layer: 146
+    layer progress, group 1 of 6
+        time for sampling for one group: 0.0
+        time for training: 0.3131446838378906
+        actual verification time 1.9619390964508057
+        time for verification: 2.1209945678710938
+    layer progress, group 2 of 6
+        time for sampling for one group: 0.0
+        time for training: 0.32480525970458984
+        actual verification time 3.386598825454712
+        time for verification: 3.5449178218841553
+    layer progress, group 3 of 6
+        time for sampling for one group: 0.0
+        time for training: 0.3738112449645996
+        actual verification time 2.4016056060791016
+        time for verification: 2.575568914413452
+    layer progress, group 4 of 6
+        time for sampling for one group: 0.0
+        time for training: 0.36623501777648926
+        actual verification time 4.799843788146973
+        time for verification: 4.961102724075317
+    layer progress, group 5 of 6
+        time for sampling for one group: 0.0
+        time for training: 0.38176560401916504
+        actual verification time 0.9401710033416748
+        time for verification: 1.1396973133087158
+    layer progress, group 6 of 6
+        time for sampling for one group: 0.0
+        time for training: 0.6031284332275391
+        actual verification time 0.14104223251342773
+        time for verification: 0.23477864265441895
+
+approximation of layer: 1
+    time for icnn_bound calculation: 27.378145694732666
+    number of fixed neurons for current layer: 150
+    layer progress, group 1 of 6
+        time for sampling for one group: 1.6724927425384521
+        time for training: 0.3432903289794922
+        actual verification time 2.6795904636383057
+        time for verification: 2.840944528579712
+    layer progress, group 2 of 6
+        time for sampling for one group: 1.438204050064087
+        time for training: 0.305849552154541
+        actual verification time 7.570072174072266
+        time for verification: 7.732266664505005
+    layer progress, group 3 of 6
+        time for sampling for one group: 1.1915004253387451
+        time for training: 0.28253650665283203
+        actual verification time 54.79844403266907
+        time for verification: 54.95350623130798
+    layer progress, group 4 of 6
+        time for sampling for one group: 1.3794562816619873
+        time for training: 0.3266642093658447
+        actual verification time 38.68281531333923
+        time for verification: 38.86014151573181
+    layer progress, group 5 of 6
+        time for sampling for one group: 1.2555155754089355
+        time for training: 0.32413434982299805
+        actual verification time 7.8754754066467285
+        time for verification: 8.057722091674805
+    layer progress, group 6 of 6
+        time for sampling for one group: 1.2632997035980225
+        time for training: 0.5160605907440186
+        actual verification time 0.9288551807403564
+        time for verification: 1.0046424865722656
+
+approximation of layer: 2
+    time for icnn_bound calculation: 92.19128584861755
+    number of fixed neurons for current layer: 155
+    layer progress, group 1 of 6
+        time for sampling for one group: 5.178553342819214
+        time for training: 0.37457823753356934
+        actual verification time 12.038786888122559
+        time for verification: 12.18783974647522
+    layer progress, group 2 of 6
+        time for sampling for one group: 4.785766363143921
+        time for training: 0.30411386489868164
+        actual verification time 23.995076179504395
+        time for verification: 24.167509078979492
+    layer progress, group 3 of 6
+        time for sampling for one group: 5.059933185577393
+        time for training: 0.3025338649749756
+        actual verification time 64.56295466423035
+        time for verification: 64.72414565086365
+    layer progress, group 4 of 6
+        time for sampling for one group: 5.663064241409302
+        time for training: 0.33127856254577637
+        actual verification time 13.237960815429688
+        time for verification: 13.399342775344849
+    layer progress, group 5 of 6
+        time for sampling for one group: 5.657193422317505
+        time for training: 0.29601597785949707
+        actual verification time 12.232531785964966
+        time for verification: 12.38060474395752
+    layer progress, group 6 of 6
+        time for sampling for one group: 2.6267526149749756
+        time for training: 1.5974361896514893
+        actual verification time 0.34694719314575195
+        time for verification: 0.39534974098205566
+
+approximation of layer: 3
+    time for icnn_bound calculation: 269.59335446357727
+    number of fixed neurons for current layer: 139
+    encode layer 3 as MILP
+time for icnn_bound calculation (last layer):0.010304927825927734
+done...
+var 0: -0.8744692174301618
+var 1: -1.3345893926246495
+var 2: -2.3713393927894106
+var 3: 1.080286940077264
+var 4: -1.6132931705730025
+var 5: 6.880382864944204
+var 6: 2.0468142765154402
+var 7: -5.9263609672985496
+var 8: 2.016521561206918
+var 9: -0.09311565182845438
+property NOT verified with max difference 4.833568588428764
+overall time: 767.9559681415558
+19/17 | image index 19 ===========================================================================================
+
+approximation of layer: 0
+    number of fixed neurons for current layer: 159
+    layer progress, group 1 of 5
+        time for sampling for one group: 0.0021543502807617188
+        time for training: 0.37386202812194824
+        actual verification time 0.910728931427002
+        time for verification: 1.06201171875
+    layer progress, group 2 of 5
+        time for sampling for one group: 0.0
+        time for training: 0.3366830348968506
+        actual verification time 0.5787177085876465
+        time for verification: 0.7220518589019775
+    layer progress, group 3 of 5
+        time for sampling for one group: 0.015624284744262695
+        time for training: 0.3189351558685303
+        actual verification time 0.6007037162780762
+        time for verification: 0.7518274784088135
+    layer progress, group 4 of 5
+        time for sampling for one group: 0.0
+        time for training: 0.35765933990478516
+        actual verification time 1.1970083713531494
+        time for verification: 1.3484601974487305
+    layer progress, group 5 of 5
+        time for sampling for one group: 0.015624761581420898
+        time for training: 0.38417506217956543
+        actual verification time 0.4791088104248047
+        time for verification: 0.6102948188781738
+
+approximation of layer: 1
+    time for icnn_bound calculation: 28.830942630767822
+    number of fixed neurons for current layer: 173
+    layer progress, group 1 of 5
+        time for sampling for one group: 1.3062744140625
+        time for training: 0.2962610721588135
+        actual verification time 4.952528715133667
+        time for verification: 5.105151653289795
+    layer progress, group 2 of 5
+        time for sampling for one group: 1.308753252029419
+        time for training: 0.34278106689453125
+        actual verification time 5.675756931304932
+        time for verification: 5.828198194503784
+    layer progress, group 3 of 5
+        time for sampling for one group: 1.3295588493347168
+        time for training: 0.3110220432281494
+        actual verification time 11.910080909729004
+        time for verification: 12.062114238739014
+    layer progress, group 4 of 5
+        time for sampling for one group: 1.3829612731933594
+        time for training: 0.312788724899292
+        actual verification time 15.55502200126648
+        time for verification: 15.714580774307251
+    layer progress, group 5 of 5
+        time for sampling for one group: 1.4167451858520508
+        time for training: 1.9811720848083496
+        actual verification time 0.6798889636993408
+        time for verification: 0.7423806190490723
+
+approximation of layer: 2
+    time for icnn_bound calculation: 82.28907251358032
+    number of fixed neurons for current layer: 177
+    layer progress, group 1 of 4
+        time for sampling for one group: 4.500655889511108
+        time for training: 0.3441588878631592
+        actual verification time 8.269794225692749
+        time for verification: 8.441603660583496
+    layer progress, group 2 of 4
+        time for sampling for one group: 4.809080600738525
+        time for training: 0.29323744773864746
+        actual verification time 8.298072099685669
+        time for verification: 8.44972825050354
+    layer progress, group 3 of 4
+        time for sampling for one group: 4.963123083114624
+        time for training: 0.3249790668487549
+        actual verification time 59.21980261802673
+        time for verification: 59.397448778152466
+    layer progress, group 4 of 4
+        time for sampling for one group: 4.623486757278442
+        time for training: 0.31302642822265625
+        actual verification time 13.429071187973022
+        time for verification: 13.588614225387573
+
+approximation of layer: 3
+    time for icnn_bound calculation: 185.98213005065918
+    number of fixed neurons for current layer: 169
+    encode layer 3 as MILP
+time for icnn_bound calculation (last layer):0.008153200149536133
+done...
+var 0: -7.481178392674571
+var 1: 3.1149031690633144
+var 2: -2.623492216850706
+var 3: 6.661000278287497
+var 4: -1.0533016518094742
+var 5: 2.274055314716868
+var 6: -9.842547910346738
+var 7: 1.7979394494307113
+var 8: 3.343626300134951
+var 9: 5.771897086658876
+property NOT verified with max difference 0.8891031916286212
+overall time: 494.59466671943665
+22/17 | image index 22 ===========================================================================================
+
+approximation of layer: 0
+    number of fixed neurons for current layer: 159
+    layer progress, group 1 of 5
+        time for sampling for one group: 0.0020248889923095703
+        time for training: 0.3534672260284424
+        actual verification time 0.7571401596069336
+        time for verification: 0.9094982147216797
+    layer progress, group 2 of 5
+        time for sampling for one group: 0.0
+        time for training: 0.3476998805999756
+        actual verification time 1.2823071479797363
+        time for verification: 1.4436559677124023
+    layer progress, group 3 of 5
+        time for sampling for one group: 0.0
+        time for training: 0.3360018730163574
+        actual verification time 0.8648555278778076
+        time for verification: 1.018277883529663
+    layer progress, group 4 of 5
+        time for sampling for one group: 0.0
+        time for training: 0.35643482208251953
+        actual verification time 0.659879207611084
+        time for verification: 0.821091890335083
+    layer progress, group 5 of 5
+        time for sampling for one group: 0.0
+        time for training: 0.35056543350219727
+        actual verification time 0.8385641574859619
+        time for verification: 1.0032835006713867
+
+approximation of layer: 1
+    time for icnn_bound calculation: 28.369072437286377
+    number of fixed neurons for current layer: 156
+    layer progress, group 1 of 5
+        time for sampling for one group: 1.2649786472320557
+        time for training: 0.29260754585266113
+        actual verification time 5.7342517375946045
+        time for verification: 5.885633230209351
+    layer progress, group 2 of 5
+        time for sampling for one group: 1.3227314949035645
+        time for training: 0.3125743865966797
+        actual verification time 8.284003496170044
+        time for verification: 8.460781574249268
+    layer progress, group 3 of 5
+        time for sampling for one group: 1.3630785942077637
+        time for training: 0.3660156726837158
+        actual verification time 4.407352924346924
+        time for verification: 4.589245080947876
+    layer progress, group 4 of 5
+        time for sampling for one group: 1.2662415504455566
+        time for training: 0.2828836441040039
+        actual verification time 9.807073593139648
+        time for verification: 9.968443870544434
+    layer progress, group 5 of 5
+        time for sampling for one group: 1.2656044960021973
+        time for training: 0.34397244453430176
+        actual verification time 29.37687921524048
+        time for verification: 29.526185274124146
+
+approximation of layer: 2
+    time for icnn_bound calculation: 87.15779519081116
+    number of fixed neurons for current layer: 174
+    layer progress, group 1 of 5
+        time for sampling for one group: 4.711397171020508
+        time for training: 0.4048647880554199
+        actual verification time 8.967060089111328
+        time for verification: 9.129495620727539
+    layer progress, group 2 of 5
+        time for sampling for one group: 4.689144849777222
+        time for training: 0.3029944896697998
+        actual verification time 16.863997220993042
+        time for verification: 17.035267114639282
+    layer progress, group 3 of 5
+        time for sampling for one group: 5.040221691131592
+        time for training: 0.29259157180786133
+        actual verification time 7.751023054122925
+        time for verification: 7.904212236404419
+    layer progress, group 4 of 5
+        time for sampling for one group: 4.692765474319458
+        time for training: 0.2922520637512207
+        actual verification time 16.64333987236023
+        time for verification: 16.82275915145874
+    layer progress, group 5 of 5
+        time for sampling for one group: 5.139282464981079
+        time for training: 1.6349515914916992
+        actual verification time 0.999931812286377
+        time for verification: 1.0686039924621582
+
+approximation of layer: 3
+    time for icnn_bound calculation: 186.53738117218018
+    number of fixed neurons for current layer: 170
+    encode layer 3 as MILP
+time for icnn_bound calculation (last layer):0.0
+done...
+var 0: -6.164847852416871
+var 1: -1.3184571697761909
+var 2: -1.8038137642645111
+var 3: -1.7962200917910485
+var 4: 6.579686558363422
+var 5: -0.6352042656578494
+var 6: -4.083504962215246
+var 7: 1.024031950952696
+var 8: 2.351179544283207
+var 9: 5.126031909511866
+property NOT verified with max difference 1.4536546488515554
+overall time: 494.5519630908966
+24/17 | image index 25 ===========================================================================================
+
+approximation of layer: 0
+    number of fixed neurons for current layer: 183
+    layer progress, group 1 of 4
+        time for sampling for one group: 0.0020432472229003906
+        time for training: 0.6086537837982178
+        actual verification time 2.84102201461792
+        time for verification: 3.124378204345703
+    layer progress, group 2 of 4
+        time for sampling for one group: 0.0020525455474853516
+        time for training: 0.5885441303253174
+        actual verification time 1.1905710697174072
+        time for verification: 1.4239134788513184
+    layer progress, group 3 of 4
+        time for sampling for one group: 0.010108470916748047
+        time for training: 0.631295919418335
+        actual verification time 3.823079824447632
+        time for verification: 4.086632013320923
+    layer progress, group 4 of 4
+        time for sampling for one group: 0.0
+        time for training: 0.6394863128662109
+        actual verification time 0.6047444343566895
+        time for verification: 0.7675361633300781
+
+approximation of layer: 1
+    time for icnn_bound calculation: 26.22859787940979
+    number of fixed neurons for current layer: 213
+    layer progress, group 1 of 3
+        time for sampling for one group: 0.9589657783508301
+        time for training: 0.3231375217437744
+        actual verification time 2.09511661529541
+        time for verification: 2.23635196685791
+    layer progress, group 2 of 3
+        time for sampling for one group: 0.9508070945739746
+        time for training: 0.30303072929382324
+        actual verification time 6.270939826965332
+        time for verification: 6.432221174240112
+    layer progress, group 3 of 3
+        time for sampling for one group: 1.0019991397857666
+        time for training: 1.68552827835083
+        actual verification time 0.6892645359039307
+        time for verification: 0.7519562244415283
+
+approximation of layer: 2
+    time for icnn_bound calculation: 44.424646854400635
+    number of fixed neurons for current layer: 220
+    layer progress, group 1 of 2
+        time for sampling for one group: 2.3111438751220703
+        time for training: 0.31282877922058105
+        actual verification time 6.521963834762573
+        time for verification: 6.664995193481445
+    layer progress, group 2 of 2
+        time for sampling for one group: 2.1707420349121094
+        time for training: 0.2829101085662842
+        actual verification time 9.592755794525146
+        time for verification: 9.713777780532837
+
+approximation of layer: 3
+    time for icnn_bound calculation: 83.21108436584473
+    number of fixed neurons for current layer: 235
+    encode layer 3 as MILP
+time for icnn_bound calculation (last layer):0.0
+done...
+var 0: -1.1424138965100408
+var 1: 3.7105633046148263
+var 2: 10.699347149107597
+var 3: 10.537739352173496
+var 4: -11.939621727823775
+var 5: -0.49944806936930064
+var 6: -7.449358256641132
+var 7: -1.1254511157784783
+var 8: 5.6420814143258715
+var 9: -4.520247261707386
+property verified with max difference -0.16160779693410063
+overall time: 207.79773497581482
+25/17 | image index 26 ===========================================================================================
+
+approximation of layer: 0
+    number of fixed neurons for current layer: 143
+    layer progress, group 1 of 6
+        time for sampling for one group: 0.010101556777954102
+        time for training: 0.35296177864074707
+        actual verification time 0.8928141593933105
+        time for verification: 1.0439231395721436
+    layer progress, group 2 of 6
+        time for sampling for one group: 0.0
+        time for training: 0.3476748466491699
+        actual verification time 0.6587352752685547
+        time for verification: 0.8355848789215088
+    layer progress, group 3 of 6
+        time for sampling for one group: 0.0
+        time for training: 0.3586862087249756
+        actual verification time 1.969994068145752
+        time for verification: 2.111560344696045
+    layer progress, group 4 of 6
+        time for sampling for one group: 0.0
+        time for training: 0.3363780975341797
+        actual verification time 8.408414125442505
+        time for verification: 8.570329666137695
+    layer progress, group 5 of 6
+        time for sampling for one group: 0.0
+        time for training: 0.34498095512390137
+        actual verification time 1.4352481365203857
+        time for verification: 1.5767478942871094
+    layer progress, group 6 of 6
+        time for sampling for one group: 0.0
+        time for training: 0.3251962661743164
+        actual verification time 0.28155517578125
+        time for verification: 0.3828704357147217
+
+approximation of layer: 1
+    time for icnn_bound calculation: 31.58545160293579
+    number of fixed neurons for current layer: 168
+    layer progress, group 1 of 5
+        time for sampling for one group: 1.383817434310913
+        time for training: 0.2825658321380615
+        actual verification time 8.110043048858643
+        time for verification: 8.261579275131226
+    layer progress, group 2 of 5
+        time for sampling for one group: 1.3217275142669678
+        time for training: 0.2851529121398926
+        actual verification time 5.131148099899292
+        time for verification: 5.28066611289978
+    layer progress, group 3 of 5
+        time for sampling for one group: 1.48651123046875
+        time for training: 0.32348036766052246
+        actual verification time 7.274070739746094
+        time for verification: 7.433506727218628
+    layer progress, group 4 of 5
+        time for sampling for one group: 1.5270297527313232
+        time for training: 0.2954275608062744
+        actual verification time 9.448980808258057
+        time for verification: 9.602022409439087
+    layer progress, group 5 of 5
+        time for sampling for one group: 1.6089341640472412
+        time for training: 0.42704081535339355
+        actual verification time 2.403277635574341
+        time for verification: 2.504195213317871
+
+approximation of layer: 2
+    time for icnn_bound calculation: 95.13203358650208
+    number of fixed neurons for current layer: 179
+    layer progress, group 1 of 4
+        time for sampling for one group: 5.5295281410217285
+        time for training: 0.33874988555908203
+        actual verification time 13.761443138122559
+        time for verification: 13.93486738204956
+    layer progress, group 2 of 4
+        time for sampling for one group: 5.376579523086548
+        time for training: 0.3434140682220459
+        actual verification time 24.17197847366333
+        time for verification: 24.323221683502197
+    layer progress, group 3 of 4
+        time for sampling for one group: 5.081996202468872
+        time for training: 0.3234553337097168
+        actual verification time 8.027361392974854
+        time for verification: 8.17866826057434
+    layer progress, group 4 of 4
+        time for sampling for one group: 5.23582649230957
+        time for training: 0.3236863613128662
+        actual verification time 6.925839900970459
+        time for verification: 7.076985597610474
+
+approximation of layer: 3
+    time for icnn_bound calculation: 202.33933353424072
+    number of fixed neurons for current layer: 167
+    encode layer 3 as MILP
+time for icnn_bound calculation (last layer):0.008060216903686523
+done...
+var 0: -6.746083177172126
+var 1: -0.9433243708699015
+var 2: -3.409922996685916
+var 3: 1.0222952355097306
+var 4: 5.490071686891845
+var 5: 0.21143835531793886
+var 6: -6.476962925079421
+var 7: 1.7447109368499003
+var 8: 2.674427328790983
+var 9: 6.385611371926787
+property NOT verified with max difference 0.8955396850349421
+overall time: 497.34362030029297
+28/17 | image index 29 ===========================================================================================
+
+approximation of layer: 0
+    number of fixed neurons for current layer: 179
+    layer progress, group 1 of 4
+        time for sampling for one group: 0.0
+        time for training: 0.34136033058166504
+        actual verification time 1.318530559539795
+        time for verification: 1.4697980880737305
+    layer progress, group 2 of 4
+        time for sampling for one group: 0.0065152645111083984
+        time for training: 0.3325648307800293
+        actual verification time 0.6882405281066895
+        time for verification: 0.834747314453125
+    layer progress, group 3 of 4
+        time for sampling for one group: 0.0
+        time for training: 0.3636472225189209
+        actual verification time 3.734177589416504
+        time for verification: 3.8908751010894775
+    layer progress, group 4 of 4
+        time for sampling for one group: 0.0
+        time for training: 0.3644249439239502
+        actual verification time 0.4723024368286133
+        time for verification: 0.5907971858978271
+
+approximation of layer: 1
+    time for icnn_bound calculation: 21.227744102478027
+    number of fixed neurons for current layer: 173
+    layer progress, group 1 of 5
+        time for sampling for one group: 0.9807984828948975
+        time for training: 0.31223607063293457
+        actual verification time 20.25307846069336
+        time for verification: 20.40935707092285
+    layer progress, group 2 of 5
+        time for sampling for one group: 0.9992499351501465
+        time for training: 0.29089808464050293
+        actual verification time 3.2143032550811768
+        time for verification: 3.371314764022827
+    layer progress, group 3 of 5
+        time for sampling for one group: 0.9994490146636963
+        time for training: 0.31325316429138184
+        actual verification time 22.03337574005127
+        time for verification: 22.185184717178345
+    layer progress, group 4 of 5
+        time for sampling for one group: 0.9782078266143799
+        time for training: 0.2923402786254883
+        actual verification time 6.233107089996338
+        time for verification: 6.376394033432007
+    layer progress, group 5 of 5
+        time for sampling for one group: 1.027254343032837
+        time for training: 1.6546859741210938
+        actual verification time 0.5046989917755127
+        time for verification: 0.5551378726959229
+
+approximation of layer: 2
+    time for icnn_bound calculation: 56.30526304244995
+    number of fixed neurons for current layer: 189
+    layer progress, group 1 of 4
+        time for sampling for one group: 3.5008041858673096
+        time for training: 0.3509664535522461
+        actual verification time 8.796574354171753
+        time for verification: 8.957810401916504
+    layer progress, group 2 of 4
+        time for sampling for one group: 3.575056791305542
+        time for training: 0.3335902690887451
+        actual verification time 122.37786340713501
+        time for verification: 122.53044199943542
+    layer progress, group 3 of 4
+        time for sampling for one group: 3.6462137699127197
+        time for training: 0.31373095512390137
+        actual verification time 13.195574522018433
+        time for verification: 13.388010501861572
+    layer progress, group 4 of 4
+        time for sampling for one group: 4.019170522689819
+        time for training: 1.3208484649658203
+        actual verification time 3.4364118576049805
+        time for verification: 3.5171549320220947
+
+approximation of layer: 3
+    time for icnn_bound calculation: 134.17045092582703
+    number of fixed neurons for current layer: 161
+    encode layer 3 as MILP
+time for icnn_bound calculation (last layer):0.0
+done...
+var 0: -2.6129904417721317
+var 1: 1.7544461453928255
+var 2: 1.0691721953013393
+var 3: -2.077347471009998
+var 4: 0.12693902788475475
+var 5: -0.9555966006773365
+var 6: -0.076781983670132
+var 7: 0.8505002921962764
+var 8: 3.4284837844159957
+var 9: -1.190386696240033
+property NOT verified with max difference 2.5779834922197193
+overall time: 469.2873969078064
+29/17 | image index 30 ===========================================================================================
+
+approximation of layer: 0
+    number of fixed neurons for current layer: 165
+    layer progress, group 1 of 5
+        time for sampling for one group: 0.0
+        time for training: 0.3433198928833008
+        actual verification time 0.9691212177276611
+        time for verification: 1.1103980541229248
+    layer progress, group 2 of 5
+        time for sampling for one group: 0.015625953674316406
+        time for training: 0.3687314987182617
+        actual verification time 1.0329563617706299
+        time for verification: 1.1920762062072754
+    layer progress, group 3 of 5
+        time for sampling for one group: 0.0
+        time for training: 0.31354713439941406
+        actual verification time 0.5796544551849365
+        time for verification: 0.7111306190490723
+    layer progress, group 4 of 5
+        time for sampling for one group: 0.0
+        time for training: 0.34223389625549316
+        actual verification time 0.884345531463623
+        time for verification: 1.025510311126709
+    layer progress, group 5 of 5
+        time for sampling for one group: 0.0
+        time for training: 0.46309876441955566
+        actual verification time 0.2405226230621338
+        time for verification: 0.34128308296203613
+
+approximation of layer: 1
+    time for icnn_bound calculation: 22.22102189064026
+    number of fixed neurons for current layer: 165
+    layer progress, group 1 of 5
+        time for sampling for one group: 1.0102589130401611
+        time for training: 0.2808694839477539
+        actual verification time 7.081947565078735
+        time for verification: 7.237231731414795
+    layer progress, group 2 of 5
+        time for sampling for one group: 1.0219557285308838
+        time for training: 0.34183192253112793
+        actual verification time 4.786941766738892
+        time for verification: 4.968255519866943
+    layer progress, group 3 of 5
+        time for sampling for one group: 1.050281047821045
+        time for training: 0.29300594329833984
+        actual verification time 3.95310115814209
+        time for verification: 4.1148364543914795
+    layer progress, group 4 of 5
+        time for sampling for one group: 1.0407493114471436
+        time for training: 0.3129158020019531
+        actual verification time 14.66425085067749
+        time for verification: 14.834140300750732
+    layer progress, group 5 of 5
+        time for sampling for one group: 0.9994850158691406
+        time for training: 0.3227577209472656
+        actual verification time 2.304837703704834
+        time for verification: 2.413728713989258
+
+approximation of layer: 2
+    time for icnn_bound calculation: 64.6679859161377
+    number of fixed neurons for current layer: 197
+    layer progress, group 1 of 3
+        time for sampling for one group: 3.7485079765319824
+        time for training: 0.29210901260375977
+        actual verification time 15.716100454330444
+        time for verification: 15.88055682182312
+    layer progress, group 2 of 3
+        time for sampling for one group: 3.681155204772949
+        time for training: 0.30458593368530273
+        actual verification time 22.01974105834961
+        time for verification: 22.170940160751343
+    layer progress, group 3 of 3
+        time for sampling for one group: 3.83587646484375
+        time for training: 0.2923698425292969
+        actual verification time 18.18204617500305
+        time for verification: 18.343634843826294
+
+approximation of layer: 3
+    time for icnn_bound calculation: 134.25926113128662
+    number of fixed neurons for current layer: 176
+    encode layer 3 as MILP
+time for icnn_bound calculation (last layer):0.0026450157165527344
+done...
+var 0: -7.0046166369438625
+var 1: 7.279706802870084
+var 2: 3.9270867125951012
+var 3: 6.706899733867798
+var 4: -1.834099913714371
+var 5: -2.8974808383411057
+var 6: -3.7975885052023886
+var 7: 3.039267278237149
+var 8: 0.08961414850338567
+var 9: -2.356153804441754
+property NOT verified with max difference 0.5728070690022867
+overall time: 360.5490162372589
+31/17 | image index 32 ===========================================================================================
+
+approximation of layer: 0
+    number of fixed neurons for current layer: 157
+    layer progress, group 1 of 5
+        time for sampling for one group: 0.0
+        time for training: 0.3551959991455078
+        actual verification time 0.941145658493042
+        time for verification: 1.0933713912963867
+    layer progress, group 2 of 5
+        time for sampling for one group: 0.0
+        time for training: 0.5175490379333496
+        actual verification time 0.7384967803955078
+        time for verification: 0.9628479480743408
+    layer progress, group 3 of 5
+        time for sampling for one group: 0.0
+        time for training: 0.5516672134399414
+        actual verification time 0.8615827560424805
+        time for verification: 1.0648462772369385
+    layer progress, group 4 of 5
+        time for sampling for one group: 0.010054588317871094
+        time for training: 0.40547823905944824
+        actual verification time 1.4719955921173096
+        time for verification: 1.644057273864746
+    layer progress, group 5 of 5
+        time for sampling for one group: 0.0
+        time for training: 0.38355398178100586
+        actual verification time 0.7493724822998047
+        time for verification: 0.9211807250976562
+
+approximation of layer: 1
+    time for icnn_bound calculation: 24.777271270751953
+    number of fixed neurons for current layer: 149
+    layer progress, group 1 of 6
+        time for sampling for one group: 1.1915092468261719
+        time for training: 0.282703161239624
+        actual verification time 5.015960216522217
+        time for verification: 5.169486999511719
+    layer progress, group 2 of 6
+        time for sampling for one group: 1.0967793464660645
+        time for training: 0.29077959060668945
+        actual verification time 6.926644563674927
+        time for verification: 7.080029249191284
+    layer progress, group 3 of 6
+        time for sampling for one group: 1.0590195655822754
+        time for training: 0.2723972797393799
+        actual verification time 6.481644868850708
+        time for verification: 6.645005226135254
+    layer progress, group 4 of 6
+        time for sampling for one group: 1.0987370014190674
+        time for training: 0.28095459938049316
+        actual verification time 11.42825436592102
+        time for verification: 11.561506509780884
+    layer progress, group 5 of 6
+        time for sampling for one group: 1.0936031341552734
+        time for training: 0.3012816905975342
+        actual verification time 5.054271459579468
+        time for verification: 5.205599784851074
+    layer progress, group 6 of 6
+        time for sampling for one group: 1.1704182624816895
+        time for training: 0.45491838455200195
+        actual verification time 2.067111015319824
+        time for verification: 2.157858371734619
+
+approximation of layer: 2
+    time for icnn_bound calculation: 84.33231806755066
+    number of fixed neurons for current layer: 150
+    layer progress, group 1 of 6
+        time for sampling for one group: 4.843448638916016
+        time for training: 0.3029899597167969
+        actual verification time 26.504257917404175
+        time for verification: 26.67772626876831
+    layer progress, group 2 of 6
+        time for sampling for one group: 4.896933078765869
+        time for training: 0.2622416019439697
+        actual verification time 11.8450927734375
+        time for verification: 11.996653079986572
+    layer progress, group 3 of 6
+        time for sampling for one group: 4.949142932891846
+        time for training: 0.3136265277862549
+        actual verification time 15.547795534133911
+        time for verification: 15.727905035018921
+    layer progress, group 4 of 6
+        time for sampling for one group: 5.000816583633423
+        time for training: 0.3746824264526367
+        actual verification time 17.32952094078064
+        time for verification: 17.488910913467407
+    layer progress, group 5 of 6
+        time for sampling for one group: 4.745851039886475
+        time for training: 0.32460665702819824
+        actual verification time 16.778793334960938
+        time for verification: 16.941407680511475
+    layer progress, group 6 of 6
+        time for sampling for one group: 5.6950743198394775
+        time for training: 1.6764390468597412
+        actual verification time 3.07532000541687
+        time for verification: 3.174234628677368
+
+approximation of layer: 3
+    time for icnn_bound calculation: 214.48175144195557
+    number of fixed neurons for current layer: 132
+    encode layer 3 as MILP
+time for icnn_bound calculation (last layer):0.002147197723388672
+done...
+var 0: 0.5253675680505587
+var 1: -0.43103446035243476
+var 2: 5.122566528769875
+var 3: -1.9450758792633671
+var 4: -0.12502003677129903
+var 5: 0.10957734096929794
+var 6: 6.316691266825517
+var 7: 0.2697590105753731
+var 8: -4.636472741280389
+var 9: -5.284700054246198
+property verified with max difference -1.1941247380556421
+overall time: 647.4837310314178
+32/17 | image index 33 ===========================================================================================
+
+approximation of layer: 0
+    number of fixed neurons for current layer: 175
+    layer progress, group 1 of 5
+        time for sampling for one group: 0.008030176162719727
+        time for training: 0.36402368545532227
+        actual verification time 1.0568339824676514
+        time for verification: 1.6786143779754639
+    layer progress, group 2 of 5
+        time for sampling for one group: 0.0
+        time for training: 0.3532590866088867
+        actual verification time 0.857168436050415
+        time for verification: 1.0248754024505615
+    layer progress, group 3 of 5
+        time for sampling for one group: 0.0
+        time for training: 0.39354610443115234
+        actual verification time 0.9167187213897705
+        time for verification: 1.0798356533050537
+    layer progress, group 4 of 5
+        time for sampling for one group: 0.0020284652709960938
+        time for training: 0.3873143196105957
+        actual verification time 1.1865274906158447
+        time for verification: 1.3356144428253174
+    layer progress, group 5 of 5
+        time for sampling for one group: 0.0
+        time for training: 1.0887165069580078
+        actual verification time 0.008055686950683594
+        time for verification: 0.028311729431152344
+
+approximation of layer: 1
+    time for icnn_bound calculation: 22.868957042694092
+    number of fixed neurons for current layer: 182
+    layer progress, group 1 of 4
+        time for sampling for one group: 1.0542199611663818
+        time for training: 0.2929365634918213
+        actual verification time 2.3170573711395264
+        time for verification: 2.478825092315674
+    layer progress, group 2 of 4
+        time for sampling for one group: 1.0358219146728516
+        time for training: 0.3256065845489502
+        actual verification time 7.749542713165283
+        time for verification: 7.926973342895508
+    layer progress, group 3 of 4
+        time for sampling for one group: 1.0243780612945557
+        time for training: 0.31253886222839355
+        actual verification time 4.4187538623809814
+        time for verification: 4.558557748794556
+    layer progress, group 4 of 4
+        time for sampling for one group: 1.0426318645477295
+        time for training: 0.292621374130249
+        actual verification time 4.420492887496948
+        time for verification: 4.552812337875366
+
+approximation of layer: 2
+    time for icnn_bound calculation: 60.7724769115448
+    number of fixed neurons for current layer: 188
+    layer progress, group 1 of 4
+        time for sampling for one group: 3.446495771408081
+        time for training: 0.3255138397216797
+        actual verification time 12.914096593856812
+        time for verification: 13.095517873764038
+    layer progress, group 2 of 4
+        time for sampling for one group: 3.260592460632324
+        time for training: 0.4055941104888916
+        actual verification time 6.141063213348389
+        time for verification: 6.294454097747803
+    layer progress, group 3 of 4
+        time for sampling for one group: 3.2092387676239014
+        time for training: 0.33343505859375
+        actual verification time 35.154815912246704
+        time for verification: 35.34780931472778
+    layer progress, group 4 of 4
+        time for sampling for one group: 3.3012804985046387
+        time for training: 0.46474528312683105
+        actual verification time 4.323923826217651
+        time for verification: 4.408626079559326
+
+approximation of layer: 3
+    time for icnn_bound calculation: 137.96089386940002
+    number of fixed neurons for current layer: 181
+    encode layer 3 as MILP
+time for icnn_bound calculation (last layer):0.0
+done...
+var 0: -5.162374855118223
+var 1: 0.9163038169632634
+var 2: -0.9363359063070664
+var 3: 3.853844009510398
+var 4: 0.17765917716244228
+var 5: -1.2809526289038837
+var 6: -10.432118572514378
+var 7: 7.559891255974739
+var 8: -0.03614779442602423
+var 9: 6.348550588727109
+property NOT verified with max difference 1.211340667247629
+overall time: 359.57386207580566
+37/17 | image index 38 ===========================================================================================
+
+approximation of layer: 0
+    number of fixed neurons for current layer: 177
+    layer progress, group 1 of 4
+        time for sampling for one group: 0.010059833526611328
+        time for training: 0.36349010467529297
+        actual verification time 1.2107625007629395
+        time for verification: 1.360325813293457
+    layer progress, group 2 of 4
+        time for sampling for one group: 0.0
+        time for training: 0.372236967086792
+        actual verification time 1.0882511138916016
+        time for verification: 1.2530713081359863
+    layer progress, group 3 of 4
+        time for sampling for one group: 0.0
+        time for training: 0.3647422790527344
+        actual verification time 2.917266368865967
+        time for verification: 3.0686798095703125
+    layer progress, group 4 of 4
+        time for sampling for one group: 0.015622377395629883
+        time for training: 0.41265320777893066
+        actual verification time 1.0229721069335938
+        time for verification: 1.1931555271148682
+
+approximation of layer: 1
+    time for icnn_bound calculation: 26.63561224937439
+    number of fixed neurons for current layer: 176
+    layer progress, group 1 of 4
+        time for sampling for one group: 1.1050655841827393
+        time for training: 0.3521616458892822
+        actual verification time 6.613744020462036
+        time for verification: 6.7671051025390625
+    layer progress, group 2 of 4
+        time for sampling for one group: 1.1690878868103027
+        time for training: 0.32387375831604004
+        actual verification time 4.829147100448608
+        time for verification: 5.009441137313843
+    layer progress, group 3 of 4
+        time for sampling for one group: 1.1605265140533447
+        time for training: 0.28255391120910645
+        actual verification time 14.987997055053711
+        time for verification: 15.150106191635132
+    layer progress, group 4 of 4
+        time for sampling for one group: 1.1033413410186768
+        time for training: 0.31165266036987305
+        actual verification time 9.273832321166992
+        time for verification: 9.42534852027893
+
+approximation of layer: 2
+    time for icnn_bound calculation: 63.044665575027466
+    number of fixed neurons for current layer: 193
+    layer progress, group 1 of 4
+        time for sampling for one group: 3.3652122020721436
+        time for training: 0.2825934886932373
+        actual verification time 11.186384201049805
+        time for verification: 11.347678184509277
+    layer progress, group 2 of 4
+        time for sampling for one group: 4.066043138504028
+        time for training: 0.3154423236846924
+        actual verification time 9.42740249633789
+        time for verification: 9.589300632476807
+    layer progress, group 3 of 4
+        time for sampling for one group: 3.2122583389282227
+        time for training: 0.32312703132629395
+        actual verification time 22.193578720092773
+        time for verification: 22.37534809112549
+    layer progress, group 4 of 4
+        time for sampling for one group: 3.8235630989074707
+        time for training: 1.614680290222168
+        actual verification time 1.048020839691162
+        time for verification: 1.098445177078247
+
+approximation of layer: 3
+    time for icnn_bound calculation: 136.90588235855103
+    number of fixed neurons for current layer: 172
+    encode layer 3 as MILP
+time for icnn_bound calculation (last layer):0.002053976058959961
+done...
+var 0: -2.6870286595860176
+var 1: 0.6495198666773545
+var 2: 8.59843571274567
+var 3: 3.897855696604341
+var 4: -1.9948528206918574
+var 5: -4.844831590061229
+var 6: -6.040939076474064
+var 7: 7.648222614073671
+var 8: -2.616745956320475
+var 9: -0.904753436126212
+property NOT verified with max difference 0.9502130986719999
+overall time: 365.02770495414734
+41/17 | image index 42 ===========================================================================================
+
+approximation of layer: 0
+    number of fixed neurons for current layer: 151
+    layer progress, group 1 of 6
+        time for sampling for one group: 0.01006317138671875
+        time for training: 0.4467179775238037
+        actual verification time 2.3338072299957275
+        time for verification: 2.565150499343872
+    layer progress, group 2 of 6
+        time for sampling for one group: 0.0
+        time for training: 0.35533666610717773
+        actual verification time 0.8536152839660645
+        time for verification: 0.9967849254608154
+    layer progress, group 3 of 6
+        time for sampling for one group: 0.0
+        time for training: 0.36400914192199707
+        actual verification time 0.6257452964782715
+        time for verification: 0.7812600135803223
+    layer progress, group 4 of 6
+        time for sampling for one group: 0.0
+        time for training: 0.3865807056427002
+        actual verification time 2.714111566543579
+        time for verification: 2.8583993911743164
+    layer progress, group 5 of 6
+        time for sampling for one group: 0.0
+        time for training: 0.415250301361084
+        actual verification time 3.076664447784424
+        time for verification: 3.2382898330688477
+    layer progress, group 6 of 6
+        time for sampling for one group: 0.0
+        time for training: 2.0853397846221924
+        actual verification time 0.07075166702270508
+        time for verification: 0.15178513526916504
+
+approximation of layer: 1
+    time for icnn_bound calculation: 29.16393804550171
+    number of fixed neurons for current layer: 159
+    layer progress, group 1 of 5
+        time for sampling for one group: 1.3375561237335205
+        time for training: 0.31098079681396484
+        actual verification time 6.05383825302124
+        time for verification: 6.1972949504852295
+    layer progress, group 2 of 5
+        time for sampling for one group: 1.2031779289245605
+        time for training: 0.30301785469055176
+        actual verification time 9.415508508682251
+        time for verification: 9.57487154006958
+    layer progress, group 3 of 5
+        time for sampling for one group: 1.3520658016204834
+        time for training: 0.30496859550476074
+        actual verification time 11.876981973648071
+        time for verification: 12.04858922958374
+    layer progress, group 4 of 5
+        time for sampling for one group: 1.309849739074707
+        time for training: 0.32514071464538574
+        actual verification time 4.303891181945801
+        time for verification: 4.465242147445679
+    layer progress, group 5 of 5
+        time for sampling for one group: 1.3371460437774658
+        time for training: 0.2926170825958252
+        actual verification time 11.376047611236572
+        time for verification: 11.517410516738892
+
+approximation of layer: 2
+    time for icnn_bound calculation: 92.04428458213806
+    number of fixed neurons for current layer: 181
+    layer progress, group 1 of 4
+        time for sampling for one group: 4.85835862159729
+        time for training: 0.28577566146850586
+        actual verification time 43.47616195678711
+        time for verification: 43.626344203948975
+    layer progress, group 2 of 4
+        time for sampling for one group: 5.383606910705566
+        time for training: 0.34418225288391113
+        actual verification time 15.78926944732666
+        time for verification: 15.972430944442749
+    layer progress, group 3 of 4
+        time for sampling for one group: 4.89510178565979
+        time for training: 0.30274534225463867
+        actual verification time 14.375392436981201
+        time for verification: 14.555037498474121
+    layer progress, group 4 of 4
+        time for sampling for one group: 5.320864200592041
+        time for training: 0.3825206756591797
+        actual verification time 8.1510648727417
+        time for verification: 8.265235424041748
+
+approximation of layer: 3
+    time for icnn_bound calculation: 189.2602732181549
+    number of fixed neurons for current layer: 169
+    encode layer 3 as MILP
+time for icnn_bound calculation (last layer):0.002138376235961914
+done...
+var 0: -3.8619528067522633
+var 1: 1.6309469772011862
+var 2: -0.2826448853916075
+var 3: 1.9933048833976328
+var 4: -4.170843545474398
+var 5: 2.16825551636533
+var 6: -7.227574705341835
+var 7: 2.6084174885609293
+var 8: 5.020509117552816
+var 9: 3.1012729626202584
+property NOT verified with max difference 2.4120916289918863
+overall time: 508.5841066837311
+42/17 | image index 43 ===========================================================================================
+
+approximation of layer: 0
+    number of fixed neurons for current layer: 159
+    layer progress, group 1 of 5
+        time for sampling for one group: 0.00809025764465332
+        time for training: 0.3633615970611572
+        actual verification time 0.5671775341033936
+        time for verification: 0.715073823928833
+    layer progress, group 2 of 5
+        time for sampling for one group: 0.0
+        time for training: 0.35427188873291016
+        actual verification time 0.939018964767456
+        time for verification: 1.0903303623199463
+    layer progress, group 3 of 5
+        time for sampling for one group: 0.0
+        time for training: 0.3243675231933594
+        actual verification time 1.5830559730529785
+        time for verification: 1.7243080139160156
+    layer progress, group 4 of 5
+        time for sampling for one group: 0.01565241813659668
+        time for training: 0.34859395027160645
+        actual verification time 1.7987539768218994
+        time for verification: 1.94014573097229
+    layer progress, group 5 of 5
+        time for sampling for one group: 0.0
+        time for training: 0.33287620544433594
+        actual verification time 0.47398853302001953
+        time for verification: 0.5953235626220703
+
+approximation of layer: 1
+    time for icnn_bound calculation: 26.225783109664917
+    number of fixed neurons for current layer: 174
+    layer progress, group 1 of 5
+        time for sampling for one group: 1.163914442062378
+        time for training: 0.2750067710876465
+        actual verification time 26.25200581550598
+        time for verification: 26.403273344039917
+    layer progress, group 2 of 5
+        time for sampling for one group: 1.2679851055145264
+        time for training: 0.28253817558288574
+        actual verification time 49.50485014915466
+        time for verification: 49.656124114990234
+    layer progress, group 3 of 5
+        time for sampling for one group: 1.1705992221832275
+        time for training: 0.27345943450927734
+        actual verification time 14.925490617752075
+        time for verification: 15.076958179473877
+    layer progress, group 4 of 5
+        time for sampling for one group: 1.1595709323883057
+        time for training: 0.2927987575531006
+        actual verification time 10.648051977157593
+        time for verification: 10.797576427459717
+    layer progress, group 5 of 5
+        time for sampling for one group: 1.2574748992919922
+        time for training: 1.646303653717041
+        actual verification time 0.6089279651641846
+        time for verification: 0.6493122577667236
+
+approximation of layer: 2
+    time for icnn_bound calculation: 78.27694582939148
+    number of fixed neurons for current layer: 181
+    layer progress, group 1 of 4
+        time for sampling for one group: 4.210848569869995
+        time for training: 0.3132908344268799
+        actual verification time 16.920358180999756
+        time for verification: 17.07159972190857
+    layer progress, group 2 of 4
+        time for sampling for one group: 4.2919557094573975
+        time for training: 0.313814640045166
+        actual verification time 7.5884690284729
+        time for verification: 7.739725828170776
+    layer progress, group 3 of 4
+        time for sampling for one group: 4.207095146179199
+        time for training: 0.28465723991394043
+        actual verification time 28.667023181915283
+        time for verification: 28.816542387008667
+    layer progress, group 4 of 4
+        time for sampling for one group: 4.068288564682007
+        time for training: 0.2825586795806885
+        actual verification time 13.50218915939331
+        time for verification: 13.623369216918945
+
+approximation of layer: 3
+    time for icnn_bound calculation: 160.74189352989197
+    number of fixed neurons for current layer: 181
+    encode layer 3 as MILP
+time for icnn_bound calculation (last layer):0.0
+done...
+var 0: -6.513920963690044
+var 1: 0.3084667838691484
+var 2: -4.049690375696782
+var 3: 3.086622267350136
+var 4: 0.8015633664317416
+var 5: 1.6815342832630433
+var 6: -9.12158958147146
+var 7: 0.04408877030677605
+var 8: 6.63294121063157
+var 9: 8.042150522292593
+property verified with max difference -1.409209311661023
+overall time: 494.09624195098877
+45/17 | image index 46 ===========================================================================================
+
+approximation of layer: 0
+    number of fixed neurons for current layer: 162
+    layer progress, group 1 of 5
+        time for sampling for one group: 0.0
+        time for training: 0.4136810302734375
+        actual verification time 0.678602933883667
+        time for verification: 0.8482863903045654
+    layer progress, group 2 of 5
+        time for sampling for one group: 0.0
+        time for training: 0.3249044418334961
+        actual verification time 0.8090345859527588
+        time for verification: 0.9504337310791016
+    layer progress, group 3 of 5
+        time for sampling for one group: 0.0
+        time for training: 0.3264029026031494
+        actual verification time 1.1273882389068604
+        time for verification: 1.268897533416748
+    layer progress, group 4 of 5
+        time for sampling for one group: 0.0
+        time for training: 0.3967564105987549
+        actual verification time 0.5285704135894775
+        time for verification: 0.6597604751586914
+    layer progress, group 5 of 5
+        time for sampling for one group: 0.0
+        time for training: 0.3482966423034668
+        actual verification time 0.3234293460845947
+        time for verification: 0.4345405101776123
+
+approximation of layer: 1
+    time for icnn_bound calculation: 24.287460327148438
+    number of fixed neurons for current layer: 179
+    layer progress, group 1 of 4
+        time for sampling for one group: 1.102288007736206
+        time for training: 0.2907555103302002
+        actual verification time 26.815664768218994
+        time for verification: 26.969132661819458
+    layer progress, group 2 of 4
+        time for sampling for one group: 1.1220576763153076
+        time for training: 0.2827870845794678
+        actual verification time 8.376083374023438
+        time for verification: 8.537749528884888
+    layer progress, group 3 of 4
+        time for sampling for one group: 1.2015161514282227
+        time for training: 0.32509350776672363
+        actual verification time 6.779265642166138
+        time for verification: 6.959075450897217
+    layer progress, group 4 of 4
+        time for sampling for one group: 1.1629066467285156
+        time for training: 0.28028249740600586
+        actual verification time 5.359335422515869
+        time for verification: 5.48236346244812
+
+approximation of layer: 2
+    time for icnn_bound calculation: 68.0014226436615
+    number of fixed neurons for current layer: 207
+    layer progress, group 1 of 3
+        time for sampling for one group: 3.6015968322753906
+        time for training: 0.2905237674713135
+        actual verification time 8.48582148551941
+        time for verification: 8.639248847961426
+    layer progress, group 2 of 3
+        time for sampling for one group: 3.604031562805176
+        time for training: 0.2846798896789551
+        actual verification time 33.12455654144287
+        time for verification: 33.286123752593994
+    layer progress, group 3 of 3
+        time for sampling for one group: 3.9239556789398193
+        time for training: 0.5754785537719727
+        actual verification time 4.206568717956543
+        time for verification: 4.3094565868377686
+
+approximation of layer: 3
+    time for icnn_bound calculation: 132.92879247665405
+    number of fixed neurons for current layer: 202
+    encode layer 3 as MILP
+time for icnn_bound calculation (last layer):0.008392333984375
+done...
+var 0: 1.1988997730886988
+var 1: -0.3800875562669592
+var 2: 6.553561998429323
+var 3: 3.916773555712897
+var 4: -10.194477128644934
+var 5: 1.4544495702101319
+var 6: -4.825335903039064
+var 7: -1.7224900234626181
+var 8: 7.027795824636407
+var 9: -1.5840430793657534
+property verified with max difference -0.47423382620708443
+overall time: 360.4243850708008
+47/17 | image index 48 ===========================================================================================
+
+approximation of layer: 0
+    number of fixed neurons for current layer: 177
+    layer progress, group 1 of 4
+        time for sampling for one group: 0.01008462905883789
+        time for training: 0.3540074825286865
+        actual verification time 1.2933177947998047
+        time for verification: 1.4475793838500977
+    layer progress, group 2 of 4
+        time for sampling for one group: 0.0031130313873291016
+        time for training: 0.4558680057525635
+        actual verification time 0.4372518062591553
+        time for verification: 0.5889778137207031
+    layer progress, group 3 of 4
+        time for sampling for one group: 0.0
+        time for training: 0.33103513717651367
+        actual verification time 1.1222038269042969
+        time for verification: 1.2534105777740479
+    layer progress, group 4 of 4
+        time for sampling for one group: 0.0
+        time for training: 0.3686988353729248
+        actual verification time 0.6923301219940186
+        time for verification: 0.8438222408294678
+
+approximation of layer: 1
+    time for icnn_bound calculation: 22.6645450592041
+    number of fixed neurons for current layer: 190
+    layer progress, group 1 of 4
+        time for sampling for one group: 1.035813331604004
+        time for training: 0.331104040145874
+        actual verification time 9.748937606811523
+        time for verification: 9.902483701705933
+    layer progress, group 2 of 4
+        time for sampling for one group: 1.0565619468688965
+        time for training: 0.29255175590515137
+        actual verification time 12.160259008407593
+        time for verification: 12.302056074142456
+    layer progress, group 3 of 4
+        time for sampling for one group: 1.0723109245300293
+        time for training: 0.31989169120788574
+        actual verification time 9.121968269348145
+        time for verification: 9.276718854904175
+    layer progress, group 4 of 4
+        time for sampling for one group: 1.0989069938659668
+        time for training: 1.334284782409668
+        actual verification time 1.7556159496307373
+        time for verification: 1.8360881805419922
+
+approximation of layer: 2
+    time for icnn_bound calculation: 59.03320074081421
+    number of fixed neurons for current layer: 198
+    layer progress, group 1 of 3
+        time for sampling for one group: 3.0241918563842773
+        time for training: 0.29314613342285156
+        actual verification time 16.28781533241272
+        time for verification: 16.457465648651123
+    layer progress, group 2 of 3
+        time for sampling for one group: 3.2879841327667236
+        time for training: 0.32486820220947266
+        actual verification time 7.716489791870117
+        time for verification: 7.867578506469727
+    layer progress, group 3 of 3
+        time for sampling for one group: 3.3860700130462646
+        time for training: 0.29222893714904785
+        actual verification time 9.13960576057434
+        time for verification: 9.28131890296936
+
+approximation of layer: 3
+    time for icnn_bound calculation: 127.04355359077454
+    number of fixed neurons for current layer: 182
+    encode layer 3 as MILP
+time for icnn_bound calculation (last layer):0.0
+done...
+var 0: -5.180062266555907
+var 1: 2.410863770017365
+var 2: -3.8959597617107358
+var 3: 4.06742941247326
+var 4: -2.6920416483829586
+var 5: 6.298767529471096
+var 6: -4.829677462117777
+var 7: -1.5267781125265811
+var 8: 3.9550774466463734
+var 9: 2.673523906398244
+property NOT verified with max difference 3.6252436230728526
+overall time: 315.36260175704956

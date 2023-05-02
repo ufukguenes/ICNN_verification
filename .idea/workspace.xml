@@ -1,20 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="6d238203-6334-43f4-afee-09b5387b5116" name="Changes" comment="bug fix, mixed up including fixed neurons or not in grouping">
+    <list default="true" id="6d238203-6334-43f4-afee-09b5387b5116" name="Changes" comment="sampling with only previous layer">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/script/DHOV/DataSampling.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/DHOV/DataSampling.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/script/DHOV/MainDHOV.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/DHOV/MainDHOV.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/script/DHOV/MultiDHOV.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/DHOV/MultiDHOV.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/script/Experiments/GenerativeExperiment.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/script/Experiments/GenerativeExperiment.ipynb" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/script/Experiments/GenerativeMaxDistanceLoss.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/script/Experiments/GenerativeMaxDistanceLoss.ipynb" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/script/Experiments/GenerativeWithoutICNNExperiment.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/script/Experiments/GenerativeWithoutICNNExperiment.ipynb" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/script/Experiments/MNIST_Test.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/script/Experiments/MNIST_Test.ipynb" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/script/NeuralNets/ICNNFactory.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/NeuralNets/ICNNFactory.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/script/NeuralNets/Networks.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/NeuralNets/Networks.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/script/NeuralNets/trainFunction.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/NeuralNets/trainFunction.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/script/Verification/Verifier.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/Verification/Verifier.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/script/eval.py" beforeDir="false" afterPath="$PROJECT_DIR$/script/eval.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -63,6 +57,11 @@
     &quot;two.files.diff.last.used.file&quot;: &quot;C:/Users/Ufuk/Documents/Programming/ICNN_verification/script/t2&quot;
   }
 }</component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Users\Ufuk\Documents\Programming\ICNN_verification\script\Experiments\Results" />
+    </key>
+  </component>
   <component name="RunManager" selected="Python.MainDHOV">
     <configuration name="ComparissionMILPSNV" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
       <module name="DeepHull" />
@@ -196,84 +195,9 @@
       <workItem from="1682091965530" duration="4000000" />
       <workItem from="1682170202633" duration="25785000" />
       <workItem from="1682280441420" duration="5086000" />
-      <workItem from="1682292492118" duration="5530000" />
-    </task>
-    <task id="LOCAL-00070" summary="building model for nn layer by layer">
-      <created>1678626271758</created>
-      <option name="number" value="00070" />
-      <option name="presentableId" value="LOCAL-00070" />
-      <option name="project" value="LOCAL" />
-      <updated>1678626271758</updated>
-    </task>
-    <task id="LOCAL-00071" summary="making 2d and 3d plotting depended on group size">
-      <created>1678627320787</created>
-      <option name="number" value="00071" />
-      <option name="presentableId" value="LOCAL-00071" />
-      <option name="project" value="LOCAL" />
-      <updated>1678627320787</updated>
-    </task>
-    <task id="LOCAL-00072" summary="implemented todos and simplified plotting">
-      <created>1678640014187</created>
-      <option name="number" value="00072" />
-      <option name="presentableId" value="LOCAL-00072" />
-      <option name="project" value="LOCAL" />
-      <updated>1678640014188</updated>
-    </task>
-    <task id="LOCAL-00073" summary="plotting with color based on min and max values">
-      <created>1678641640958</created>
-      <option name="number" value="00073" />
-      <option name="presentableId" value="LOCAL-00073" />
-      <option name="project" value="LOCAL" />
-      <updated>1678641640958</updated>
-    </task>
-    <task id="LOCAL-00074" summary="ensuring we don't exceed sampling count limit">
-      <created>1678642973323</created>
-      <option name="number" value="00074" />
-      <option name="presentableId" value="LOCAL-00074" />
-      <option name="project" value="LOCAL" />
-      <updated>1678642973323</updated>
-    </task>
-    <task id="LOCAL-00075" summary="making MultiDHOV a class">
-      <created>1678665704521</created>
-      <option name="number" value="00075" />
-      <option name="presentableId" value="LOCAL-00075" />
-      <option name="project" value="LOCAL" />
-      <updated>1678665704521</updated>
-    </task>
-    <task id="LOCAL-00076" summary="adding last affine transformation to model">
-      <created>1678667342519</created>
-      <option name="number" value="00076" />
-      <option name="presentableId" value="LOCAL-00076" />
-      <option name="project" value="LOCAL" />
-      <updated>1678667342519</updated>
-    </task>
-    <task id="LOCAL-00077" summary="experiments">
-      <created>1678667348453</created>
-      <option name="number" value="00077" />
-      <option name="presentableId" value="LOCAL-00077" />
-      <option name="project" value="LOCAL" />
-      <updated>1678667348453</updated>
-    </task>
-    <task id="LOCAL-00078" summary="removing printing of new bounds">
-      <created>1678667905881</created>
-      <option name="number" value="00078" />
-      <option name="presentableId" value="LOCAL-00078" />
-      <option name="project" value="LOCAL" />
-      <updated>1678667905881</updated>
-    </task>
-    <task id="LOCAL-00079" summary="removing duplicate constraints">
-      <created>1678668935283</created>
-      <option name="number" value="00079" />
-      <option name="presentableId" value="LOCAL-00079" />
-      <option name="project" value="LOCAL" />
-      <updated>1678668935283</updated>
-    </task>
-    <task id="LOCAL-00080" summary="adapting output">
-      <created>1678671635878</created>
-      <option name="number" value="00080" />
-      <option name="presentableId" value="LOCAL-00080" />
-      <option name="project" value="LOCAL" />
-      <updated>1678671635878</updated>
+      <workItem from="1682292492118" duration="44575000" />
+      <workItem from="1682462945400" duration="33507000" />
+      <workItem from="1682711705501" duration="72199000" />
     </task>
     <task id="LOCAL-00081" summary="experiments">
       <created>1678840376759</created>
@@ -541,7 +465,84 @@
       <option name="project" value="LOCAL" />
       <updated>1681823487383</updated>
     </task>
-    <option name="localTasksCounter" value="119" />
+    <task id="LOCAL-00119" summary="reordering sampling new for uniform, not tightening bounds for last layer, force break returns function, allowing print last loss">
+      <created>1682299754149</created>
+      <option name="number" value="00119" />
+      <option name="presentableId" value="LOCAL-00119" />
+      <option name="project" value="LOCAL" />
+      <updated>1682299754149</updated>
+    </task>
+    <task id="LOCAL-00120" summary="bug fix in snr">
+      <created>1682299811614</created>
+      <option name="number" value="00120" />
+      <option name="presentableId" value="LOCAL-00120" />
+      <option name="project" value="LOCAL" />
+      <updated>1682299811614</updated>
+    </task>
+    <task id="LOCAL-00121" summary="reusing optimized bounds and not calculating them new">
+      <created>1682299846054</created>
+      <option name="number" value="00121" />
+      <option name="presentableId" value="LOCAL-00121" />
+      <option name="project" value="LOCAL" />
+      <updated>1682299846054</updated>
+    </task>
+    <task id="LOCAL-00122" summary="allowing for non-convex training, and allowing to print last loss, increas window size to 10">
+      <created>1682299898313</created>
+      <option name="number" value="00122" />
+      <option name="presentableId" value="LOCAL-00122" />
+      <option name="project" value="LOCAL" />
+      <updated>1682299898313</updated>
+    </task>
+    <task id="LOCAL-00123" summary="adding dummy value for ICNN and fixing bug in ApproxICNN">
+      <created>1682299941283</created>
+      <option name="number" value="00123" />
+      <option name="presentableId" value="LOCAL-00123" />
+      <option name="project" value="LOCAL" />
+      <updated>1682299941283</updated>
+    </task>
+    <task id="LOCAL-00124" summary="allowing to use no init in ICNN">
+      <created>1682299992476</created>
+      <option name="number" value="00124" />
+      <option name="presentableId" value="LOCAL-00124" />
+      <option name="project" value="LOCAL" />
+      <updated>1682299992476</updated>
+    </task>
+    <task id="LOCAL-00125" summary="adding optional titles">
+      <created>1682300013778</created>
+      <option name="number" value="00125" />
+      <option name="presentableId" value="LOCAL-00125" />
+      <option name="project" value="LOCAL" />
+      <updated>1682300013778</updated>
+    </task>
+    <task id="LOCAL-00126" summary="experiments">
+      <created>1682300029478</created>
+      <option name="number" value="00126" />
+      <option name="presentableId" value="LOCAL-00126" />
+      <option name="project" value="LOCAL" />
+      <updated>1682300029478</updated>
+    </task>
+    <task id="LOCAL-00127" summary="trying to figure out multiprocessing">
+      <created>1682313173147</created>
+      <option name="number" value="00127" />
+      <option name="presentableId" value="LOCAL-00127" />
+      <option name="project" value="LOCAL" />
+      <updated>1682313173147</updated>
+    </task>
+    <task id="LOCAL-00128" summary="saving bounds of snv">
+      <created>1682351375999</created>
+      <option name="number" value="00128" />
+      <option name="presentableId" value="LOCAL-00128" />
+      <option name="project" value="LOCAL" />
+      <updated>1682351375999</updated>
+    </task>
+    <task id="LOCAL-00129" summary="sampling with only previous layer">
+      <created>1682351393931</created>
+      <option name="number" value="00129" />
+      <option name="presentableId" value="LOCAL-00129" />
+      <option name="project" value="LOCAL" />
+      <updated>1682351393931</updated>
+    </task>
+    <option name="localTasksCounter" value="130" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -591,17 +592,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="make plotting optional" />
-    <MESSAGE value="usage of optimized bounds optional" />
-    <MESSAGE value="removing redundant dhov verifier" />
-    <MESSAGE value="adding SNR to every layer for dhov" />
-    <MESSAGE value="removed prohibition of the use of constraints other than exact max for approx max" />
-    <MESSAGE value="allowing to stor samples, making logs optional, added random grouping" />
-    <MESSAGE value="simplifying constraints" />
-    <MESSAGE value="code cleanup" />
-    <MESSAGE value="changing names of last layer var" />
-    <MESSAGE value="fixing bug in preemptive stopping" />
-    <MESSAGE value="added sampling method at 0" />
     <MESSAGE value="printing current layer when printing optimized bounds" />
     <MESSAGE value="faster verification" />
     <MESSAGE value="printing current layer when printing new bounds" />
@@ -616,7 +606,18 @@
     <MESSAGE value="making per feasible sampling faster by using bounds instead of constraints" />
     <MESSAGE value="adding unfeasible samples to the ambient space for per_group_feasible" />
     <MESSAGE value="bug fix, mixed up including fixed neurons or not in grouping" />
-    <option name="LAST_COMMIT_MESSAGE" value="bug fix, mixed up including fixed neurons or not in grouping" />
+    <MESSAGE value="reordering sampling new for uniform, not tightening bounds for last layer, force break returns function, allowing print last loss" />
+    <MESSAGE value="bug fix in snr" />
+    <MESSAGE value="reusing optimized bounds and not calculating them new" />
+    <MESSAGE value="allowing for non-convex training, and allowing to print last loss, increas window size to 10" />
+    <MESSAGE value="adding dummy value for ICNN and fixing bug in ApproxICNN" />
+    <MESSAGE value="allowing to use no init in ICNN" />
+    <MESSAGE value="adding optional titles" />
+    <MESSAGE value="experiments" />
+    <MESSAGE value="trying to figure out multiprocessing" />
+    <MESSAGE value="saving bounds of snv" />
+    <MESSAGE value="sampling with only previous layer" />
+    <option name="LAST_COMMIT_MESSAGE" value="sampling with only previous layer" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -633,13 +634,8 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/script/DHOV/DataSampling.py</url>
-          <line>334</line>
+          <line>482</line>
           <option name="timeStamp" value="998" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/script/DHOV/MultiDHOV.py</url>
-          <line>204</line>
-          <option name="timeStamp" value="1006" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/script/NeuralNets/trainFunction.py</url>
@@ -648,13 +644,33 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/script/NeuralNets/Networks.py</url>
-          <line>548</line>
+          <line>549</line>
           <option name="timeStamp" value="1039" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/script/DHOV/DataSampling.py</url>
-          <line>40</line>
+          <line>38</line>
           <option name="timeStamp" value="1041" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/script/DHOV/DataSampling.py</url>
+          <line>748</line>
+          <option name="timeStamp" value="1067" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/script/DHOV/DataSampling.py</url>
+          <line>324</line>
+          <option name="timeStamp" value="1113" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/script/DHOV/MultiDHOV.py</url>
+          <line>484</line>
+          <option name="timeStamp" value="1124" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/script/DHOV/DataSampling.py</url>
+          <line>20</line>
+          <option name="timeStamp" value="1125" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="jupyter-line">
           <url>notebook://C:/Users/Ufuk/Documents/Programming/ICNN_verification/script/Experiments/NeuronBounds.ipynb</url>
@@ -696,6 +712,11 @@
           <line>1</line>
           <option name="timeStamp" value="1034" />
         </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="jupyter-line">
+          <url>notebook://C:/Users/Ufuk/Documents/Programming/ICNN_verification/script/Experiments/MaxFunctionVisualization.ipynb</url>
+          <line>9</line>
+          <option name="timeStamp" value="1127" />
+        </line-breakpoint>
       </breakpoints>
       <default-breakpoints>
         <breakpoint type="python-exception">
@@ -715,7 +736,7 @@
     <SUITE FILE_PATH="coverage/ICNN_verification$main.coverage" NAME="main Coverage Results" MODIFIED="1670249050825" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/ICNN_verification$DHOV.coverage" NAME="DHOV Coverage Results" MODIFIED="1674467903275" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script" />
     <SUITE FILE_PATH="coverage/ICNN_verification$MainMainDHOV.coverage" NAME="MainMainDHOV Coverage Results" MODIFIED="1676474643544" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script/DHOV" />
-    <SUITE FILE_PATH="coverage/ICNN_verification$MainDHOV.coverage" NAME="MainDHOV Coverage Results" MODIFIED="1681951922529" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script/DHOV" />
+    <SUITE FILE_PATH="coverage/ICNN_verification$MainDHOV.coverage" NAME="MainDHOV Coverage Results" MODIFIED="1683062956969" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script/DHOV" />
     <SUITE FILE_PATH="coverage/DeepHull$Verification.coverage" NAME="Verification Coverage Results" MODIFIED="1669122239179" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script" />
     <SUITE FILE_PATH="coverage/ICNN_verification$test.coverage" NAME="test Coverage Results" MODIFIED="1673302337900" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/script" />
     <SUITE FILE_PATH="coverage/DeepHull$eval.coverage" NAME="eval Coverage Results" MODIFIED="1668723858367" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />

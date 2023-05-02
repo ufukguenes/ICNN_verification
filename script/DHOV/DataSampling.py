@@ -17,7 +17,6 @@ def sample_max_radius(icnns, sample_size, group_indices, curr_bounds_layer_out, 
     included_space = torch.empty(0, dtype=data_type).to(device)
     ambient_space = torch.empty(0, dtype=data_type).to(device)
 
-    i = 0
     for samp in samples:
         is_included = True
         samp = torch.unsqueeze(samp, 0)
@@ -32,8 +31,6 @@ def sample_max_radius(icnns, sample_size, group_indices, curr_bounds_layer_out, 
 
         if is_included:
             included_space = torch.cat([included_space, samp], dim=0)
-            print(i)
-            i+=1
             if len(included_space) == sample_size:
                 break
         elif keep_ambient_space:
@@ -83,7 +80,6 @@ def sample_uniform_over_icnn(data_samples, amount, icnns, group_indices, curr_bo
     ub = curr_bounds_layer_out[1]
     shape = data_samples.size(1)
     random_samples = (ub - lb) * torch.rand((amount, shape), dtype=data_type).to(device) + lb
-
     index_not_to_be_deleted = []
     for i, samp in enumerate(random_samples):
         is_included = True
@@ -199,6 +195,8 @@ def sample_per_group_as_lp(data_samples, amount, affine_w, affine_b, index_to_se
         for i in range(num_rand_samples):
             for k, index in enumerate(rand_index):
                 cs[i][index] = rand_samples[i][k]
+
+    cs = torch.nn.functional.normalize(cs, dim=1)
 
     output_prev_layer = []
     for i in range(affine_w.shape[1]):

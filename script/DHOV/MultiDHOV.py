@@ -387,13 +387,13 @@ class MultiDHOV:
                         if sampling_method == "per_group_sampling":
                             """included_space = ds.sample_per_group(included_space, sample_count // 2, affine_w, center,
                                                                  eps, index_to_select)"""
-                            included_space = ds.sample_per_group(included_space, inc_space_sample_count // 2, affine_w,
+                            included_space = ds.sample_per_group(included_space, inc_space_sample_count, affine_w,
                                                                  center,
                                                                  eps, index_to_select, rand_samples_percent=0.2,
                                                                  rand_sample_alternation_percent=0.01)
-                            included_space = ds.samples_uniform_over(included_space, inc_space_sample_count // 2,
+                            """included_space = ds.samples_uniform_over(included_space, inc_space_sample_count // 2,
                                                                      eps_bounds,
-                                                                     keep_samples=True)
+                                                                     keep_samples=True)"""
 
                         elif sampling_method == "per_group_feasible":
                             copy_model = nn_encoding_model.copy()
@@ -411,8 +411,11 @@ class MultiDHOV:
                         t_group = time.time()
                         copy_model = nn_encoding_model.copy()
                         if sampling_method == "per_group_sampling":
-
-                            """included_space = ds.sample_per_group_two(included_space, inc_space_sample_count, affine_w, affine_b, index_to_select,
+                            """if prev_layer_index == 0:
+                                prev_prev_layer_out = eps_bounds
+                            else:
+                                prev_prev_layer_out = bounds_layer_out[prev_layer_index - 1]
+                            included_space = ds.sample_per_group_two(included_space, inc_space_sample_count, affine_w, affine_b, index_to_select,
                                                                      bounds_affine_out[current_layer_index], bounds_layer_out[current_layer_index], list_of_icnns[prev_layer_index],
                                                                      all_group_indices[prev_layer_index], bounds_affine_out[prev_layer_index], bounds_layer_out[prev_layer_index],
                                                                      prev_prev_layer_out, parameter_list[i-2], parameter_list[i-1],

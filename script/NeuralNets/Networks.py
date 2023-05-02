@@ -219,7 +219,8 @@ class ICNN(nn.Module, VerifiableNet):
                     w = list(elem.parameters())
                     w[0].data = torch.zeros_like(w[0], dtype=data_type).to(device)
             else:
-                third_last_layer = list(self.ws[penultimate_layer_index - 1].parameters())
+                t = 1
+                third_last_layer = list(self.ws[penultimate_layer_index].parameters())
                 third_last_w = third_last_layer[0]
                 third_last_b = third_last_layer[1]
                 third_last_w.data = torch.zeros_like(third_last_w, dtype=data_type).to(device)
@@ -608,6 +609,16 @@ def boltzmann_op(x, parameter):
     summed_exp = exp.sum(dim=1, keepdim=True)
     return torch.div(summed, summed_exp)
 
+def boltzmann_2(x, y, parameter):
+    x_par = parameter * x
+    y_par = parameter * y
+    x_exp = torch.exp(x_par)
+    y_exp = torch.exp(y_par)
+    x_mul = torch.mul(x_exp, x)
+    y_mul = torch.mul(y_exp, y)
+    summed = torch.div(torch.add(x_mul, y_mul), torch.add(x_exp, y_exp))
+    return summed
+
 
 def boltzmann_constraints(model, input_var, output_var, parameter):
     scale_var = model.addMVar(input_var.size, lb=-float('inf'))
@@ -635,6 +646,23 @@ def mellowmax(x, parameter):
     out = torch.div(torch.log(summed), parameter)
     return out
 
+def mellowmax_2(x, y, parameter):
+    x = parameter * x
+    y = parameter * y
+    x = torch.exp(x)
+    y = torch.exp(y)
+    summed = torch.div(torch.add(x, y), 2)
+    out = torch.div(torch.log(summed), parameter)
+    return out
+
+def logsumexp_2(x, y, parameter):
+    x = parameter * x
+    y = parameter * y
+    x = torch.exp(x)
+    y = torch.exp(y)
+    summed = torch.add(x, y)
+    out = torch.div(torch.log(summed), parameter)
+    return out
 
 def mellowmax_constraints(model, input_var, output_var, parameter):
     scale_var = model.addMVar(input_var.size, lb=-float('inf'))

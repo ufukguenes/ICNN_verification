@@ -1,0 +1,612 @@
+0/17 | image index 0 ===========================================================================================
+
+approximation of layer: 0
+    number of fixed neurons for current layer: 182
+    encode layer 0 as SNR
+
+approximation of layer: 1
+    time for icnn_bound calculation: 12.619257926940918
+    number of fixed neurons for current layer: 191
+    encode layer 1 as SNR
+
+approximation of layer: 2
+    time for icnn_bound calculation: 36.65613794326782
+    number of fixed neurons for current layer: 200
+    encode layer 2 as SNR
+
+approximation of layer: 3
+    time for icnn_bound calculation: 90.70272922515869
+    number of fixed neurons for current layer: 192
+    encode layer 3 as MILP
+time for icnn_bound calculation (last layer):0.010822772979736328
+done...
+var 0: -2.432210144042422
+var 1: 2.7862211076402694
+var 2: 1.9096281931308834
+var 3: 11.199393627925536
+var 4: -10.75471489540369
+var 5: 9.031106478451246
+var 6: -7.95017792712018
+var 7: 0.6621138233454236
+var 8: -1.612198195186302
+var 9: 0.020238389766451093
+property NOT verified with max difference 2.16828714947429
+overall time: 145.93492937088013
+2/17 | image index 2 ===========================================================================================
+
+approximation of layer: 0
+    number of fixed neurons for current layer: 163
+    encode layer 0 as SNR
+
+approximation of layer: 1
+    time for icnn_bound calculation: 15.145730257034302
+    number of fixed neurons for current layer: 157
+    encode layer 1 as SNR
+
+approximation of layer: 2
+    time for icnn_bound calculation: 55.9730339050293
+    number of fixed neurons for current layer: 154
+    encode layer 2 as SNR
+
+approximation of layer: 3
+    time for icnn_bound calculation: 163.9581024646759
+    number of fixed neurons for current layer: 133
+    encode layer 3 as MILP
+time for icnn_bound calculation (last layer):0.0021276473999023438
+done...
+var 0: -2.4615309989935836
+var 1: -1.4189296365723578
+var 2: 5.026892356090256
+var 3: 1.4409879112663104
+var 4: 3.3006623310544603
+var 5: -2.5643075858590283
+var 6: -0.7896431189661719
+var 7: 2.1369644544969955
+var 8: -3.3325516079914292
+var 9: -1.128690196941779
+property NOT verified with max difference 1.7262300250357958
+overall time: 263.6551163196564
+4/17 | image index 4 ===========================================================================================
+
+approximation of layer: 0
+    number of fixed neurons for current layer: 169
+    encode layer 0 as SNR
+
+approximation of layer: 1
+    time for icnn_bound calculation: 14.82097315788269
+    number of fixed neurons for current layer: 179
+    encode layer 1 as SNR
+
+approximation of layer: 2
+    time for icnn_bound calculation: 49.17454433441162
+    number of fixed neurons for current layer: 191
+    encode layer 2 as SNR
+
+approximation of layer: 3
+    time for icnn_bound calculation: 122.70232129096985
+    number of fixed neurons for current layer: 185
+    encode layer 3 as MILP
+time for icnn_bound calculation (last layer):0.0
+done...
+var 0: -6.50161122452824
+var 1: -1.937730147300325
+var 2: -4.324623824575591
+var 3: 0.19435169592229773
+var 4: 3.8089049196415945
+var 5: 2.596537869575516
+var 6: -7.189390796851926
+var 7: -1.6511703973364078
+var 8: 7.503302452674264
+var 9: 7.313228547098799
+property NOT verified with max difference 0.19007390557546477
+overall time: 214.04203534126282
+14/17 | image index 14 ===========================================================================================
+
+approximation of layer: 0
+    number of fixed neurons for current layer: 168
+    encode layer 0 as SNR
+
+approximation of layer: 1
+    time for icnn_bound calculation: 13.836833715438843
+    number of fixed neurons for current layer: 155
+    encode layer 1 as SNR
+
+approximation of layer: 2
+    time for icnn_bound calculation: 53.59172987937927
+    number of fixed neurons for current layer: 182
+    encode layer 2 as SNR
+
+approximation of layer: 3
+    time for icnn_bound calculation: 261.75221610069275
+    number of fixed neurons for current layer: 151
+    encode layer 3 as MILP
+time for icnn_bound calculation (last layer):0.01043558120727539
+done...
+var 0: -6.6526235322499465
+var 1: 7.284957827097567
+var 2: 0.3101495311498237
+var 3: 1.7353562503849354
+var 4: -2.714765144467038
+var 5: 0.09349292814548171
+var 6: -2.0783443323695883
+var 7: -1.4800795030065936
+var 8: 6.717045089313602
+var 9: -1.0587143213306147
+property verified with max difference -0.5679127377839651
+overall time: 359.4592308998108
+18/17 | image index 18 ===========================================================================================
+
+approximation of layer: 0
+    number of fixed neurons for current layer: 146
+    encode layer 0 as SNR
+
+approximation of layer: 1
+    time for icnn_bound calculation: 35.13627815246582
+    number of fixed neurons for current layer: 142
+    encode layer 1 as SNR
+
+approximation of layer: 2
+    time for icnn_bound calculation: 132.08045506477356
+    number of fixed neurons for current layer: 137
+    encode layer 2 as SNR
+
+approximation of layer: 3
+    time for icnn_bound calculation: 359.61702728271484
+    number of fixed neurons for current layer: 113
+    encode layer 3 as MILP
+time for icnn_bound calculation (last layer):0.006115913391113281
+done...
+var 0: -1.039856212898039
+var 1: -1.1966334352598627
+var 2: -2.2432962021133047
+var 3: 1.5478235812733234
+var 4: -1.9054459630488387
+var 5: 7.12224890005939
+var 6: 1.3172198537945188
+var 7: -5.357894970564594
+var 8: 1.6309646982218784
+var 9: 0.06957275335987156
+property NOT verified with max difference 5.80502904626487
+overall time: 593.4642114639282
+19/17 | image index 19 ===========================================================================================
+
+approximation of layer: 0
+    number of fixed neurons for current layer: 159
+    encode layer 0 as SNR
+
+approximation of layer: 1
+    time for icnn_bound calculation: 19.09755301475525
+    number of fixed neurons for current layer: 170
+    encode layer 1 as SNR
+
+approximation of layer: 2
+    time for icnn_bound calculation: 65.98959040641785
+    number of fixed neurons for current layer: 171
+    encode layer 2 as SNR
+
+approximation of layer: 3
+    time for icnn_bound calculation: 175.94940185546875
+    number of fixed neurons for current layer: 160
+    encode layer 3 as MILP
+time for icnn_bound calculation (last layer):0.00407099723815918
+done...
+var 0: -7.350491738744791
+var 1: 3.1041693806636874
+var 2: -2.2871820721101193
+var 3: 6.758718966739417
+var 4: -1.2538081244015302
+var 5: 2.2372481592305093
+var 6: -9.81900849027793
+var 7: 1.963249169027102
+var 8: 3.2214036666012578
+var 9: 5.453450399549369
+property NOT verified with max difference 1.3052685671900486
+overall time: 289.8807370662689
+22/17 | image index 22 ===========================================================================================
+
+approximation of layer: 0
+    number of fixed neurons for current layer: 159
+    encode layer 0 as SNR
+
+approximation of layer: 1
+    time for icnn_bound calculation: 17.73229742050171
+    number of fixed neurons for current layer: 148
+    encode layer 1 as SNR
+
+approximation of layer: 2
+    time for icnn_bound calculation: 77.53976774215698
+    number of fixed neurons for current layer: 168
+    encode layer 2 as SNR
+
+approximation of layer: 3
+    time for icnn_bound calculation: 195.68086695671082
+    number of fixed neurons for current layer: 157
+    encode layer 3 as MILP
+time for icnn_bound calculation (last layer):0.010046243667602539
+done...
+var 0: -6.087827309012605
+var 1: -1.1578128333690296
+var 2: -1.594635425195543
+var 3: -1.8541297961348597
+var 4: 6.412510618835856
+var 5: -0.5569129111410405
+var 6: -3.7747443488189916
+var 7: 0.9295084979710193
+var 8: 2.375261088305592
+var 9: 4.638059943045706
+property NOT verified with max difference 1.77445067579015
+overall time: 327.5537075996399
+24/17 | image index 25 ===========================================================================================
+
+approximation of layer: 0
+    number of fixed neurons for current layer: 183
+    encode layer 0 as SNR
+
+approximation of layer: 1
+    time for icnn_bound calculation: 12.431799173355103
+    number of fixed neurons for current layer: 209
+    encode layer 1 as SNR
+
+approximation of layer: 2
+    time for icnn_bound calculation: 36.523601770401
+    number of fixed neurons for current layer: 217
+    encode layer 2 as SNR
+
+approximation of layer: 3
+    time for icnn_bound calculation: 79.94392967224121
+    number of fixed neurons for current layer: 233
+    encode layer 3 as MILP
+time for icnn_bound calculation (last layer):0.010013580322265625
+done...
+var 0: -1.192025534920603
+var 1: 3.7076879041054696
+var 2: 10.62672421757454
+var 3: 10.639366993245725
+var 4: -11.913012457249245
+var 5: -0.48223709938339354
+var 6: -7.5240322292255755
+var 7: -1.142185993920874
+var 8: 5.662743324756825
+var 9: -4.45559926001787
+property NOT verified with max difference 0.012642775671183758
+overall time: 134.93702960014343
+25/17 | image index 26 ===========================================================================================
+
+approximation of layer: 0
+    number of fixed neurons for current layer: 143
+    encode layer 0 as SNR
+
+approximation of layer: 1
+    time for icnn_bound calculation: 23.24826455116272
+    number of fixed neurons for current layer: 159
+    encode layer 1 as SNR
+
+approximation of layer: 2
+    time for icnn_bound calculation: 90.26751708984375
+    number of fixed neurons for current layer: 163
+    encode layer 2 as SNR
+
+approximation of layer: 3
+    time for icnn_bound calculation: 207.28151202201843
+    number of fixed neurons for current layer: 150
+    encode layer 3 as MILP
+time for icnn_bound calculation (last layer):0.008115053176879883
+done...
+var 0: -6.6227990826716745
+var 1: -0.7062235918480555
+var 2: -3.245140530793911
+var 3: 1.9602774066110729
+var 4: 4.50732362158498
+var 5: 0.7036000459449165
+var 6: -6.899164531076577
+var 7: 1.8463415080549508
+var 8: 2.3825061999478185
+var 9: 6.288129574776312
+property NOT verified with max difference 1.7808059531913318
+overall time: 346.8443830013275
+28/17 | image index 29 ===========================================================================================
+
+approximation of layer: 0
+    number of fixed neurons for current layer: 179
+    encode layer 0 as SNR
+
+approximation of layer: 1
+    time for icnn_bound calculation: 12.593067169189453
+    number of fixed neurons for current layer: 172
+    encode layer 1 as SNR
+
+approximation of layer: 2
+    time for icnn_bound calculation: 41.88969349861145
+    number of fixed neurons for current layer: 187
+    encode layer 2 as SNR
+
+approximation of layer: 3
+    time for icnn_bound calculation: 119.51672792434692
+    number of fixed neurons for current layer: 151
+    encode layer 3 as MILP
+time for icnn_bound calculation (last layer):0.0020275115966796875
+done...
+var 0: -2.5865900465232547
+var 1: 1.752059030816456
+var 2: 1.1091624815703922
+var 3: -2.0361418936945976
+var 4: -0.010635271290620696
+var 5: -0.8145375163170759
+var 6: -0.07408735712191494
+var 7: 0.6800854785630367
+var 8: 3.6107070012075586
+var 9: -1.2864496283008564
+property NOT verified with max difference 2.930621522644522
+overall time: 192.1326892375946
+29/17 | image index 30 ===========================================================================================
+
+approximation of layer: 0
+    number of fixed neurons for current layer: 165
+    encode layer 0 as SNR
+
+approximation of layer: 1
+    time for icnn_bound calculation: 14.20670199394226
+    number of fixed neurons for current layer: 158
+    encode layer 1 as SNR
+
+approximation of layer: 2
+    time for icnn_bound calculation: 50.95241355895996
+    number of fixed neurons for current layer: 189
+    encode layer 2 as SNR
+
+approximation of layer: 3
+    time for icnn_bound calculation: 139.12386083602905
+    number of fixed neurons for current layer: 163
+    encode layer 3 as MILP
+time for icnn_bound calculation (last layer):0.0
+done...
+var 0: -7.012319639503555
+var 1: 7.338619489582966
+var 2: 3.952797317237903
+var 3: 6.5197607812891
+var 4: -1.8543108528946748
+var 5: -2.825808084174642
+var 6: -3.670201783720562
+var 7: 3.0491697712272123
+var 8: 0.07616540303922203
+var 9: -2.457806039198748
+property NOT verified with max difference 0.8188587082938659
+overall time: 220.5494794845581
+31/17 | image index 32 ===========================================================================================
+
+approximation of layer: 0
+    number of fixed neurons for current layer: 157
+    encode layer 0 as SNR
+
+approximation of layer: 1
+    time for icnn_bound calculation: 17.229806423187256
+    number of fixed neurons for current layer: 143
+    encode layer 1 as SNR
+
+approximation of layer: 2
+    time for icnn_bound calculation: 72.31128764152527
+    number of fixed neurons for current layer: 139
+    encode layer 2 as SNR
+
+approximation of layer: 3
+    time for icnn_bound calculation: 221.39638710021973
+    number of fixed neurons for current layer: 113
+    encode layer 3 as MILP
+time for icnn_bound calculation (last layer):0.0
+done...
+var 0: 0.2939375016085721
+var 1: -0.37333392557171674
+var 2: 5.1040386888131595
+var 3: -1.626673553953081
+var 4: -0.24147452958845594
+var 5: 0.1495591306961881
+var 6: 5.624494011990634
+var 7: 0.5528516220310973
+var 8: -4.493147667068658
+var 9: -4.943881992200535
+property verified with max difference -0.520455323025427
+overall time: 464.77711367607117
+32/17 | image index 33 ===========================================================================================
+
+approximation of layer: 0
+    number of fixed neurons for current layer: 175
+    encode layer 0 as SNR
+
+approximation of layer: 1
+    time for icnn_bound calculation: 14.551548480987549
+    number of fixed neurons for current layer: 177
+    encode layer 1 as SNR
+
+approximation of layer: 2
+    time for icnn_bound calculation: 53.68103265762329
+    number of fixed neurons for current layer: 183
+    encode layer 2 as SNR
+
+approximation of layer: 3
+    time for icnn_bound calculation: 137.94549751281738
+    number of fixed neurons for current layer: 174
+    encode layer 3 as MILP
+time for icnn_bound calculation (last layer):0.008408546447753906
+done...
+var 0: -5.013630546481665
+var 1: 0.8991594528225404
+var 2: -0.6789975183723422
+var 3: 3.8120239271591285
+var 4: 0.015280647618705068
+var 5: -1.349746426084752
+var 6: -10.301780791074691
+var 7: 7.604661773791969
+var 8: -0.00988101662828278
+var 9: 6.0336338146988355
+property NOT verified with max difference 1.5710279590931342
+overall time: 226.93114161491394
+37/17 | image index 38 ===========================================================================================
+
+approximation of layer: 0
+    number of fixed neurons for current layer: 177
+    encode layer 0 as SNR
+
+approximation of layer: 1
+    time for icnn_bound calculation: 14.705331802368164
+    number of fixed neurons for current layer: 173
+    encode layer 1 as SNR
+
+approximation of layer: 2
+    time for icnn_bound calculation: 51.50504732131958
+    number of fixed neurons for current layer: 184
+    encode layer 2 as SNR
+
+approximation of layer: 3
+    time for icnn_bound calculation: 132.73360872268677
+    number of fixed neurons for current layer: 164
+    encode layer 3 as MILP
+time for icnn_bound calculation (last layer):0.00033855438232421875
+done...
+var 0: -2.6750198149759914
+var 1: 0.6502162936236795
+var 2: 8.621279944390542
+var 3: 3.7939786954593555
+var 4: -2.022909679892628
+var 5: -4.712526901862196
+var 6: -5.848710880546573
+var 7: 7.482175979736137
+var 8: -2.587100054520578
+var 9: -1.013064363825654
+property NOT verified with max difference 1.1391039646544054
+overall time: 217.56819224357605
+41/17 | image index 42 ===========================================================================================
+
+approximation of layer: 0
+    number of fixed neurons for current layer: 151
+    encode layer 0 as SNR
+
+approximation of layer: 1
+    time for icnn_bound calculation: 20.105706453323364
+    number of fixed neurons for current layer: 156
+    encode layer 1 as SNR
+
+approximation of layer: 2
+    time for icnn_bound calculation: 78.23179006576538
+    number of fixed neurons for current layer: 172
+    encode layer 2 as SNR
+
+approximation of layer: 3
+    time for icnn_bound calculation: 201.61138892173767
+    number of fixed neurons for current layer: 151
+    encode layer 3 as MILP
+time for icnn_bound calculation (last layer):0.0
+done...
+var 0: -3.907161882546096
+var 1: 1.6422781731406941
+var 2: -0.37231797106191244
+var 3: 2.118700270346982
+var 4: -4.167260170266467
+var 5: 2.299611583690882
+var 6: -7.222277064946525
+var 7: 2.3789729849639247
+var 8: 5.109019443299331
+var 9: 3.1364704179666734
+property NOT verified with max difference 2.7300464583354063
+overall time: 317.7550847530365
+42/17 | image index 43 ===========================================================================================
+
+approximation of layer: 0
+    number of fixed neurons for current layer: 159
+    encode layer 0 as SNR
+
+approximation of layer: 1
+    time for icnn_bound calculation: 19.375170707702637
+    number of fixed neurons for current layer: 166
+    encode layer 1 as SNR
+
+approximation of layer: 2
+    time for icnn_bound calculation: 70.03558087348938
+    number of fixed neurons for current layer: 176
+    encode layer 2 as SNR
+
+approximation of layer: 3
+    time for icnn_bound calculation: 179.31886959075928
+    number of fixed neurons for current layer: 170
+    encode layer 3 as MILP
+time for icnn_bound calculation (last layer):0.010459661483764648
+done...
+var 0: -7.113691651796408
+var 1: 2.1308661257184394
+var 2: -2.0800651015498186
+var 3: 6.3936725737203695
+var 4: -0.9639575721803268
+var 5: 0.7923618695350187
+var 6: -10.905651562289975
+var 7: 3.1888344829391255
+var 8: 3.156819506051021
+var 9: 7.174868526742909
+property verified with max difference -0.7811959530225394
+overall time: 299.3714406490326
+45/17 | image index 46 ===========================================================================================
+
+approximation of layer: 0
+    number of fixed neurons for current layer: 162
+    encode layer 0 as SNR
+
+approximation of layer: 1
+    time for icnn_bound calculation: 18.19964838027954
+    number of fixed neurons for current layer: 174
+    encode layer 1 as SNR
+
+approximation of layer: 2
+    time for icnn_bound calculation: 62.83373808860779
+    number of fixed neurons for current layer: 200
+    encode layer 2 as SNR
+
+approximation of layer: 3
+    time for icnn_bound calculation: 148.1044466495514
+    number of fixed neurons for current layer: 199
+    encode layer 3 as MILP
+time for icnn_bound calculation (last layer):0.0
+done...
+var 0: 1.1304187205747782
+var 1: -0.31064030524661757
+var 2: 6.612246380972723
+var 3: 4.025009227592996
+var 4: -10.21680269128954
+var 5: 1.4392975654228133
+var 6: -4.918929977324192
+var 7: -1.5488765041029833
+var 8: 6.855030212531645
+var 9: -1.592942680313982
+property verified with max difference -0.24278383155892116
+overall time: 246.85437989234924
+47/17 | image index 48 ===========================================================================================
+
+approximation of layer: 0
+    number of fixed neurons for current layer: 177
+    encode layer 0 as SNR
+
+approximation of layer: 1
+    time for icnn_bound calculation: 15.777925491333008
+    number of fixed neurons for current layer: 189
+    encode layer 1 as SNR
+
+approximation of layer: 2
+    time for icnn_bound calculation: 42.49801778793335
+    number of fixed neurons for current layer: 195
+    encode layer 2 as SNR
+
+approximation of layer: 3
+    time for icnn_bound calculation: 113.84699749946594
+    number of fixed neurons for current layer: 177
+    encode layer 3 as MILP
+time for icnn_bound calculation (last layer):0.0
+done...
+var 0: -5.15027448007657
+var 1: 2.404666639914507
+var 2: -3.926602257314047
+var 3: 4.260703987479298
+var 4: -2.8271976051785175
+var 5: 6.511991590819582
+var 6: -4.81110121533014
+var 7: -1.6692792969934884
+var 8: 3.901866174651965
+var 9: 2.609147083956105
+property NOT verified with max difference 3.902844506863477
+overall time: 187.1643831729889
