@@ -87,7 +87,7 @@ def multi_net2D():
                                      sample_over_input_space=False, sample_over_output_space=True,
                                      tighten_bounds=True, layers_as_snr=[], layers_as_milp=[],
                                      use_fixed_neurons_in_grouping=False, sampling_method="per_group_sampling",
-                                     force_inclusion_steps=0, preemptive_stop=False, even_gradient_training=False,
+                                     force_inclusion_steps=0, preemptive_stop=False,
                                      keep_ambient_space=True, data_grad_descent_steps=0, opt_steps_gd=200,
                                      train_outer=False, print_training_loss=False, print_new_bounds=False,
                                      grouping_method="consecutive", group_num_multiplier=5, store_samples=False,

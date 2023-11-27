@@ -26,6 +26,34 @@ import warnings
 
 
 class MultiDHOV:
+    """
+    Multiple groups - DeepHull-Over approximated-Verification
+    This class provides a method which encodes a NN given a specific input as a Gurobi encoding.
+    The encoding can be forced to be an over approximation.
+    It can encode multiple groups within one layer together
+
+    Attributes
+        self.nn_encoding_model = None :  the final Gurobi model/ encoding of the NN
+        self.input_var = None : the Gurobi variables describing the input neurons of the NN
+        self.output_var = None : the Gurobi variables describing the output neurons of the NN
+        self.bounds_affine_out = None : List of torch.Tensor describing bounds for each layer and each neuron
+            before an activation function
+        self.bounds_layer_out = None : List of torch.Tensor describing bounds for each layer and each neuron
+            after an activation function. It is the same as self.bounds_affine_out for each layer where
+            there is no activation function
+        self.fixed_neuron_per_layer_lower = None : List of neurons which have been fixed to 0 and
+            therefore don't need to be approximated by an ICNN (i.e. for Relu(x)=0 because x <= 0)
+        self.fixed_neuron_per_layer_upper = None : List of neurons which have been fixed to x and
+            therefore don't need to be approximated by an ICNN (i.e. for Relu(x)=x because x >= 0)
+        self.num_fixed_neurons_layer = None : the total number of neurons which have been fixed in each layer
+        self.all_group_indices = None : List of groups created for each layer by indices
+            indicating the neuron of that layer
+        self.list_of_icnns = None : List of all ICNNs trained for each group in each layer
+        self.list_of_included_samples = [] : if wanted, the included space samples used for training each ICNN
+            are stored here
+        self.list_of_ambient_samples = [] : if wanted, the included ambient samples used for training each ICNN
+            are stored here
+    """
     def __init__(self):
         self.nn_encoding_model = None
         self.input_var = None
@@ -45,10 +73,85 @@ class MultiDHOV:
                            break_after=None, tighten_bounds=False, use_fixed_neurons_in_grouping=False, layers_as_milp=[], layers_as_snr=[],
                            keep_ambient_space=False, sample_new=True, use_over_approximation=True, opt_steps_gd=100,
                            sample_over_input_space=False, sample_over_output_space=True, data_grad_descent_steps=0,
-                           train_outer=False, preemptive_stop=True, even_gradient_training=False, store_samples=False,
+                           train_outer=False, preemptive_stop=True, store_samples=False,
                            force_inclusion_steps=0, grouping_method="consecutive", group_num_multiplier=None,
                            init_network=False, adapt_lambda="none", should_plot='none', optimizer="adam",
                            print_training_loss=False, print_last_loss=False, print_optimization_steps=False, print_new_bounds=False):
+        """
+
+        :param nn: the NN to encode as a Gurobi model given. This has to be a Sequential/ Feedforward NN
+        :param input: the input to the NN for which the encoding should be generated
+        :param icnn_factory: ICNNFactory that can generate new ICNNs given a needed input dimension
+        :param group_size: the size of one group for the approximation with the ICNN. If not enough neurons are
+            available the group size is smaller
+        :param eps: the epsilon radius for around the input (l-infinity norm)
+        :param icnn_batch_size: batch size for each ICNN. Usually we can fit all training data into one batch
+        :param icnn_epochs: maximum number of epochs each ICNN is going to train if not interrupted
+        :param sample_count: number of trainings data points generated for each ICNN.
+            Depending on the parameters sampling_method, sample_new and keep_ambient_space the actual number of samples
+            can be different from this number
+        :param sampling_method: The method used for generating new training data points for the ICNN
+        :param hyper_lambda: the hyperparameter controlling the balance between inclusion loss and ambient loss
+        :param init_affine_bounds: List of torch.Tensor of each neuron in each layer giving a lower and upper bound
+            of the output of that neuron before the activation function.
+            If not provided and tighten_bounds is false these will be just box-bounds
+        :param init_layer_bounds: List of torch.Tensor of each neuron in each layer giving a lower and upper bound
+            of the output of that neuron after the activation function. It should be same as init_layer_bounds for
+            each layer where there is no activation function.
+            If not provided and tighten_bounds is false these will be just box-bounds
+        :param break_after: int, parameter to preemptively interrupt the generation of the encoding for
+            debugging purpose. breaks after n many groups of neurons have been approximated
+        :param tighten_bounds: if true, the bounds for self.bounds_affine_out, self.bounds_layer_out are not just
+            box-bounds/ the bound provided by init_affine_bounds, init_layer_bounds, for each neuron a new
+            upper and lower bound will be determined by solving a maximization/ minimization problem
+            given the current encoding of the NN
+        :param use_fixed_neurons_in_grouping: boolean deciding whether neurons which can be fixed, hence be exactly
+            encoded should instead be included in the grouping and therefore also in the
+            approximation of the layer output
+        :param layers_as_milp: list of indices indicating which layers should be encoded as a MILP instead of using DHOV
+        :param layers_as_snr: list of indices indicating which layers should be encoded with Single-Neuron-Relaxation
+            instead of using DHOV
+        :param keep_ambient_space: if true, the ambient samples used for the previous layer will be used as ambient
+            samples for the training of the approximation of the next layer # todo dependency on sampling_methods
+        :param sample_new: if true, sample_count many new samples will be generated for the representation of the
+            output of each layer, otherwise samples will only be generated in the input space and then propagated,
+            regrouped and split into included and ambient samples for each layer # todo dependency on sampling_methods
+        :param use_over_approximation: boolean, deciding whether each ICNN should be enlarged to guarantee the encoding
+            being an over approximation. If true, it might also shrink an approximation to the minimal size needed
+            to be an over approximation
+        :param opt_steps_gd: number of steps the gradient descent should do for each optimization of a training data point #todo dependency on data_grad_descent_steps should be clear
+        :param sample_over_input_space: if true, (only) ambient samples will be (uniformly) generated in the
+            input space of each layer and through that layer propagated, for training the ICNNs.
+            This is independent of the parameter sample_new
+        :param sample_over_output_space: if true, (only) ambient samples will be (uniformly) generated over the
+            output space of each layer, for training the ICNNs.
+        :param data_grad_descent_steps: number of steps, that the training data points should be tried to optimized
+            by pushing them in the direction of the current decission boundry with gradient descent
+        :param train_outer: if true, (currently not fully working) there will be another training part which only
+            focuses on training the boarder of the approximation
+        :param preemptive_stop: decides if the training of each ICNN can be preemptively stopped if the moving average
+            of the loss is smaller than a certain value
+        :param store_samples: whether the generated training data points for each ICNN should be stored
+        :param force_inclusion_steps: number of times the each ICNN should be enlarged during training to include
+            all included space data samples
+        :param grouping_method: method to use for grouping neurons
+        :param group_num_multiplier: depending on the grouping method, this parameter is multiplied by the number of
+            existing groups to determine a larger of groups (e.g. to have over lapping groups in random grouping) # todo dependency on each grouping method should be clear
+        :param init_network: whether each ICNN should be initialized with the current
+            upper and lower bounds for the neurons in the corresponding group
+        :param adapt_lambda: the strategy to use for adapting the hyperparameter lambda based on the current state of
+            balance between included and ambient space
+        :param should_plot: plotting strategy which generates multiple plots for each group
+            (samples, decision boundary... - depending on the strategy) only works if dimension of group is <= 3
+        :param optimizer: optimizer to use for training each ICNN
+        :param print_training_loss: if true, loss for each epoch during ICNN training will be printed
+        :param print_last_loss: if true, the last loss for each ICNN after training will be printed
+        :param print_optimization_steps: if true, optimization steps of Gurobi will be printed where ever
+            the optimizer is called. That includes, calculating tighter bounds, the proof for over approximation
+            and if applicable data sampling
+        :param print_new_bounds: if true, tightened bounds are printed for each layer
+        :return:
+        """
         valid_adapt_lambda = ["none", "high_low", "included"]
         valid_should_plot = ["none", "simple", "detailed", "verification", "output"]
         valid_optimizer = ["adam", "LBFGS", "SdLBFGS"]
@@ -57,8 +160,6 @@ class MultiDHOV:
         valid_grouping_methods = ["consecutive", "random"]
 
         parameter_list = list(nn.parameters())
-        force_break = False
-
 
         if adapt_lambda not in valid_adapt_lambda:
             raise AttributeError(
@@ -85,7 +186,7 @@ class MultiDHOV:
         if keep_ambient_space and sampling_method == "per_group_sampling":
             warnings.warn("keep_ambient_space is True and sampling method is per_group_sampling. "
                           "Keeping previous samples is not supported when using per group sampling")
-        if sample_over_input_space:
+        if sample_over_input_space and sampling_method in ["per_group_sampling", "per_group_feasible"]:
             sample_over_input_space = False
             sample_over_output_space = True
             warnings.warn("sample_over_input_space is True and sampling method is per_group_sampling. "
@@ -362,9 +463,6 @@ class MultiDHOV:
                                                       fixed_neuron_per_layer_upper[current_layer_index])
 
             all_group_indices.append(group_indices)
-            if force_break:
-                print("aborting because of force break. Layer currently approximated is not ")
-                return
 
             list_of_icnns.append([])
             for group_i in range(number_of_groups):
@@ -651,7 +749,6 @@ class MultiDHOV:
 
 
                 if break_after is not None and break_after == 0:
-                    force_break = True
                     return
 
             # add current layer to model
