@@ -499,7 +499,7 @@ class MultiDHOV:
                                                                 affine_w, affine_b, index_to_select, copy_model,
                                                                 bounds_affine_out[current_layer_index],
                                                                 bounds_layer_out[current_layer_index],
-                                                                prev_layer_index)
+                                                                 )
                         # included_space = ds.sample_min_max_perturbation(included_space, inc_space_sample_count // 2, affine_w, center, eps, keep_samples=True, swap_probability=0.2)
                         # included_space = ds.sample_per_group(included_space, inc_space_sample_count // 2, parameter_list[0], center, eps, index_to_select, with_noise=True, with_sign_swap=True)
                         # included_space = ds.sample_per_group(included_space, inc_space_sample_count // 2, parameter_list[0], center, eps, index_to_select, with_noise=False, with_sign_swap=True)
