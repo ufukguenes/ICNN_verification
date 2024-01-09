@@ -1,0 +1,19 @@
+name: autoLiRPA
+channels:
+  - https://conda.anaconda.org/gurobi
+  - defaults
+dependencies:
+  - appdirs
+  - ninja
+  - numpy
+  - packaging
+  - pylint
+  - pytest
+  - pytest-order
+  - pytorch=1.11
+  - pyyaml
+  - torchvision
+  - tqdm
+  - ipykernel
+  - gurobi
+prefix: /home/philipp/anaconda3/envs/autoLiRPA
