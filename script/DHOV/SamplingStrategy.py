@@ -12,16 +12,58 @@ class SamplingStrategy(ABC):
 		self.current_sample_space = None
 
 	@abstractmethod
-	def initialization(self, sample_count, center, eps):
+	def input_space_sampling_by_round(self, sample_count, center, eps, round_index=None):
+		"""
+		Use this method to sample over the input space of a layer (before propagation).
+		Args:
+			sample_count: number of samples to be generated
+			center: which is to be used as the center of the sampling space
+			eps: the epsilon distance around the center
+			round_index=None: this index provides the current index of the iteration/ layer where the sampling is done.
+			it allows for different sampling methods based on the layer index
+
+		Returns:
+
+		"""
 		pass
 
 	@abstractmethod
-	def get_next_sampling_space(self):
+	def output_space_sampling_by_round(self, sample_count, center, eps, round_index=None):
+		"""
+		Use this method to sample over the output space of a layer (after propagation).
+		Args:
+			sample_count: number of samples to be generated
+			center: which is to be used as the center of the sampling space
+			eps: the epsilon distance around the center
+			round_index=None: this index provides the current index of the iteration/ layer where the sampling is done.
+			it allows for different sampling methods based on the layer index
+
+		Returns:
+
+		"""
 		pass
+
+	@abstractmethod
+	def propagate_space(self, affine_w, affine_b):
+		"""
+		use this method if the strategy depends on affine transformations of the data points
+		Args:
+			affine_w:
+			affine_b:
+
+		Returns:
+
+		"""
+		pass
+
+
 
 
 class PerGroupSamplingStrategy(SamplingStrategy):
 	def initialization(self, sample_count, center, eps):
+		pass
+
+	def propagate_space(self, affine_w, affine_b):
 		pass
 
 	def get_next_sampling_space(self, sample_count, affine_w, center, eps, index_to_select, rand_samples_percent=0.2,
@@ -41,13 +83,12 @@ class LPSolverPerGroupSamplingStrategy(SamplingStrategy):
 															gurobi_model, index_to_select, rand_samples_percent=0.2,
 															rand_sample_alternation_percent=0.01):
 		sample_space = torch.empty((0, affine_w.size(1)), dtype=data_type).to(device)
-		self.current_sample_space = ds.sample_per_group_as_lp(sample_space, sample_count,
-																													affine_w, affine_b,
+		self.current_sample_space = ds.sample_per_group_as_lp(sample_space, sample_count, affine_w, affine_b,
 																													index_to_select, gurobi_model,
 																													current_bounds_affine_out,
 																													prev_layer_index,
-																													rand_samples_percent=0.2,
-																													rand_sample_alternation_percent=0.2)
+																													rand_samples_percent=rand_samples_percent,
+																													rand_sample_alternation_percent=rand_sample_alternation_percent)
 
 		return self.current_sample_space
 
@@ -63,7 +104,7 @@ class PerGroupFeasibleSamplingStrategy(SamplingStrategy):
 
 class PropagateSamplingStrategy(SamplingStrategy, ABC):
 
-	def get_next_sampling_space(self, affine_w, affine_b):
+	def propagate_space(self, affine_w, affine_b):
 		if self.current_sample_space is None:
 			raise RuntimeError("Initialization has not been done")
 

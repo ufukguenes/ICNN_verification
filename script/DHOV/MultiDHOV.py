@@ -23,6 +23,7 @@ from script.NeuralNets.testFunction import test_icnn
 from script.settings import device, data_type
 import gurobipy as grp
 import warnings
+from script.DHOV.SamplingStrategy import SamplingStrategy, UniformSamplingStrategy
 
 
 class MultiDHOV:
@@ -76,7 +77,8 @@ class MultiDHOV:
                            train_outer=False, preemptive_stop=True, store_samples=False,
                            force_inclusion_steps=0, grouping_method="consecutive", group_num_multiplier=None,
                            init_network=False, adapt_lambda="none", should_plot='none', optimizer="adam",
-                           print_training_loss=False, print_last_loss=False, print_optimization_steps=False, print_new_bounds=False):
+                           print_training_loss=False, print_last_loss=False, print_optimization_steps=False, print_new_bounds=False,
+                           sampling_strategy: SamplingStrategy = None):
         """
 
         :param nn: the NN to encode as a Gurobi model given. This has to be a Sequential/ Feedforward NN
@@ -150,6 +152,7 @@ class MultiDHOV:
             the optimizer is called. That includes, calculating tighter bounds, the proof for over approximation
             and if applicable data sampling
         :param print_new_bounds: if true, tightened bounds are printed for each layer
+        :param sampling_strategy: the sampling strategy to use for generating new training data points for each ICNN defaults to UniformSamplingStrategy
         :return:
         """
         valid_adapt_lambda = ["none", "high_low", "included"]
@@ -214,40 +217,6 @@ class MultiDHOV:
         else:
             nn_encoding_model.Params.LogToConsole = 0
 
-        included_space = torch.empty((0, input_flattened.size(0)), dtype=data_type).to(device)
-
-        inc_space_sample_count = sample_count // 2
-
-        if sample_over_input_space and sample_over_output_space:
-            amb_space_sample_count = sample_count // 4
-        else:
-            amb_space_sample_count = sample_count // 2
-
-        if sampling_method not in ["per_group_sampling", "per_group_feasible"]:
-            if sampling_method == "uniform":
-                included_space = ds.samples_uniform_over(included_space, inc_space_sample_count, eps_bounds)
-            elif sampling_method == "linespace":
-                included_space = ds.sample_linspace(included_space, inc_space_sample_count, center, eps)
-            elif sampling_method == "boarder":
-                included_space = ds.sample_boarder(included_space, inc_space_sample_count, center, eps)
-            elif sampling_method == "sum_noise":
-                included_space = ds.sample_random_sum_noise(included_space, inc_space_sample_count, center, eps)
-            elif sampling_method == "min_max_perturbation":
-                included_space = ds.sample_min_max_perturbation(included_space, inc_space_sample_count,
-                                                                parameter_list[0],
-                                                                center, eps)
-            elif sampling_method == "alternate_min_max":
-                included_space = ds.sample_alternate_min_max(included_space, inc_space_sample_count, parameter_list[0],
-                                                             center, eps)
-
-            # included_space = ds.samples_uniform_over(included_space, int(sample_count / 2), eps_bounds, keep_samples=True)
-
-            ambient_space = torch.empty((0, input_flattened.size(0)), dtype=data_type).to(device)
-            original_included_space = torch.empty((0, input_flattened.size(0)), dtype=data_type).to(device)
-            original_ambient_space = torch.empty((0, input_flattened.size(0)), dtype=data_type).to(device)
-
-            if should_plot in valid_should_plot and should_plot != "none":
-                original_included_space, original_ambient_space = included_space, ambient_space
 
         force_inclusion_steps += 1
         data_grad_descent_steps += 1
@@ -347,97 +316,6 @@ class MultiDHOV:
                 nn_encoding_model.update()
                 continue
 
-            if sampling_method not in ["per_group_sampling", "per_group_feasible"]:
-                if current_layer_index != 0:
-                    # sample neue punkte
-                    t = time.time()
-                    if sample_new:
-                        included_space, ambient_space = ds.sample_max_radius(list_of_icnns[current_layer_index - 1],
-                                                                             sample_count // 2, group_indices,
-                                                                             bounds_layer_out[current_layer_index - 1],
-                                                                             keep_ambient_space=keep_ambient_space)
-
-                    else:
-                        # re-grouping
-                        included_space, ambient_space = ds.regroup_samples(list_of_icnns[current_layer_index],
-                                                                           included_space, ambient_space, group_indices)
-                    print("    time for regrouping method: {}".format(time.time() - t))
-
-                if not keep_ambient_space:
-                    ambient_space = torch.empty((0, nn.layer_widths[current_layer_index]), dtype=data_type).to(device)
-
-                if sample_over_input_space:
-                    if i == 0:
-                        ambient_space = ds.sample_uniform_excluding(ambient_space, amb_space_sample_count, eps_bounds,
-                                                                    excluding_bound=eps_bounds, padding=eps)
-                    else:
-                        ambient_space = ds.sample_uniform_excluding(ambient_space, amb_space_sample_count,
-                                                                    bounds_layer_out[current_layer_index - 1],
-                                                                    icnns=list_of_icnns[current_layer_index - 1],
-                                                                    layer_index=current_layer_index,
-                                                                    group_size=group_size,
-                                                                    padding=eps)
-
-                if should_plot == "detailed" and included_space.size(1) == 2:
-                    plt_inc_amb("start " + str(i), included_space.tolist(), ambient_space.tolist())
-
-                included_space = ds.apply_affine_transform(affine_w, affine_b, included_space)
-                ambient_space = ds.apply_affine_transform(affine_w, affine_b, ambient_space)
-
-                """plt_inc_amb("second layer output of neuron 2, 3 / number of samples {}".format(sample_count),
-                            torch.index_select(included_space, 1, torch.tensor([1, 23])).tolist(),
-                            torch.index_select(ambient_space, 1, torch.tensor([1, 23])).tolist())"""
-
-                if should_plot in valid_should_plot and should_plot != "none" and included_space.size(1) == 2:
-                    original_included_space = ds.apply_affine_transform(affine_w, affine_b, original_included_space)
-                    original_ambient_space = ds.apply_affine_transform(affine_w, affine_b, original_ambient_space)
-                    if should_plot == "detailed":
-                        plt_inc_amb("affin e" + str(i), included_space.tolist(), ambient_space.tolist())
-                        plt_inc_amb("original affin e" + str(i), original_included_space.tolist(),
-                                    original_ambient_space.tolist())
-
-                included_space = ds.apply_relu_transform(included_space)
-                ambient_space = ds.apply_relu_transform(ambient_space)
-
-                """plt_inc_amb("second layer output of neuron 2, 3", torch.index_select(included_space, 1, torch.tensor([2, 3])).tolist(),
-                            torch.index_select(ambient_space, 1, torch.tensor([2, 3])).tolist())"""
-
-                if should_plot in valid_should_plot and should_plot != "none" and included_space.size(1) == 2:
-                    original_included_space = ds.apply_relu_transform(original_included_space)
-                    original_ambient_space = ds.apply_relu_transform(original_ambient_space)
-                    if should_plot == "detailed":
-                        plt_inc_amb("relu " + str(i), included_space.tolist(), ambient_space.tolist())
-                        plt_inc_amb("original relu e" + str(i), original_included_space.tolist(),
-                                    original_ambient_space.tolist())
-
-                if sample_over_output_space:
-                    ambient_space = ds.samples_uniform_over(ambient_space, amb_space_sample_count,
-                                                            bounds_layer_out[current_layer_index], padding=eps)
-                    if should_plot in ["simple", "detailed"] and included_space.size(1) == 2:
-                        original_ambient_space = ds.samples_uniform_over(original_ambient_space, amb_space_sample_count,
-                                                                         bounds_layer_out[current_layer_index],
-                                                                         padding=eps)
-
-                if store_samples:
-                    self.list_of_included_samples[current_layer_index].append(included_space)
-                    self.list_of_ambient_samples[current_layer_index].append(ambient_space)
-
-                if should_plot == "detailed" and included_space.size(1) == 2:
-                    plt_inc_amb("enhanced ambient space " + str(i), included_space.tolist(), ambient_space.tolist())
-                    plt_inc_amb("original enhanced ambient space " + str(i), original_included_space.tolist(),
-                                original_ambient_space.tolist())
-
-            """if use_over_approximation:
-                if i == 0:
-                    model = ver.generate_model_center_eps(center.detach().cpu().numpy(), eps)
-                else:
-                    affine_w_list = parameter_list[:i:2]
-                    affine_b_list = parameter_list[1:i:2] #todo das model muss auch erstellt werden, wenn man per group sampling macht
-                    model = ver.generate_complete_model_icnn(center, eps, affine_w_list, affine_b_list, list_of_icnns,
-                                                             all_group_indices, bounds_affine_out, bounds_layer_out,
-                                                             fixed_neuron_per_layer_lower, fixed_neuron_per_layer_upper)"""
-
-
             if grouping_method == "consecutive":
                 if use_fixed_neurons_in_grouping:
                     number_of_groups = get_num_of_groups(len(affine_b), group_size)
@@ -464,6 +342,47 @@ class MultiDHOV:
 
             all_group_indices.append(group_indices)
 
+            i_would_code_perfectly = False
+            if i_would_code_perfectly:
+                included_space = torch.empty((0, input_flattened.size(0)), dtype=data_type).to(device)
+
+                inc_space_sample_count = sample_count // 2
+
+                if sample_over_input_space and sample_over_output_space:
+                    amb_space_sample_count = sample_count // 4
+                else:
+                    amb_space_sample_count = sample_count // 2
+
+                included_space, ambient_space = sampling_strategy.initialization()  # todo outsource calculation of number of inc_samples and amb_samples to the sampling strategy
+                # ======================================================================================================
+
+                if current_layer_index != 0:  # todo put at end of loop to prevent this if-clause
+                    sampling_strategy.sampling_before_propagation()
+
+                if not keep_ambient_space:  # todo put this in sampling strategy
+                    ambient_space = torch.empty((0, nn.layer_widths[current_layer_index]), dtype=data_type).to(device)
+
+                if sample_over_input_space:  # todo put this in sampling strategy (not used in per group strat)
+                    if i == 0:
+                        ambient_space = ds.sample_uniform_excluding(ambient_space, amb_space_sample_count, eps_bounds,
+                                                                    excluding_bound=eps_bounds, padding=eps)
+                    else:
+                        ambient_space = ds.sample_uniform_excluding(ambient_space, amb_space_sample_count,
+                                                                    bounds_layer_out[current_layer_index - 1],
+                                                                    icnns=list_of_icnns[current_layer_index - 1],
+                                                                    layer_index=current_layer_index,
+                                                                    group_size=group_size,
+                                                                    padding=eps)
+
+                sampling_strategy.propagate_space()
+                sampling_strategy.output_space_sampling_by_round()
+
+
+
+
+
+
+
             list_of_icnns.append([])
             for group_i in range(number_of_groups):
                 if break_after is not None:
@@ -476,124 +395,10 @@ class MultiDHOV:
                 current_icnn = icnn_factory.get_new_icnn(size_of_icnn_input)
                 list_of_icnns[current_layer_index].append(current_icnn)
 
-                if sampling_method in ["per_group_sampling", "per_group_feasible"]:
-                    included_space = torch.empty((0, affine_w.size(1)), dtype=data_type).to(device)
-                    ambient_space = torch.empty((0, affine_w.size(1)), dtype=data_type).to(device)
 
-                    if i == 0:
-                        t_group = time.time()
-                        if sampling_method == "per_group_sampling":
-                            """included_space = ds.sample_per_group(included_space, sample_count // 2, affine_w, center,
-                                                                 eps, index_to_select)"""
-                            included_space = ds.sample_per_group(included_space, inc_space_sample_count, affine_w,
-                                                                 center,
-                                                                 eps, index_to_select, rand_samples_percent=0.2,
-                                                                 rand_sample_alternation_percent=0.01)
-                            """included_space = ds.samples_uniform_over(included_space, inc_space_sample_count // 2,
-                                                                     eps_bounds,
-                                                                     keep_samples=True)"""
-
-                        elif sampling_method == "per_group_feasible":
-                            copy_model = nn_encoding_model.copy()
-                            included_space, ambient_samples_after_activation = ds.sample_feasible(included_space, inc_space_sample_count,
-                                                                affine_w, affine_b, index_to_select, copy_model,
-                                                                bounds_affine_out[current_layer_index],
-                                                                bounds_layer_out[current_layer_index],
-                                                                 )
-                        # included_space = ds.sample_min_max_perturbation(included_space, inc_space_sample_count // 2, affine_w, center, eps, keep_samples=True, swap_probability=0.2)
-                        # included_space = ds.sample_per_group(included_space, inc_space_sample_count // 2, parameter_list[0], center, eps, index_to_select, with_noise=True, with_sign_swap=True)
-                        # included_space = ds.sample_per_group(included_space, inc_space_sample_count // 2, parameter_list[0], center, eps, index_to_select, with_noise=False, with_sign_swap=True)
-                        # included_space = ds.sample_per_group(included_space, inc_space_sample_count // 2, parameter_list[0], center, eps, index_to_select, with_noise=True, with_sign_swap=False)
-                        print("        time for sampling for one group: {}".format(time.time() - t_group))
-                    else:
-                        t_group = time.time()
-                        copy_model = nn_encoding_model.copy()
-                        if sampling_method == "per_group_sampling":
-                            """if prev_layer_index == 0:
-                                prev_prev_layer_out = eps_bounds
-                            else:
-                                prev_prev_layer_out = bounds_layer_out[prev_layer_index - 1]
-                            included_space = ds.sample_per_group_two(included_space, inc_space_sample_count, affine_w, affine_b, index_to_select,
-                                                                     bounds_affine_out[current_layer_index], bounds_layer_out[current_layer_index], list_of_icnns[prev_layer_index],
-                                                                     all_group_indices[prev_layer_index], bounds_affine_out[prev_layer_index], bounds_layer_out[prev_layer_index],
-                                                                     prev_prev_layer_out, parameter_list[i-2], parameter_list[i-1],
-                                                                     fixed_neuron_per_layer_lower[prev_layer_index], fixed_neuron_per_layer_upper[prev_layer_index],
-                                                                     rand_samples_percent=0.2, rand_sample_alternation_percent=0.2)"""
-
-                            included_space = ds.sample_per_group_as_lp(included_space, inc_space_sample_count,
-                                                                       affine_w, affine_b,
-                                                                       index_to_select, copy_model,
-                                                                       bounds_affine_out[current_layer_index],
-                                                                       prev_layer_index,
-                                                                       rand_samples_percent=0.2,
-                                                                       rand_sample_alternation_percent=0.2)
-
-                            """
-                            copy_model.write("temp_model.lp")
-                            included_space = ds.parallel_per_group_as_lp(inc_space_sample_count,
-                                                                       affine_w, affine_b,
-                                                                       index_to_select,
-                                                                       bounds_affine_out[current_layer_index],
-                                                                       prev_layer_index,
-                                                                       rand_samples_percent=0.2,
-                                                                       rand_sample_alternation_percent=0.2)"""
-
-
-                        elif sampling_method == "per_group_feasible":
-                            included_space, ambient_samples_after_activation = ds.sample_feasible(included_space, inc_space_sample_count,
-                                                                affine_w, affine_b, index_to_select, copy_model,
-                                                                bounds_affine_out[current_layer_index],
-                                                                bounds_layer_out[current_layer_index],
-                                                                prev_layer_index)
-                        print("        time for sampling for one group: {}".format(time.time() - t_group))
-
-                    if should_plot in valid_should_plot and should_plot not in ["none", "verification"] and len(
-                            group_indices[group_i]) == 2:
-                        plt_inc_amb("layer input ",
-                                    torch.index_select(included_space, 1, index_to_select).tolist(),
-                                    torch.index_select(ambient_space, 1, index_to_select).tolist())
-                    elif should_plot in valid_should_plot and should_plot not in ["none", "verification"] and len(
-                            group_indices[group_i]) == 3:
-                        plt_inc_amb_3D("layer input ",
-                                       torch.index_select(included_space, 1, index_to_select).tolist(),
-                                       torch.index_select(ambient_space, 1, index_to_select).tolist())
-
-                    included_space = ds.apply_affine_transform(affine_w, affine_b, included_space)
-                    ambient_space = ds.apply_affine_transform(affine_w, affine_b, ambient_space)
-
-                    if False and sampling_method == "per_group_sampling" and i != 0:
-                        copy_model = nn_encoding_model.copy()
-                        included_space = ds.sample_at_0(included_space, inc_space_sample_count // 2,
-                                                        affine_w, affine_b,
-                                                        index_to_select, copy_model,
-                                                        bounds_affine_out[current_layer_index],
-                                                        prev_layer_index)
-
-                    if should_plot in valid_should_plot and should_plot not in ["none", "verification"] and len(
-                            group_indices[group_i]) == 2:
-                        plt_inc_amb("layer output ",
-                                    torch.index_select(included_space, 1, index_to_select).tolist(),
-                                    torch.index_select(ambient_space, 1, index_to_select).tolist())
-                    elif should_plot in valid_should_plot and should_plot not in ["none", "verification"] and len(
-                            group_indices[group_i]) == 3:
-                        plt_inc_amb_3D("layer output ",
-                                       torch.index_select(included_space, 1, index_to_select).tolist(),
-                                       torch.index_select(ambient_space, 1, index_to_select).tolist())
-
-                    included_space = ds.apply_relu_transform(included_space)
-                    ambient_space = ds.apply_relu_transform(ambient_space)
-
-                    if sample_over_output_space:
-                        ambient_space = ds.samples_uniform_over(ambient_space, amb_space_sample_count,
-                                                                bounds_layer_out[current_layer_index],
-                                                                padding=eps)
-
-                    if store_samples:
-                        self.list_of_included_samples[current_layer_index].append(included_space)
-                        self.list_of_ambient_samples[current_layer_index].append(ambient_space)
 
                 t = time.time()
-                group_inc_space = torch.index_select(included_space, 1, index_to_select)
+                group_inc_space = torch.index_select(included_space, 1, index_to_select) # todo i have to adapt this strategy to the sampling of all group spaces at once
                 group_amb_space = torch.index_select(ambient_space, 1, index_to_select)
 
                 if sampling_method == "per_group_feasible":
