@@ -343,10 +343,7 @@ class MultiDHOV:
             all_group_indices.append(group_indices)
 
             gurobi_model = nn_encoding_model.copy()
-            included_space, ambient_space = sampling_strategy.input_space_sampling_by_round(affine_w, affine_b, group_indices, gurobi_model,
-																		 current_layer_index, bounds_affine_out, bounds_layer_out)
-            included_space, ambient_space = sampling_strategy.propagate_space(included_space, ambient_space, affine_w, affine_b)
-            included_space, ambient_space = sampling_strategy.output_space_sampling_by_round(included_space, ambient_space, affine_w, affine_b, group_indices, gurobi_model,
+            included_space, ambient_space = sampling_strategy.sampling_by_round(affine_w, affine_b, group_indices, gurobi_model,
 																		 current_layer_index, bounds_affine_out, bounds_layer_out)
 
 
@@ -366,8 +363,8 @@ class MultiDHOV:
 
 
                 t = time.time()
-                group_inc_space = torch.index_select(included_space[group_i], 1, index_to_select)
-                group_amb_space = torch.index_select(ambient_space[group_i], 1, index_to_select)
+                group_inc_space = included_space[group_i]
+                group_amb_space = ambient_space[group_i]
 
 
                 mean = norm.get_mean(group_inc_space, group_amb_space)
