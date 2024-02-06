@@ -342,44 +342,12 @@ class MultiDHOV:
 
             all_group_indices.append(group_indices)
 
-            i_would_code_perfectly = False
-            if i_would_code_perfectly:
-                included_space = torch.empty((0, input_flattened.size(0)), dtype=data_type).to(device)
-
-                inc_space_sample_count = sample_count // 2
-
-                if sample_over_input_space and sample_over_output_space:
-                    amb_space_sample_count = sample_count // 4
-                else:
-                    amb_space_sample_count = sample_count // 2
-
-                included_space, ambient_space = sampling_strategy.initialization()  # todo outsource calculation of number of inc_samples and amb_samples to the sampling strategy
-                # ======================================================================================================
-
-                if current_layer_index != 0:  # todo put at end of loop to prevent this if-clause
-                    sampling_strategy.sampling_before_propagation()
-
-                if not keep_ambient_space:  # todo put this in sampling strategy
-                    ambient_space = torch.empty((0, nn.layer_widths[current_layer_index]), dtype=data_type).to(device)
-
-                if sample_over_input_space:  # todo put this in sampling strategy (not used in per group strat)
-                    if i == 0:
-                        ambient_space = ds.sample_uniform_excluding(ambient_space, amb_space_sample_count, eps_bounds,
-                                                                    excluding_bound=eps_bounds, padding=eps)
-                    else:
-                        ambient_space = ds.sample_uniform_excluding(ambient_space, amb_space_sample_count,
-                                                                    bounds_layer_out[current_layer_index - 1],
-                                                                    icnns=list_of_icnns[current_layer_index - 1],
-                                                                    layer_index=current_layer_index,
-                                                                    group_size=group_size,
-                                                                    padding=eps)
-
-                sampling_strategy.propagate_space()
-                sampling_strategy.output_space_sampling_by_round()
-
-
-
-
+            gurobi_model = nn_encoding_model.copy()
+            included_space, ambient_space = sampling_strategy.input_space_sampling_by_round(affine_w, affine_b, group_indices, gurobi_model,
+																		 current_layer_index, bounds_affine_out, bounds_layer_out)
+            included_space, ambient_space = sampling_strategy.propagate_space(included_space, ambient_space, affine_w, affine_b)
+            included_space, ambient_space = sampling_strategy.output_space_sampling_by_round(included_space, ambient_space, affine_w, affine_b, group_indices, gurobi_model,
+																		 current_layer_index, bounds_affine_out, bounds_layer_out)
 
 
 
@@ -398,15 +366,9 @@ class MultiDHOV:
 
 
                 t = time.time()
-                group_inc_space = torch.index_select(included_space, 1, index_to_select) # todo i have to adapt this strategy to the sampling of all group spaces at once
-                group_amb_space = torch.index_select(ambient_space, 1, index_to_select)
+                group_inc_space = torch.index_select(included_space[group_i], 1, index_to_select)
+                group_amb_space = torch.index_select(ambient_space[group_i], 1, index_to_select)
 
-                if sampling_method == "per_group_feasible":
-                    group_amb_space = torch.cat([group_amb_space, ambient_samples_after_activation], dim=0)
-
-                    if should_plot in valid_should_plot and should_plot not in ["none", "verification"] and len(
-                            group_indices[group_i]) == 2:
-                        plt_inc_amb("group output ", group_inc_space.tolist(), group_amb_space.tolist())
 
                 mean = norm.get_mean(group_inc_space, group_amb_space)
                 std = norm.get_std(group_inc_space, group_amb_space)
