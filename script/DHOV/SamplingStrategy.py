@@ -1,3 +1,4 @@
+import warnings
 from abc import ABC, abstractmethod
 
 import torch
@@ -5,16 +6,16 @@ import torch
 import script.DHOV.DataSampling as ds
 from script.settings import data_type, device
 
-
+#todo i need to adapt each jupyter notebook to the new sampling strategy
 # todo make each strategy return an iterator by group for before and after sampling
 class SamplingStrategy(ABC):
-	def __init__(self, center, eps, keep_ambient_space=False, sample_count=10):
-		self.needs_initialization = False
+	def __init__(self, center, eps, keep_ambient_space=False, sample_count=10, sample_over_output_space=True, sample_over_input_space=False, sample_new=True):
 		self.current_sample_space = None  # todo soll ich das behalten?, wenn ja, dann muss ich das updaten
 		self.keep_ambient_space = keep_ambient_space  # todo implement this for each strategy
-		self.sample_over_input_space = True
-		self.sample_over_output_space = True
+		self.sample_over_input_space = sample_over_input_space
+		self.sample_over_output_space = sample_over_output_space
 		self.sample_count = sample_count
+		self.sample_new = sample_new
 		self.center = center
 		self.eps = eps
 
@@ -32,7 +33,7 @@ class SamplingStrategy(ABC):
 	def sampling_by_round(self, affine_w, affine_b, group_indices, gurobi_model,
 												current_layer_index, bounds_affine_out, bounds_layer_out):
 		"""
-		Use this method to sample over the input space of a layer (before propagation).
+		Use this method to sample data points for one layer for all groups.
 		Args:
 			affine_w: the weight matrix of the current layer
 			affine_b: the bias vector of the current layer
@@ -42,7 +43,7 @@ class SamplingStrategy(ABC):
 			bounds_affine_out: the bounds of the affine output space of the all layers
 			bounds_layer_out: the bounds of the activation output space of the all layers
 
-		Returns: list of tuple of  included_space, ambient_space
+		Returns: list of tuple of included_space, ambient_space
 
 		"""
 		pass
@@ -50,6 +51,17 @@ class SamplingStrategy(ABC):
 
 
 class PerGroupSamplingStrategy(SamplingStrategy):
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+
+		if self.keep_ambient_space:
+			warnings.warn("keep_ambient_space is True and sampling method is per_group_sampling. "
+										"Keeping previous samples is not supported when using per group sampling")
+
+		if self.sample_over_input_space:
+			warnings.warn("sample_over_input_space is True and sampling method is per_group_sampling. "
+										"Sampling over input space is not yet supported when using per group sampling. "
+										"Using sampling over output space instead...")
 	def sampling_by_round(self, affine_w, affine_b, group_indices, gurobi_model,
 												current_layer_index, bounds_affine_out, bounds_layer_out):
 		list_included_spaces = []
@@ -101,6 +113,13 @@ class PerGroupSamplingStrategy(SamplingStrategy):
 
 
 class PerGroupFeasibleSamplingStrategy(SamplingStrategy):
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+
+		if self.sample_over_input_space:
+			warnings.warn("sample_over_input_space is True and sampling method is per_group_sampling. "
+										"Sampling over input space is not yet supported when using per group sampling. "
+										"Using sampling over output space instead...")
 
 	def sampling_by_round(self, affine_w, affine_b, group_indices, gurobi_model,
 												current_layer_index, bounds_affine_out, bounds_layer_out):
@@ -142,20 +161,6 @@ class PerGroupFeasibleSamplingStrategy(SamplingStrategy):
 # todo hier muss ich für jede strat anpassen das der output in einer liste ist (da es genau eine gruppe gibt)
 # todo sampling auf 0tes und darauf folgende layer anpassen
 class PropagateSamplingStrategy(SamplingStrategy, ABC):
-	"""
-	# todo use this code in initalization and input_space_sampling_by_round. Attention: dont sample twice for the first layer
-	                if sample_over_input_space:  # todo put this in sampling strategy (not used in per group strat)
-                    if i == 0:
-                        ambient_space = ds.sample_uniform_excluding(ambient_space, amb_space_sample_count, eps_bounds,
-                                                                    excluding_bound=eps_bounds, padding=eps)
-                    else:
-                        ambient_space = ds.sample_uniform_excluding(ambient_space, amb_space_sample_count,
-                                                                    bounds_layer_out[current_layer_index - 1],
-                                                                    icnns=list_of_icnns[current_layer_index - 1],
-                                                                    layer_index=current_layer_index,
-                                                                    group_size=group_size,
-                                                                    padding=eps)
-	"""
 
 	def propagate_space(self, affine_w, affine_b):
 		if self.current_sample_space is None:
@@ -167,11 +172,52 @@ class PropagateSamplingStrategy(SamplingStrategy, ABC):
 
 
 class UniformSamplingStrategy(PropagateSamplingStrategy):
-	def input_space_sampling_by_round(self, sample_count, center, eps):
-		sample_space = torch.empty((0, center.size(0)), dtype=data_type).to(device)
-		eps_bounds = [center.add(-eps), center.add(eps)]
-		sample_space = ds.samples_uniform_over(sample_space, sample_count, eps_bounds)
-		self.current_sample_space = sample_space
+	def sampling_by_round(self, affine_w, affine_b, group_indices, gurobi_model,
+												current_layer_index, bounds_affine_out, bounds_layer_out):
+
+		"""
+		#todo need to adapt sample count of ambient space based on if we sample over input space or not
+		if self.sample_over_input_space:  # todo this is not working yet,
+
+			if current_layer_index == 0:
+				ambient_space = ds.sample_uniform_excluding(ambient_space, amb_space_sample_count, eps_bounds,
+																										excluding_bound=eps_bounds, padding=eps)
+			else:
+				ambient_space = ds.sample_uniform_excluding(ambient_space, amb_space_sample_count,
+																										bounds_layer_out[current_layer_index - 1],
+																										icnns=list_of_icnns[current_layer_index - 1],
+																										layer_index=current_layer_index,
+																										group_size=group_size,
+																										padding=eps)"""
+		list_included_spaces = []
+		list_ambient_spaces = []
+		included_sample_count, ambient_sample_count = self.get_num_of_samples()
+
+		if current_layer_index == 0:
+			for index_to_select in group_indices:
+				sample_space = torch.empty((0, self.center.size(0)), dtype=data_type).to(device)
+				eps_bounds = [self.center.add(-self.eps), self.center.add(self.eps)]
+				sample_space = ds.samples_uniform_over(sample_space, included_sample_count, eps_bounds)
+
+				sample_space = ds.apply_affine_transform(affine_w, affine_b, sample_space)
+				sample_space = ds.apply_relu_transform(sample_space)
+
+				list_included_spaces.append(torch.index_select(sample_space, 1, index_to_select))
+
+
+
+				if self.sample_over_output_space:
+					for i in range(len(list_ambient_spaces)):
+						new_ambient_space = torch.empty((0, affine_w.size(0)), dtype=data_type).to(device)
+						new_amb_space = ds.samples_uniform_over(new_ambient_space, ambient_sample_count,
+																										bounds_layer_out[current_layer_index],
+																										padding=self.eps)
+						new_amb_space = torch.index_select(new_amb_space, 1, index_to_select)
+						list_ambient_spaces[i] = torch.concat((list_ambient_spaces[i], new_amb_space), dim=0)
+		elif current_layer_index > 0:
+			pass
+
+
 		return sample_space
 
 
