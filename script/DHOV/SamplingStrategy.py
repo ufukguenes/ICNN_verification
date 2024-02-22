@@ -13,7 +13,7 @@ class SamplingStrategy(ABC):
     def __init__(self, center, eps, keep_ambient_space=False, sample_count=10, sample_over_output_space=True,
                  sample_over_input_space=False, sample_new=True):
         self.current_sample_space = None  # todo soll ich das behalten?, wenn ja, dann muss ich das updaten
-        self.keep_ambient_space = keep_ambient_space  # todo implement this for each strategy
+        self.keep_ambient_space = keep_ambient_space
         self.sample_over_input_space = sample_over_input_space
         self.sample_over_output_space = sample_over_output_space
         self.sample_count = sample_count
