@@ -23,7 +23,8 @@ from script.NeuralNets.testFunction import test_icnn
 from script.settings import device, data_type
 import gurobipy as grp
 import warnings
-from script.DHOV.SamplingStrategy import SamplingStrategy, UniformSamplingStrategy
+from script.DHOV.SamplingStrategy import SamplingStrategy
+from script.DHOV.SamplingStrategy.PropagateSamplingStrategy import UniformSamplingStrategy
 
 #todo adapt everything to also work on gpu
 class MultiDHOV:
@@ -78,7 +79,7 @@ class MultiDHOV:
                            force_inclusion_steps=0, grouping_method="consecutive", group_num_multiplier=None,
                            init_network=False, adapt_lambda="none", should_plot='none', optimizer="adam",
                            print_training_loss=False, print_last_loss=False, print_optimization_steps=False, print_new_bounds=False,
-                           sampling_strategy: SamplingStrategy = None):
+                           sampling_strategy: SamplingStrategy = UniformSamplingStrategy):
         """
 
         :param nn: the NN to encode as a Gurobi model given. This has to be a Sequential/ Feedforward NN
