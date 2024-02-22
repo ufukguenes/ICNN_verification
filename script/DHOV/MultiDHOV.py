@@ -25,7 +25,7 @@ import gurobipy as grp
 import warnings
 from script.DHOV.SamplingStrategy import SamplingStrategy, UniformSamplingStrategy
 
-
+#todo adapt everything to also work on gpu
 class MultiDHOV:
     """
     Multiple groups - DeepHull-Over approximated-Verification
