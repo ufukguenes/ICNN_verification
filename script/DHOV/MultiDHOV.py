@@ -228,6 +228,7 @@ class MultiDHOV:
         self.num_fixed_neurons_layer = num_fixed_neurons_layer
         self.all_group_indices = all_group_indices
         self.list_of_icnns = list_of_icnns
+        included_space, ambient_space = None, None
 
         for i in range(0, len(parameter_list) - 2, 2):  # -2 because last layer has no ReLu activation
             current_layer_index = i // 2
@@ -334,7 +335,7 @@ class MultiDHOV:
             included_space, ambient_space = sampling_strategy.sampling_by_round(affine_w, affine_b, group_indices,
                                                                                 gurobi_model, current_layer_index,
                                                                                 bounds_affine_out, bounds_layer_out,
-                                                                                list_of_icnns)
+                                                                                list_of_icnns, included_space, ambient_space)
 
 
 
@@ -411,8 +412,6 @@ class MultiDHOV:
                                                                                group_norm_ambient_space.detach())
                             dataset = ConvexDataset(group_norm_ambient_space.detach())
 
-                            # todo hier muss ich noch verwalten was passiert wenn ambient space in die nächste runde
-                            #  übernommen wird
                             ambient_loader = DataLoader(dataset, batch_size=icnn_batch_size, shuffle=True)
 
                             if should_plot in ["simple", "detailed"] and len(group_indices[group_i]) == 2:
