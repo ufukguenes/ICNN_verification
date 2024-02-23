@@ -28,12 +28,14 @@ class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
         list_ambient_spaces = []
         included_sample_count, ambient_sample_count = self.get_num_of_samples()
         for i, index_to_select in enumerate(group_indices):
-            sample_space = torch.empty((0, affine_w.size(1)), dtype=data_type).to(device)
-            ambient_space = torch.empty((0, affine_w.size(1)), dtype=data_type).to(device)
+
             rand_samples_percent = 0.2
             rand_sample_alternation_percent = 0.01
 
             if current_layer_index == 0:
+                sample_space = torch.empty((0, affine_w.size(1)), dtype=data_type).to(device)
+                ambient_space = torch.empty((0, affine_w.size(1)), dtype=data_type).to(device)
+
                 #  this is the same as for the PerGroupSamplingStrategy
                 sample_space = ds.sample_per_group(sample_space, included_sample_count, affine_w, self.center,
                                                    self.eps, index_to_select,
@@ -44,13 +46,16 @@ class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
                 ambient_space = ds.apply_affine_transform(affine_w, affine_b, ambient_space)
 
             elif current_layer_index > 0:
+                sample_space = torch.empty((0, affine_w.size(0)), dtype=data_type).to(device)
+                ambient_space = torch.empty((0, affine_w.size(0)), dtype=data_type).to(device)
+
                 current_bounds_affine_out = bounds_affine_out[current_layer_index]
                 prev_layer_index = current_layer_index - 1
                 sample_space = self._sample_group_line_search_lp(sample_space, included_sample_count, affine_w,
                                                                  affine_b,
                                                                  index_to_select, gurobi_model,
                                                                  current_bounds_affine_out,
-                                                                 prev_layer_index, list_of_icnns[i],
+                                                                 prev_layer_index, list_of_icnns[current_layer_index-1],
                                                                  rand_samples_percent=rand_samples_percent,
                                                                  rand_sample_alternation_percent=rand_sample_alternation_percent)
             else:
@@ -76,7 +81,7 @@ class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
         return list_included_spaces, list_ambient_spaces
 
     def _sample_group_line_search_lp(self, data_samples, amount, affine_w, affine_b, index_to_select, model,
-                                     curr_bounds_affine_out, prev_layer_index, icnn, rand_samples_percent=0,
+                                     curr_bounds_affine_out, prev_layer_index, current_icnns, rand_samples_percent=0,
                                      rand_sample_alternation_percent=0.2, keep_samples=True):
         # getting the random directions with controlled random noise
         upper = 1
@@ -109,9 +114,9 @@ class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
         uniform_points = ds.samples_uniform_over(data_samples, amount, curr_bounds_affine_out, keep_samples=False,
                                                  padding=0)
 
-        included_space = torch.empty((amount, affine_w.size(1)), dtype=data_type).to(device)
+        included_space = torch.empty((amount, affine_w.size(0)), dtype=data_type).to(device)
         for i in range(amount):
-            included_space[i] = self._line_search_by_direction(icnn, cs[i], uniform_points[i])
+            included_space[i] = self._line_search_by_direction(current_icnns, cs[i], uniform_points[i], index_to_select)
 
         if keep_samples and included_space.size(0) > 0:
             included_space = torch.cat([data_samples, included_space], dim=0)
@@ -119,30 +124,33 @@ class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
             included_space = included_space
         return included_space
 
-    def _line_search_by_direction(self, icnn, direction, sample, low=0.0, up=1.0):
+    def _line_search_by_direction(self, current_icnns, direction, sample, index_to_select, low=-1.0, up=1.0):
         # todo maybe make this more efficient (e.g. golden section search) and parallel execution with matrices
+        print("low: {}, up: {}".format(low, up))
 
         scaled_direction = torch.mul(direction, up)
-        new_x = torch.add(scaled_direction, direction)
-        new_out = icnn(new_x)
+        new_x = torch.add(scaled_direction, sample)
+        new_out = [icnn(torch.index_select(new_x.view(1, -1), 1, torch.tensor(index_to_select))) for icnn in current_icnns]
+        #todo ich muss hier bei den icnns die indices auswählen, welche zu den icnns gehören und nicht die neuen indices
+        #todo außerdem muss ich darauf achten, dass auch die dimensionen des samples korrekt sind für die keine icnns existieren, also die dimensionen, die nicht in index_to_select enthalten sind
 
-        if new_out < 0:
-            return self._line_search_by_direction(icnn, direction, sample, low=up, up=2 * up)
+        if max(new_out) < 0:
+            return self._line_search_by_direction(current_icnns, direction, sample, index_to_select, low=low, up=2 * up)
 
         scaled_direction = torch.mul(direction, low)
         new_x = torch.add(scaled_direction, sample)
-        new_out = icnn(new_x)
-        if new_out > 0:
-            return self._line_search_by_direction(icnn, direction, sample, low=low / 2, up=low)
+        new_out = [icnn(torch.index_select(new_x.view(1, -1), 1, torch.tensor(index_to_select))) for icnn in current_icnns]
+        if min(new_out) < 0:
+            return self._line_search_by_direction(current_icnns, direction, sample, index_to_select, low=low * 2, up=up)
 
         middle = (up + low) / 2
         scaled_direction = torch.mul(direction, middle)
         new_x = torch.add(scaled_direction, sample)
-        new_out = icnn(new_x)
+        new_out = [icnn(torch.index_select(new_x.view(1, -1), 1, torch.tensor(index_to_select))) for icnn in current_icnns]
 
-        if 0 - 1e-2 < new_out < 0:
+        if max(new_out) < 0 and max(new_out) > - 0.2:
             return new_x
-        if new_out < 0:
-            return self._line_search_by_direction(icnn, direction, sample, low=middle, up=up)
-        if new_out > 0:
-            return self._line_search_by_direction(icnn, direction, sample, low=low, up=middle)
+        if max(new_out) < 0:
+            return self._line_search_by_direction(current_icnns, direction, sample, index_to_select, low=middle, up=up)
+        if min(new_out) > 0:
+            return self._line_search_by_direction(current_icnns, direction, sample, index_to_select, low=low, up=middle)
