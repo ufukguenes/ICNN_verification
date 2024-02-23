@@ -4,7 +4,7 @@ import torch
 
 import script.DHOV.DataSampling as ds
 from script.settings import data_type, device
-from script.DHOV.SamplingStrategy import SamplingStrategy
+from script.DHOV.Sampling.SamplingStrategy import SamplingStrategy
 
 
 class PropagateSamplingStrategy(SamplingStrategy, ABC):

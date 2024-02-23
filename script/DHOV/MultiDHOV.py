@@ -23,8 +23,8 @@ from script.NeuralNets.testFunction import test_icnn
 from script.settings import device, data_type
 import gurobipy as grp
 import warnings
-from script.DHOV.SamplingStrategy import SamplingStrategy
-from script.DHOV.SamplingStrategy.PropagateSamplingStrategy import UniformSamplingStrategy
+from script.DHOV.Sampling import SamplingStrategy
+from script.DHOV.Sampling.PropagateSamplingStrategy import UniformSamplingStrategy
 
 #todo adapt everything to also work on gpu
 class MultiDHOV:
@@ -336,7 +336,7 @@ class MultiDHOV:
             included_space, ambient_space = sampling_strategy.sampling_by_round(affine_w, affine_b, group_indices,
                                                                                 gurobi_model, current_layer_index,
                                                                                 bounds_affine_out, bounds_layer_out,
-                                                                                list_of_icnns, included_space, ambient_space)
+                                                                                list_of_icnns)
 
 
 
