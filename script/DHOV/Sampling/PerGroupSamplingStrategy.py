@@ -3,7 +3,7 @@ import torch
 
 import script.DHOV.DataSampling as ds
 from script.settings import data_type, device
-from script.DHOV.SamplingStrategy import SamplingStrategy
+from script.DHOV.Sampling.SamplingStrategy import SamplingStrategy
 
 
 class PerGroupSamplingStrategy(SamplingStrategy):
@@ -63,8 +63,8 @@ class PerGroupSamplingStrategy(SamplingStrategy):
                 new_amb_space = ds.samples_uniform_over(list_ambient_spaces[i], ambient_sample_count,
                                                         bounds_layer_out[current_layer_index],
                                                         padding=self.eps)
-                new_amb_space = torch.index_select(new_amb_space, 1, group_indices[i])
-                old_amb_space = torch.index_select(list_ambient_spaces[i], 1, group_indices[i])
+                new_amb_space = torch.index_select(new_amb_space, 1, torch.tensor(group_indices[i]).to(device))
+                old_amb_space = torch.index_select(list_ambient_spaces[i], 1, torch.tensor(group_indices[i]).to(device))
                 list_ambient_spaces[i] = torch.concat((old_amb_space, new_amb_space), dim=0)
 
         return list_included_spaces, list_ambient_spaces
