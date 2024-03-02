@@ -7,6 +7,7 @@ import gurobipy as grp
 import script.DHOV.DataSampling as ds
 from script.settings import data_type, device
 from script.DHOV.Sampling.SamplingStrategy import SamplingStrategy
+from script.NeuralNets.Networks import SequentialNN
 
 
 class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
@@ -50,12 +51,10 @@ class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
                 ambient_space = torch.empty((0, affine_w.size(0)), dtype=data_type).to(device)
 
                 current_bounds_affine_out = bounds_affine_out[current_layer_index]
-                prev_layer_index = current_layer_index - 1
-                sample_space = self._sample_group_line_search_lp(sample_space, included_sample_count, affine_w,
-                                                                 affine_b,
-                                                                 index_to_select, gurobi_model,
+                sample_space = self._sample_group_line_search_lp(sample_space, included_sample_count, self.nn_model,
+                                                                 index_to_select, affine_w,
                                                                  current_bounds_affine_out,
-                                                                 prev_layer_index, list_of_icnns[current_layer_index-1],
+                                                                 current_layer_index, list_of_icnns,
                                                                  rand_samples_percent=rand_samples_percent,
                                                                  rand_sample_alternation_percent=rand_sample_alternation_percent)
             else:
@@ -80,8 +79,9 @@ class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
 
         return list_included_spaces, list_ambient_spaces
 
-    def _sample_group_line_search_lp(self, data_samples, amount, affine_w, affine_b, index_to_select, model,
-                                     curr_bounds_affine_out, prev_layer_index, current_icnns, rand_samples_percent=0,
+    # todo nn_model is in self, so I don't need to pass it as an argument
+    def _sample_group_line_search_lp(self, data_samples, amount, nn_model, index_to_select, affine_w,
+                                     curr_bounds_affine_out, current_layer_index, list_of_icnns, rand_samples_percent=0,
                                      rand_sample_alternation_percent=0.2, keep_samples=True):
         # getting the random directions with controlled random noise
         upper = 1
@@ -108,15 +108,58 @@ class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
 
         cs = torch.nn.functional.normalize(cs, dim=1)
 
-        # find a point which is inside the current icnn, ideally it is somewhat in the center
-        # (chebyshev center would be interesting maybe, but because of relu the problem is not convex anymore)
+        # sample a random point in the input space of the nn_model
+        input_samples = torch.empty((0, self.center.size(0)), dtype=data_type).to(device)
+        eps_bounds = [self.center.add(-self.eps), self.center.add(self.eps)]
+        input_samples = ds.samples_uniform_over(input_samples, amount, eps_bounds)
+        input_samples.requires_grad = True
+        nn_model.requires_grad = False
 
-        uniform_points = ds.samples_uniform_over(data_samples, amount, curr_bounds_affine_out, keep_samples=False,
-                                                 padding=0)
+        # calculate the gradient of the output in the direction of the output plus the direction
+        # for W and b
+        nn_until_current_layer = SequentialNN(nn_model.layer_widths[:current_layer_index + 2])
+        parameter_list = list(nn_until_current_layer.parameters())
 
-        included_space = torch.empty((amount, affine_w.size(0)), dtype=data_type).to(device)
-        for i in range(amount):
-            included_space[i] = self._line_search_by_direction(current_icnns, cs[i], uniform_points[i], index_to_select)
+        for i in range((len(nn_until_current_layer.layer_widths) - 1) * 2):
+            parameter_list[i].data = list(nn_model.parameters())[i].data
+
+        output_samples = nn_until_current_layer(input_samples)
+        # output_samples_with_direction = torch.add(output_samples, cs)
+        # loss = torch.subtract(output_samples_with_direction, output_samples) #.sum(dim=1)
+        # loss.backward()
+        # loss.backward(cs)
+        output_samples.backward(cs)
+
+        gradients = input_samples.grad
+
+        # do line search until any bound is violated
+        max_iterations = 100
+        individual_step_size = torch.ones((amount, 1), dtype=data_type).to(device)
+        for i in range(max_iterations):
+            adapted_input_samples = input_samples + torch.mul(gradients, individual_step_size)
+
+            # step in to direction of gradient until eps bound is violated (this will result in the input samples being
+            # approximatly on the true boundry, however we want the over approximated boundry given by the icnns,
+            # therefore continue gradient decent until the latest icnn is violated.
+            # If there is no latest icnn for a neuron use the eps bounds
+
+            # first solution with only check for eps bounds
+            # because our first input is guaranteed to be in the eps bounds, we don't need the step size to be negative
+            # todo maybe make this more efficient (e.g. golden section search)
+
+            #todo is_within_eps and is_outside_eps always False, why? It should only be false if it is on the boundry
+            is_within_eps = self._within_eps(adapted_input_samples, eps_bounds)
+            for j in range(amount):
+                if is_within_eps[j]:
+                    individual_step_size[j] = individual_step_size[j] * 1.3
+
+            is_outside_eps = self._outside_eps(adapted_input_samples, eps_bounds)
+            for j in range(amount):
+                if is_outside_eps[j]:
+                    individual_step_size[j] = individual_step_size[j] * 0.5
+
+        # get intermediate output before current layer
+        included_space = nn_until_current_layer(adapted_input_samples)
 
         if keep_samples and included_space.size(0) > 0:
             included_space = torch.cat([data_samples, included_space], dim=0)
@@ -124,33 +167,14 @@ class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
             included_space = included_space
         return included_space
 
-    def _line_search_by_direction(self, current_icnns, direction, sample, index_to_select, low=-1.0, up=1.0):
-        # todo maybe make this more efficient (e.g. golden section search) and parallel execution with matrices
-        print("low: {}, up: {}".format(low, up))
+    def _within_eps(self, input_samples, bounds, precision=1e-3):
+        lower = bounds[0]
+        upper = bounds[1]
+        return torch.logical_and(torch.all(torch.greater_equal(input_samples, lower + precision), dim=1),
+                                 torch.all(torch.less_equal(input_samples, upper - precision), dim=1))
 
-        scaled_direction = torch.mul(direction, up)
-        new_x = torch.add(scaled_direction, sample)
-        new_out = [icnn(torch.index_select(new_x.view(1, -1), 1, torch.tensor(index_to_select))) for icnn in current_icnns]
-        #todo ich muss hier bei den icnns die indices auswählen, welche zu den icnns gehören und nicht die neuen indices
-        #todo außerdem muss ich darauf achten, dass auch die dimensionen des samples korrekt sind für die keine icnns existieren, also die dimensionen, die nicht in index_to_select enthalten sind
-
-        if max(new_out) < 0:
-            return self._line_search_by_direction(current_icnns, direction, sample, index_to_select, low=low, up=2 * up)
-
-        scaled_direction = torch.mul(direction, low)
-        new_x = torch.add(scaled_direction, sample)
-        new_out = [icnn(torch.index_select(new_x.view(1, -1), 1, torch.tensor(index_to_select))) for icnn in current_icnns]
-        if min(new_out) < 0:
-            return self._line_search_by_direction(current_icnns, direction, sample, index_to_select, low=low * 2, up=up)
-
-        middle = (up + low) / 2
-        scaled_direction = torch.mul(direction, middle)
-        new_x = torch.add(scaled_direction, sample)
-        new_out = [icnn(torch.index_select(new_x.view(1, -1), 1, torch.tensor(index_to_select))) for icnn in current_icnns]
-
-        if max(new_out) < 0 and max(new_out) > - 0.2:
-            return new_x
-        if max(new_out) < 0:
-            return self._line_search_by_direction(current_icnns, direction, sample, index_to_select, low=middle, up=up)
-        if min(new_out) > 0:
-            return self._line_search_by_direction(current_icnns, direction, sample, index_to_select, low=low, up=middle)
+    def _outside_eps(self, input_samples, bounds, precision=1e-3):
+        lower = bounds[0]
+        upper = bounds[1]
+        return torch.logical_or(torch.all(torch.less_equal(input_samples, lower - precision), dim=1),
+                                torch.all(torch.greater_equal(input_samples, upper + precision), dim=1))
