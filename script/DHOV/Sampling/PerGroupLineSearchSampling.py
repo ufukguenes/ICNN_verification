@@ -8,7 +8,8 @@ import script.DHOV.DataSampling as ds
 from script.settings import data_type, device
 from script.DHOV.Sampling.SamplingStrategy import SamplingStrategy
 from script.NeuralNets.Networks import SequentialNN
-
+import matplotlib.pyplot as plt
+import matplotlib
 
 class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
     def __init__(self, *args, **kwargs):
@@ -124,18 +125,29 @@ class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
             parameter_list[i].data = list(nn_model.parameters())[i].data
 
         output_samples = nn_until_current_layer(input_samples)
-        # output_samples_with_direction = torch.add(output_samples, cs)
-        # loss = torch.subtract(output_samples_with_direction, output_samples) #.sum(dim=1)
-        # loss.backward()
-        # loss.backward(cs)
-        output_samples.backward(cs)
 
-        gradients = input_samples.grad
+        optimizer = torch.optim.Adam([input_samples])
+
+
+        # loss = torch.subtract(output_samples, torch.zeros_like(output_samples))
+        loss = torch.sum(output_samples * cs)
+        loss.backward()
+
+        # gradients = input_samples.grad
+        # gradients = torch.autograd.grad(output_samples, input_samples, grad_outputs=cs)[0]
 
         # do line search until any bound is violated
         max_iterations = 100
         individual_step_size = torch.ones((amount, 1), dtype=data_type).to(device)
         for i in range(max_iterations):
+            output_samples = nn_until_current_layer(input_samples)
+            optimizer.zero_grad()
+            loss = torch.sum(output_samples * cs) + 1000 * self._outside_eps(input_samples, eps_bounds).any() # todo 3. need to implement check for icnn and ignoring eps bounds if icnn is NOT violated
+            loss.backward()
+            optimizer.step()
+            adapted_input_samples = input_samples
+            continue
+
             adapted_input_samples = input_samples + torch.mul(gradients, individual_step_size)
 
             # step in to direction of gradient until eps bound is violated (this will result in the input samples being
@@ -145,15 +157,17 @@ class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
 
             # first solution with only check for eps bounds
             # because our first input is guaranteed to be in the eps bounds, we don't need the step size to be negative
-            # todo maybe make this more efficient (e.g. golden section search)
+            # todo 1. is_within_eps and is_outside_eps always False, why? It should only be false if it is on the boundry
+            # todo 2. maybe make this more efficient (e.g. golden section search)
+            # todo 3. need to implement check for icnn and ignoring eps bounds if icnn is NOT violated
+            # attention: the step size needs to be a scalar, not a vector
 
-            #todo is_within_eps and is_outside_eps always False, why? It should only be false if it is on the boundry
             is_within_eps = self._within_eps(adapted_input_samples, eps_bounds)
+            is_outside_eps = self._outside_eps(adapted_input_samples, eps_bounds)
             for j in range(amount):
                 if is_within_eps[j]:
                     individual_step_size[j] = individual_step_size[j] * 1.3
 
-            is_outside_eps = self._outside_eps(adapted_input_samples, eps_bounds)
             for j in range(amount):
                 if is_outside_eps[j]:
                     individual_step_size[j] = individual_step_size[j] * 0.5
@@ -161,20 +175,47 @@ class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
         # get intermediate output before current layer
         included_space = nn_until_current_layer(adapted_input_samples)
 
+        """
+            plt.scatter(output_samples.index_select(1, torch.IntTensor([12])).detach().numpy(),
+                        output_samples.index_select(1, torch.IntTensor([16])).detach().numpy(),
+                        output_samples.index_select(1, torch.IntTensor([25])).detach().numpy())
+    
+            plt.scatter(included_space.index_select(1, torch.IntTensor([12])).detach().numpy(),
+                        included_space.index_select(1, torch.IntTensor([16])).detach().numpy(),
+                        included_space.index_select(1, torch.IntTensor([25])).detach().numpy())
+    
+            plt.show()
+    
+            matplotlib.use("TkAgg")
+        """
+
         if keep_samples and included_space.size(0) > 0:
             included_space = torch.cat([data_samples, included_space], dim=0)
         else:
             included_space = included_space
         return included_space
 
-    def _within_eps(self, input_samples, bounds, precision=1e-3):
+    def plt_inc_amb_3D(self, caption, inc, amb):
+        fig = plt.figure()
+        ax = fig.add_subplot(projection="3d")
+        ax.set_ylim(-0.2, 0.2)
+        ax.set_xlim(-0.1, 0.25)
+        ax.set_zlim(-0.1, 0.3)
+        ax.scatter(list(map(lambda x: x[0], amb)), list(map(lambda x: x[1], amb)), list(map(lambda x: x[2], amb)),
+                   c="#ff7f0e")
+        ax.scatter(list(map(lambda x: x[0], inc)), list(map(lambda x: x[1], inc)), list(map(lambda x: x[2], inc)),
+                   c="#1f77b4")
+        plt.title(caption)
+        plt.show()
+
+    def _within_eps(self, input_samples, bounds, precision=1e-4):
         lower = bounds[0]
         upper = bounds[1]
         return torch.logical_and(torch.all(torch.greater_equal(input_samples, lower + precision), dim=1),
                                  torch.all(torch.less_equal(input_samples, upper - precision), dim=1))
 
-    def _outside_eps(self, input_samples, bounds, precision=1e-3):
+    def _outside_eps(self, input_samples, bounds, precision=1e-4):
         lower = bounds[0]
         upper = bounds[1]
-        return torch.logical_or(torch.all(torch.less_equal(input_samples, lower - precision), dim=1),
-                                torch.all(torch.greater_equal(input_samples, upper + precision), dim=1))
+        return torch.logical_or(torch.any(torch.less_equal(input_samples, lower - precision), dim=1),
+                                torch.any(torch.greater_equal(input_samples, upper + precision), dim=1))
