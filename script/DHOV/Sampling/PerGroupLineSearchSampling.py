@@ -146,6 +146,7 @@ class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
             loss.backward()
             optimizer.step()
             adapted_input_samples = input_samples
+            #todo precision rausnehmen wenn ich dabei bleibe nur outside_eps zu verwenden
             continue
 
             adapted_input_samples = input_samples + torch.mul(gradients, individual_step_size)
