@@ -28,7 +28,7 @@ class SamplingStrategy(ABC):
         return inc_space_sample_count, amb_space_sample_count
 
     @abstractmethod
-    def sampling_by_round(self, affine_w, affine_b, group_indices, gurobi_model, current_layer_index, bounds_affine_out,
+    def sampling_by_round(self, affine_w, affine_b, all_group_indices, gurobi_model, current_layer_index, bounds_affine_out,
                           bounds_layer_out, list_of_icnns):
         """
         Use this method to sample data points for one layer for all groups.
@@ -36,7 +36,7 @@ class SamplingStrategy(ABC):
          list_of_icnns:
             affine_w: the weight matrix of the current layer
             affine_b: the bias vector of the current layer
-            group_indices: the index of the neuron to be sampled, for all groups
+            all_group_indices: the index of the neuron to be sampled, for all groups of all layers until the current one
             gurobi_model: the gurobi model to be used for sampling
             current_layer_index: the index of the current layer
             bounds_affine_out: the bounds of the affine output space of the all layers

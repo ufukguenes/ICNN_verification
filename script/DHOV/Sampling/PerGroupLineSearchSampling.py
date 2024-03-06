@@ -24,11 +24,12 @@ class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
                           "Sampling over input space is not yet supported when using per group sampling. "
                           "Using sampling over output space instead...")
 
-    def sampling_by_round(self, affine_w, affine_b, group_indices, gurobi_model, current_layer_index, bounds_affine_out,
+    def sampling_by_round(self, affine_w, affine_b, all_group_indices, gurobi_model, current_layer_index, bounds_affine_out,
                           bounds_layer_out, list_of_icnns):
         list_included_spaces = []
         list_ambient_spaces = []
         included_sample_count, ambient_sample_count = self.get_num_of_samples()
+        group_indices = all_group_indices[current_layer_index]
         for i, index_to_select in enumerate(group_indices):
 
             rand_samples_percent = 0.2
