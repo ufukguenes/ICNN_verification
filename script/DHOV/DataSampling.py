@@ -236,11 +236,11 @@ def sample_per_group_two(data_samples, amount, affine_w, affine_b, index_to_sele
     model.Params.LogToConsole = 0
 
     prev_layer_in_size = len(prev_prev_layer_out[0])
-    prev_layer_in = model.addMVar(prev_layer_in_size, lb=prev_prev_layer_out[0].detach().numpy(), ub=prev_prev_layer_out[1].detach().numpy())
-    affine_out = verbas.add_affine_constr(model, prev_affine_w.detach().numpy(), prev_affine_b.detach().numpy(), prev_layer_in, prev_bounds_affine_out[0].detach().numpy(), prev_bounds_affine_out[1].detach().numpy())
+    prev_layer_in = model.addMVar(prev_layer_in_size, lb=prev_prev_layer_out[0].detach().cpu().numpy(), ub=prev_prev_layer_out[1].detach().cpu().numpy())
+    affine_out = verbas.add_affine_constr(model, prev_affine_w.detach().cpu().numpy(), prev_affine_b.detach().cpu().numpy(), prev_layer_in, prev_bounds_affine_out[0].detach().cpu().numpy(), prev_bounds_affine_out[1].detach().cpu().numpy())
 
     out_fet = len(prev_bounds_affine_out[0])
-    out_vars = model.addMVar(out_fet, lb=prev_bounds_layer_out[0].detach().numpy(), ub=prev_bounds_layer_out[1].detach().numpy(), name="out_var".format())
+    out_vars = model.addMVar(out_fet, lb=prev_bounds_layer_out[0].detach().cpu().numpy(), ub=prev_bounds_layer_out[1].detach().cpu().numpy(), name="out_var".format())
 
     for neuron_index in prev_fixed_upper:
         model.addConstr(out_vars[neuron_index] == 0, name="fixed_upper_{}".format(neuron_index))
@@ -264,7 +264,7 @@ def sample_per_group_two(data_samples, amount, affine_w, affine_b, index_to_sele
         low = torch.index_select(prev_bounds_layer_out[0], 0, index_select)
         up = torch.index_select(prev_bounds_layer_out[1], 0, index_select)
         constraint_icnn_bounds_affine_out, constraint_icnn_bounds_layer_out = constraint_icnn.calculate_box_bounds([low, up])
-        current_in_vars = model.addMVar(len(prev_group_indices[k]), lb=low.detach().numpy(), ub=up.detach().numpy(), name="icnn_var_group_{}".format(prev_group_indices[k]))
+        current_in_vars = model.addMVar(len(prev_group_indices[k]), lb=low.detach().cpu().numpy(), ub=up.detach().cpu().numpy(), name="icnn_var_group_{}".format(prev_group_indices[k]))
 
         constraint_icnn.add_max_output_constraints(model, current_in_vars, constraint_icnn_bounds_affine_out,
                                                    constraint_icnn_bounds_layer_out)
@@ -740,8 +740,8 @@ def parallel_per_group_as_lp(inc_space_sample_count, affine_w, affine_b, index_t
 
     args = []
     for i in range(num_processes):
-        detached_bounds = [[x.detach().numpy() for x in curr_bounds_affine_out[0]],
-                           [x.detach().numpy() for x in curr_bounds_affine_out[1]]]
+        detached_bounds = [[x.detach().cpu().numpy() for x in curr_bounds_affine_out[0]],
+                           [x.detach().cpu().numpy() for x in curr_bounds_affine_out[1]]]
         args.append([inc_space_sample_count // num_processes, affine_w.detach().clone(), affine_b.detach().clone(), index_to_select,
              detached_bounds, prev_layer_index, rand_samples_percent, rand_sample_alternation_percent])
 

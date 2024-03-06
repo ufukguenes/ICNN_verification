@@ -37,7 +37,7 @@ class VerifiableNet(ABC):
         with torch.no_grad():
             last_layer = list(self.ws[-1].parameters())
             b = last_layer[1]
-            b.data = b - value
+            b.data = b - torch.tensor(value, device=device)
 
     @abstractmethod
     def apply_normalisation(self, mean, std):
@@ -559,7 +559,7 @@ class ICNNApproxMax(ICNN):
         tensor_bb_b = torch.tensor(bb_b, dtype=data_type).to(device)
         lb, ub = verbas.calc_affine_out_bound(tensor_bb_w, tensor_bb_b, in_lb, in_ub)
 
-        bb_var = model.addMVar(len(lb), lb=lb, ub=ub, name="skip_var")
+        bb_var = model.addMVar(len(lb), lb=lb.cpu(), ub=ub.cpu(), name="skip_var")
         skip_const = model.addConstr(bb_w @ input_vars + bb_b == bb_var)
         max_var = model.addVar(lb=-float("inf"))
         model.addGenConstrMax(max_var, bb_var.tolist())

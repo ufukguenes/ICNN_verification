@@ -16,8 +16,8 @@ def load(icnn):
 
 def generate_model_center_eps(model, center, eps, layer_index):
     input_to_previous_layer_size = len(center)
-    input_approx_layer = model.addMVar(input_to_previous_layer_size, lb=[elem - eps for elem in center],
-                                        ub=[elem + eps for elem in center], name="output_layer_[{}]_".format(layer_index))
+    input_approx_layer = model.addMVar(input_to_previous_layer_size, lb=[elem - eps for elem in center.cpu()],
+                                        ub=[elem + eps for elem in center.cpu()], name="output_layer_[{}]_".format(layer_index))
     return input_approx_layer
 
 
@@ -29,14 +29,14 @@ def add_layer_to_model(model, affine_w, affine_b, curr_constraint_icnns, curr_gr
         output_prev_layer.append(model.getVarByName("output_layer_[{}]_[{}]".format(prev_layer_index, i)))
     output_prev_layer = grp.MVar.fromlist(output_prev_layer)
 
-    in_lb = curr_bounds_affine_out[0].detach().numpy()
-    in_ub = curr_bounds_affine_out[1].detach().numpy()
+    in_lb = curr_bounds_affine_out[0].detach().cpu().numpy()
+    in_ub = curr_bounds_affine_out[1].detach().cpu().numpy()
 
     out_fet = len(affine_b)
     affine_var = verbas.add_affine_constr(model, affine_w, affine_b, output_prev_layer, in_lb, in_ub, i=current_layer_index)
 
-    out_lb = curr_bounds_layer_out[0].detach().numpy()
-    out_ub = curr_bounds_layer_out[1].detach().numpy()
+    out_lb = curr_bounds_layer_out[0].detach().cpu().numpy()
+    out_ub = curr_bounds_layer_out[1].detach().cpu().numpy()
     out_vars = model.addMVar(out_fet, lb=out_lb, ub=out_ub, name="out_var_[{}]".format(current_layer_index))
 
     for neuron_index in curr_fixed_neuron_upper:
@@ -61,7 +61,7 @@ def add_layer_to_model(model, affine_w, affine_b, curr_constraint_icnns, curr_gr
         low = torch.index_select(curr_bounds_layer_out[0], 0, index_to_select)
         up = torch.index_select(curr_bounds_layer_out[1], 0, index_to_select)
         constraint_icnn_bounds_affine_out, constraint_icnn_bounds_layer_out = constraint_icnn.calculate_box_bounds([low, up])
-        current_in_vars = model.addMVar(len(curr_group_indices[k]), lb=low.detach().numpy(), ub=up.detach().numpy(), name="icnn_var_group_{}_{}".format(current_layer_index, curr_group_indices[k]))
+        current_in_vars = model.addMVar(len(curr_group_indices[k]), lb=low.detach().cpu().numpy(), ub=up.detach().cpu().numpy(), name="icnn_var_group_{}_{}".format(current_layer_index, curr_group_indices[k]))
 
         constraint_icnn.add_max_output_constraints(model, current_in_vars, constraint_icnn_bounds_affine_out,
                                                    constraint_icnn_bounds_layer_out)
@@ -134,7 +134,7 @@ def update_bounds_with_icnns(model, bounds_affine_out, bounds_layer_out, current
 
     lb = bounds_affine_out[current_layer_index][0].detach()
     ub = bounds_affine_out[current_layer_index][1].detach()
-    affine_var = verbas.add_affine_constr(model, affine_w, affine_b, output_prev_layer, lb, ub)
+    affine_var = verbas.add_affine_constr(model, affine_w, affine_b, output_prev_layer, lb.cpu(), ub.cpu())
 
     model.update()
 

@@ -177,13 +177,13 @@ class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
         included_space = nn_until_current_layer(adapted_input_samples)
 
         """
-            plt.scatter(output_samples.index_select(1, torch.IntTensor([12])).detach().numpy(),
-                        output_samples.index_select(1, torch.IntTensor([16])).detach().numpy(),
-                        output_samples.index_select(1, torch.IntTensor([25])).detach().numpy())
+            plt.scatter(output_samples.index_select(1, torch.IntTensor([12])).detach().cpu().numpy(),
+                        output_samples.index_select(1, torch.IntTensor([16])).detach().cpu().numpy(),
+                        output_samples.index_select(1, torch.IntTensor([25])).detach().cpu().numpy())
     
-            plt.scatter(included_space.index_select(1, torch.IntTensor([12])).detach().numpy(),
-                        included_space.index_select(1, torch.IntTensor([16])).detach().numpy(),
-                        included_space.index_select(1, torch.IntTensor([25])).detach().numpy())
+            plt.scatter(included_space.index_select(1, torch.IntTensor([12])).detach().cpu().numpy(),
+                        included_space.index_select(1, torch.IntTensor([16])).detach().cpu().numpy(),
+                        included_space.index_select(1, torch.IntTensor([25])).detach().cpu().numpy())
     
             plt.show()
     
