@@ -54,7 +54,7 @@ class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
 
                 current_bounds_affine_out = bounds_affine_out[current_layer_index]
                 sample_space = self._sample_group_line_search_lp(sample_space, included_sample_count, self.nn_model,
-                                                                 index_to_select, affine_w,
+                                                                 index_to_select, affine_w, all_group_indices,
                                                                  current_bounds_affine_out,
                                                                  current_layer_index, list_of_icnns,
                                                                  rand_samples_percent=rand_samples_percent,
@@ -82,7 +82,7 @@ class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
         return list_included_spaces, list_ambient_spaces
 
     # todo nn_model is in self, so I don't need to pass it as an argument
-    def _sample_group_line_search_lp(self, data_samples, amount, nn_model, index_to_select, affine_w,
+    def _sample_group_line_search_lp(self, data_samples, amount, nn_model, index_to_select, affine_w, all_group_indices,
                                      curr_bounds_affine_out, current_layer_index, list_of_icnns, rand_samples_percent=0,
                                      rand_sample_alternation_percent=0.2, keep_samples=True):
         # getting the random directions with controlled random noise
@@ -141,9 +141,8 @@ class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
         max_iterations = 100
         individual_step_size = torch.ones((amount, 1), dtype=data_type).to(device)
         for i in range(max_iterations):
-            output_samples = nn_until_current_layer(input_samples)
             optimizer.zero_grad()
-            loss = torch.sum(output_samples * cs) + 1000 * self._outside_eps(input_samples, eps_bounds).any() # todo 3. need to implement check for icnn and ignoring eps bounds if icnn is NOT violated
+            loss = self._loss_for_boundary(nn_until_current_layer, input_samples, output_samples, cs, eps_bounds, list_of_icnns, all_group_indices)
             loss.backward()
             optimizer.step()
             adapted_input_samples = input_samples
@@ -178,24 +177,47 @@ class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
         included_space = nn_until_current_layer(adapted_input_samples)
 
         """
-            plt.scatter(output_samples.index_select(1, torch.IntTensor([12])).detach().cpu().numpy(),
-                        output_samples.index_select(1, torch.IntTensor([16])).detach().cpu().numpy(),
-                        output_samples.index_select(1, torch.IntTensor([25])).detach().cpu().numpy())
-    
-            plt.scatter(included_space.index_select(1, torch.IntTensor([12])).detach().cpu().numpy(),
-                        included_space.index_select(1, torch.IntTensor([16])).detach().cpu().numpy(),
-                        included_space.index_select(1, torch.IntTensor([25])).detach().cpu().numpy())
-    
-            plt.show()
-    
-            matplotlib.use("TkAgg")
-        """
+        matplotlib.use("TkAgg")
+        self.plt_inc_amb_3D("test",
+                            included_space.index_select(1, torch.IntTensor(index_to_select)).detach().cpu().numpy(),
+                            output_samples.index_select(1, torch.IntTensor(index_to_select)).detach().cpu().numpy())
+                            """
 
         if keep_samples and included_space.size(0) > 0:
             included_space = torch.cat([data_samples, included_space], dim=0)
         else:
             included_space = included_space
         return included_space
+
+    def _loss_for_boundary(self, nn_model, input_samples, output_samples, direction, eps_bounds, list_of_icnns, all_group_indices):
+        output_samples = nn_model(input_samples)
+        loss = torch.sum(output_samples * direction)
+        loss += 1000 * torch.logical_not(torch.logical_and(self._outside_eps(input_samples, eps_bounds), self._check_icnns(nn_model, input_samples, list_of_icnns, all_group_indices))).any() # self._outside_eps(input_samples, eps_bounds).any() #todo 1000 adaptable machen
+        return loss
+
+    def _check_icnns(self, nn_model, input_samples, list_of_icnns, all_group_indices, precision=1e-5):
+        parameters = list(nn_model.parameters())
+        current_input = input_samples
+        intermediate_inputs = []
+        relu = torch.nn.ReLU()
+        for layer in range(0, len(parameters) - 2, 2):
+            W = list(nn_model.parameters())[layer].data
+            b = list(nn_model.parameters())[layer + 1].data
+            current_input = torch.matmul(W, current_input.T).T.add(b)
+            current_input = relu(current_input)
+            intermediate_inputs.append(current_input)
+
+        sample_is_outside_any_icnn = torch.zeros(len(input_samples)).bool()
+        for layer_index in range(len(all_group_indices) - 1):
+            for group_index in range(len(all_group_indices[layer_index])):
+                current_icnn = list_of_icnns[layer_index][group_index]
+                current_indices = all_group_indices[layer_index][group_index]
+                current_intermediate = torch.index_select(intermediate_inputs[layer_index], 1, torch.IntTensor(current_indices))
+                current_is_outside_icnn = torch.greater(current_icnn(current_intermediate), 0 + precision)
+                sample_is_outside_any_icnn = torch.logical_or(sample_is_outside_any_icnn, current_is_outside_icnn)
+
+        return sample_is_outside_any_icnn
+
 
     def plt_inc_amb_3D(self, caption, inc, amb):
         fig = plt.figure()
@@ -210,13 +232,13 @@ class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
         plt.title(caption)
         plt.show()
 
-    def _within_eps(self, input_samples, bounds, precision=1e-4):
+    def _within_eps(self, input_samples, bounds, precision=1e-5):
         lower = bounds[0]
         upper = bounds[1]
         return torch.logical_and(torch.all(torch.greater_equal(input_samples, lower + precision), dim=1),
                                  torch.all(torch.less_equal(input_samples, upper - precision), dim=1))
 
-    def _outside_eps(self, input_samples, bounds, precision=1e-4):
+    def _outside_eps(self, input_samples, bounds, precision=1e-5):
         lower = bounds[0]
         upper = bounds[1]
         return torch.logical_or(torch.any(torch.less_equal(input_samples, lower - precision), dim=1),
