@@ -333,10 +333,13 @@ class MultiDHOV:
             all_group_indices.append(group_indices)
 
             gurobi_model = nn_encoding_model.copy()
+
+            t = time.time()
             included_space, ambient_space = sampling_strategy.sampling_by_round(affine_w, affine_b, all_group_indices,
                                                                                 gurobi_model, current_layer_index,
                                                                                 bounds_affine_out, bounds_layer_out,
                                                                                 list_of_icnns)
+            print("        time for sampling: {}".format(time.time() - t))
 
 
 
