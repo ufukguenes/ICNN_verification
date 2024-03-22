@@ -181,9 +181,9 @@ class MILPVerifier(Verifier):
         for i in range(0, len(parameter_list) - 2, 2):
             if until_layer_neuron is not None and until_layer_neuron[0] == i // 2:
                 neuron_index = until_layer_neuron[1]
-                in_lb = [bounds_affine_out[int(i / 2)][0].detach().numpy()[neuron_index]]
-                in_ub = [bounds_affine_out[int(i / 2)][1].detach().numpy()[neuron_index]]
-                W, b = parameter_list[i].detach().numpy()[neuron_index], parameter_list[i + 1].detach().numpy()[neuron_index]
+                in_lb = [bounds_affine_out[int(i / 2)][0].detach().cpu().numpy()[neuron_index]]
+                in_ub = [bounds_affine_out[int(i / 2)][1].detach().cpu().numpy()[neuron_index]]
+                W, b = parameter_list[i].detach().cpu().numpy()[neuron_index], parameter_list[i + 1].detach().cpu().numpy()[neuron_index]
 
                 out_vars = verbas.add_affine_constr(m, W, b, in_var, in_lb, in_ub, i)
 
@@ -195,9 +195,9 @@ class MILPVerifier(Verifier):
                 break_early = True
                 break
 
-            in_lb = bounds_affine_out[int(i / 2)][0].detach().numpy()
-            in_ub = bounds_affine_out[int(i / 2)][1].detach().numpy()
-            W, b = parameter_list[i].detach().numpy(), parameter_list[i + 1].detach().numpy()
+            in_lb = bounds_affine_out[int(i / 2)][0].detach().cpu().numpy()
+            in_ub = bounds_affine_out[int(i / 2)][1].detach().cpu().numpy()
+            W, b = parameter_list[i].detach().cpu().numpy(), parameter_list[i + 1].detach().cpu().numpy()
 
             out_vars = verbas.add_affine_constr(m, W, b, in_var, in_lb, in_ub, i)
 
@@ -208,9 +208,9 @@ class MILPVerifier(Verifier):
             in_var = relu_vars
 
         if not break_early:
-            lb = bounds_affine_out[-1][0].detach().numpy()
-            ub = bounds_affine_out[-1][1].detach().numpy()
-            W, b = parameter_list[len(parameter_list) - 2].detach().numpy(), parameter_list[-1].detach().numpy()
+            lb = bounds_affine_out[-1][0].detach().cpu().numpy()
+            ub = bounds_affine_out[-1][1].detach().cpu().numpy()
+            W, b = parameter_list[len(parameter_list) - 2].detach().cpu().numpy(), parameter_list[-1].detach().cpu().numpy()
 
             out_vars = verbas.add_affine_constr(m, W, b, in_var, lb, ub, i+2)
 

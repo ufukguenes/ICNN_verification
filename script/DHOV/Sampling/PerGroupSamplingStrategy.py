@@ -19,11 +19,12 @@ class PerGroupSamplingStrategy(SamplingStrategy):
                           "Sampling over input space is not yet supported when using per group sampling. "
                           "Using sampling over output space instead...")
 
-    def sampling_by_round(self, affine_w, affine_b, group_indices, gurobi_model, current_layer_index, bounds_affine_out,
+    def sampling_by_round(self, affine_w, affine_b, all_group_indices, gurobi_model, current_layer_index, bounds_affine_out,
                           bounds_layer_out, list_of_icnns):
         list_included_spaces = []
         list_ambient_spaces = []
         included_sample_count, ambient_sample_count = self.get_num_of_samples()
+        group_indices = all_group_indices[current_layer_index]
         for index_to_select in group_indices:
             sample_space = torch.empty((0, affine_w.size(1)), dtype=data_type).to(device)
             ambient_space = torch.empty((0, affine_w.size(1)), dtype=data_type).to(device)

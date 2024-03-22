@@ -246,8 +246,8 @@ class MultiDHOV:
                 t = time.time()
                 copy_model = nn_encoding_model.copy()
                 ver.update_bounds_with_icnns(copy_model, bounds_affine_out, bounds_layer_out,
-                                             current_layer_index, affine_w.detach().numpy(),
-                                             affine_b.detach().numpy(), print_new_bounds=print_new_bounds)
+                                             current_layer_index, affine_w.detach().cpu().numpy(),
+                                             affine_b.detach().cpu().numpy(), print_new_bounds=print_new_bounds)
                 print("    time for icnn_bound calculation: {}".format(time.time() - t))
 
             fix_upper = []
@@ -333,10 +333,13 @@ class MultiDHOV:
             all_group_indices.append(group_indices)
 
             gurobi_model = nn_encoding_model.copy()
-            included_space, ambient_space = sampling_strategy.sampling_by_round(affine_w, affine_b, group_indices,
+
+            t = time.time()
+            included_space, ambient_space = sampling_strategy.sampling_by_round(affine_w, affine_b, all_group_indices,
                                                                                 gurobi_model, current_layer_index,
                                                                                 bounds_affine_out, bounds_layer_out,
                                                                                 list_of_icnns)
+            print("        time for sampling: {}".format(time.time() - t))
 
 
 
@@ -475,8 +478,8 @@ class MultiDHOV:
 
                 if use_over_approximation:
                     copy_model = nn_encoding_model.copy()
-                    adversarial_input, c = ver.verification(current_icnn, copy_model, affine_w.detach().numpy(),
-                                                            affine_b.detach().numpy(), group_indices[group_i],
+                    adversarial_input, c = ver.verification(current_icnn, copy_model, affine_w.cpu().detach().cpu().numpy(),
+                                                            affine_b.detach().cpu().numpy(), group_indices[group_i],
                                                             bounds_affine_out[current_layer_index],
                                                             bounds_layer_out[current_layer_index], prev_layer_index,
                                                             has_relu=True)
@@ -512,7 +515,7 @@ class MultiDHOV:
             curr_bounds_layer_out = bounds_layer_out[current_layer_index]
             curr_fixed_neuron_lower = fixed_neuron_per_layer_lower[current_layer_index]
             curr_fixed_neuron_upper = fixed_neuron_per_layer_upper[current_layer_index]
-            ver.add_layer_to_model(nn_encoding_model, affine_w.detach().numpy(), affine_b.detach().numpy(),
+            ver.add_layer_to_model(nn_encoding_model, affine_w.detach().cpu().numpy(), affine_b.detach().cpu().numpy(),
                                    curr_constraint_icnns, curr_group_indices,
                                    curr_bounds_affine_out, curr_bounds_layer_out,
                                    curr_fixed_neuron_lower, curr_fixed_neuron_upper,
@@ -535,15 +538,15 @@ class MultiDHOV:
                               extr=original_included_space.detach().cpu())
             plots.plt_initial()
         t = time.time()
-        affine_w, affine_b = parameter_list[-2].detach().numpy(), parameter_list[-1].detach().numpy()
+        affine_w, affine_b = parameter_list[-2].detach().cpu().numpy(), parameter_list[-1].detach().cpu().numpy()
         last_layer_index = current_layer_index + 1
         output_second_last_layer = []
         for m in range(affine_w.shape[1]):
             output_second_last_layer.append(
                 nn_encoding_model.getVarByName("output_layer_[{}]_[{}]".format(last_layer_index - 1, m)))
         output_second_last_layer = grp.MVar.fromlist(output_second_last_layer)
-        in_lb = bounds_affine_out[last_layer_index][0].detach().numpy()
-        in_ub = bounds_affine_out[last_layer_index][1].detach().numpy()
+        in_lb = bounds_affine_out[last_layer_index][0].detach().cpu().numpy()
+        in_ub = bounds_affine_out[last_layer_index][1].detach().cpu().numpy()
         output_nn = verbas.add_affine_constr(nn_encoding_model, affine_w, affine_b, output_second_last_layer, in_lb, in_ub, i=last_layer_index)
         for m, var in enumerate(output_nn.tolist()):
             var.setAttr("varname", "output_layer_[{}]_[{}]".format(last_layer_index, m))
@@ -688,9 +691,9 @@ def visualize_single_neuron(icnn, neuron_index, layer_index, bounds_affine_out):
             leq0.append(samp)
             leq_x.append(relu_out)
 
-    plt.scatter(list(map(lambda x: x.detach().numpy(), gt0)),
-                list(map(lambda x: x.detach().numpy(), gt_x)), c="#ff7f0e")
-    plt.scatter(list(map(lambda x: x.detach().numpy(), leq0)),
-                list(map(lambda x: x.detach().numpy(), leq_x)), c="#1f77b4")
+    plt.scatter(list(map(lambda x: x.detach().cpu().numpy(), gt0)),
+                list(map(lambda x: x.detach().cpu().numpy(), gt_x)), c="#ff7f0e")
+    plt.scatter(list(map(lambda x: x.detach().cpu().numpy(), leq0)),
+                list(map(lambda x: x.detach().cpu().numpy(), leq_x)), c="#1f77b4")
     plt.title("ReLU")
     plt.show()
