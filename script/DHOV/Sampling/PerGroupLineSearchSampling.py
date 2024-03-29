@@ -138,50 +138,53 @@ class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
         # gradients = torch.autograd.grad(output_samples, input_samples, grad_outputs=cs)[0]
 
         # do line search until any bound is violated
-        max_iterations = 100
-        individual_step_size = torch.ones((amount, 1), dtype=data_type).to(device)
-        for i in range(max_iterations):
-            optimizer.zero_grad()
-            loss = self._loss_for_boundary(nn_until_current_layer, input_samples, output_samples, cs, eps_bounds, list_of_icnns, all_group_indices)
-            loss.backward()
-            optimizer.step()
-            adapted_input_samples = input_samples
-            #todo precision rausnehmen wenn ich dabei bleibe nur outside_eps zu verwenden
-            continue
+        for_plotting = []
+        for x in [10, 20, 50, 80, 100]:
+            max_iterations = x
+            individual_step_size = torch.ones((amount, 1), dtype=data_type).to(device)
+            for i in range(max_iterations):
+                optimizer.zero_grad()
+                loss = self._loss_for_boundary(nn_until_current_layer, input_samples, output_samples, cs, eps_bounds, list_of_icnns, all_group_indices)
+                loss.backward()
+                optimizer.step()
+                adapted_input_samples = input_samples
+                #todo precision rausnehmen wenn ich dabei bleibe nur outside_eps zu verwenden
+                continue
 
-            adapted_input_samples = input_samples + torch.mul(gradients, individual_step_size)
+                adapted_input_samples = input_samples + torch.mul(gradients, individual_step_size)
 
-            # step in to direction of gradient until eps bound is violated (this will result in the input samples being
-            # approximatly on the true boundry, however we want the over approximated boundry given by the icnns,
-            # therefore continue gradient decent until the latest icnn is violated.
-            # If there is no latest icnn for a neuron use the eps bounds
+                # step in to direction of gradient until eps bound is violated (this will result in the input samples being
+                # approximatly on the true boundry, however we want the over approximated boundry given by the icnns,
+                # therefore continue gradient decent until the latest icnn is violated.
+                # If there is no latest icnn for a neuron use the eps bounds
 
-            # first solution with only check for eps bounds
-            # because our first input is guaranteed to be in the eps bounds, we don't need the step size to be negative
-            # todo 1. is_within_eps and is_outside_eps always False, why? It should only be false if it is on the boundry
-            # todo 2. maybe make this more efficient (e.g. golden section search)
-            # todo 3. need to implement check for icnn and ignoring eps bounds if icnn is NOT violated
-            # attention: the step size needs to be a scalar, not a vector
+                # first solution with only check for eps bounds
+                # because our first input is guaranteed to be in the eps bounds, we don't need the step size to be negative
+                # todo 1. is_within_eps and is_outside_eps always False, why? It should only be false if it is on the boundry
+                # todo 2. maybe make this more efficient (e.g. golden section search)
+                # todo 3. need to implement check for icnn and ignoring eps bounds if icnn is NOT violated
+                # attention: the step size needs to be a scalar, not a vector
 
-            is_within_eps = self._within_eps(adapted_input_samples, eps_bounds)
-            is_outside_eps = self._outside_eps(adapted_input_samples, eps_bounds)
-            for j in range(amount):
-                if is_within_eps[j]:
-                    individual_step_size[j] = individual_step_size[j] * 1.3
+                is_within_eps = self._within_eps(adapted_input_samples, eps_bounds)
+                is_outside_eps = self._outside_eps(adapted_input_samples, eps_bounds)
+                for j in range(amount):
+                    if is_within_eps[j]:
+                        individual_step_size[j] = individual_step_size[j] * 1.3
 
-            for j in range(amount):
-                if is_outside_eps[j]:
-                    individual_step_size[j] = individual_step_size[j] * 0.5
+                for j in range(amount):
+                    if is_outside_eps[j]:
+                        individual_step_size[j] = individual_step_size[j] * 0.5
 
-        # get intermediate output before current layer
-        included_space = nn_until_current_layer(adapted_input_samples)
+            # get intermediate output before current layer
 
-        """
+            included_space = nn_until_current_layer(adapted_input_samples)
+            for_plotting.append(included_space.index_select(1, torch.IntTensor(index_to_select)).detach().cpu().numpy())
+
+
+        for_plotting.append(output_samples.index_select(1, torch.IntTensor(index_to_select)).detach().cpu().numpy())
         matplotlib.use("TkAgg")
-        self.plt_inc_amb_3D("test",
-                            included_space.index_select(1, torch.IntTensor(index_to_select)).detach().cpu().numpy(),
-                            output_samples.index_select(1, torch.IntTensor(index_to_select)).detach().cpu().numpy())
-                            """
+        self.plt_inc_amb_3D("test {}".format(max_iterations),
+                            for_plotting)
 
         if keep_samples and included_space.size(0) > 0:
             included_space = torch.cat([data_samples, included_space], dim=0)
@@ -219,16 +222,19 @@ class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
         return sample_is_outside_any_icnn
 
 
-    def plt_inc_amb_3D(self, caption, inc, amb):
+    def plt_inc_amb_3D(self, caption, myList: []): #inc, amb
         fig = plt.figure()
         ax = fig.add_subplot(projection="3d")
         ax.set_ylim(-0.2, 0.2)
         ax.set_xlim(-0.1, 0.25)
         ax.set_zlim(-0.1, 0.3)
-        ax.scatter(list(map(lambda x: x[0], amb)), list(map(lambda x: x[1], amb)), list(map(lambda x: x[2], amb)),
+        for x in myList:
+            ax.scatter(list(map(lambda x: x[0], x)), list(map(lambda x: x[1], x)), list(map(lambda x: x[2], x)))
+
+        """ax.scatter(list(map(lambda x: x[0], amb)), list(map(lambda x: x[1], amb)), list(map(lambda x: x[2], amb)),
                    c="#ff7f0e")
         ax.scatter(list(map(lambda x: x[0], inc)), list(map(lambda x: x[1], inc)), list(map(lambda x: x[2], inc)),
-                   c="#1f77b4")
+                   c="#1f77b4")"""
         plt.title(caption)
         plt.show()
 
