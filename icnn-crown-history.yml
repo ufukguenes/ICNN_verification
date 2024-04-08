@@ -1,6 +1,7 @@
 name: icnn-crown
 channels:
   - https://conda.anaconda.org/gurobi
+  - conda-forge
   - defaults
 dependencies:
   - appdirs[version='>=1.4']
