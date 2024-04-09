@@ -190,7 +190,7 @@ class MultiDHOV:
 
         input_flattened = torch.flatten(input)
         center = input_flattened
-        eps_bounds = [torch.clip(input_flattened.add(-eps), 0, 1), torch.clip(input_flattened.add(eps), 0, 1)]
+        eps_bounds = [input_flattened.add(-eps), input_flattened.add(eps)]
 
         bounds_affine_out, bounds_layer_out = nn.calculate_box_bounds(eps_bounds)
 

@@ -112,7 +112,7 @@ class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
 
         # sample a random point in the input space of the nn_model
         input_samples = torch.empty((0, self.center.size(0)), dtype=data_type).to(device)
-        eps_bounds = [torch.clip(self.center.add(-self.eps), 0, 1), torch.clip(self.center.add(self.eps), 0, 1)]
+        eps_bounds = [self.center.add(-self.eps), self.center.add(self.eps)]
         input_samples = ds.samples_uniform_over(input_samples, amount, eps_bounds)
         input_samples.requires_grad = True
         nn_model.requires_grad = False
