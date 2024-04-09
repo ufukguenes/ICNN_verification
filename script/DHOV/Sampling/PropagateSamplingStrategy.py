@@ -38,7 +38,7 @@ class PropagateSamplingStrategy(SamplingStrategy, ABC):
 
     def _sample_over_input_space(self, ambient_space, current_icnns, sample_count, current_layer_index,
                                  bounds_layer_out):
-        eps_bounds = [self.center.add(-self.eps), self.center.add(self.eps)]
+        eps_bounds = [torch.clip(self.center.add(-self.eps), 0, 1), torch.clip(self.center.add(self.eps), 0, 1)]
 
         if current_layer_index == 0:
             ambient_space = ds.sample_uniform_excluding(ambient_space, sample_count, eps_bounds,
@@ -119,7 +119,7 @@ class UniformSamplingStrategy(PropagateSamplingStrategy, ABC):
         included_sample_count, ambient_sample_count = self.get_num_of_samples()
 
         included_space = torch.empty((0, self.center.size(0)), dtype=data_type).to(device)
-        eps_bounds = [self.center.add(-self.eps), self.center.add(self.eps)]
+        eps_bounds = [torch.clip(self.center.add(-self.eps), 0, 1), torch.clip(self.center.add(self.eps), 0, 1)]
         included_space = ds.samples_uniform_over(included_space, included_sample_count, eps_bounds)
 
         return included_space
