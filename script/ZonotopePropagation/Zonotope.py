@@ -159,10 +159,11 @@ class Zonotope:
             P - (n x d) one column for each sample point
         """
         assert len(self.center.shape) == 1, "Sampling the boundary is only supported for 1d zonotopes!"
+        data_type = self.center.dtype
         n_dims = self.center.shape[0]
-        D = torch.randn((n_samples, n_dims))
+        D = torch.randn((n_samples, n_dims), dtype=data_type)
         z_sample = Zonotope(F.linear(self.center, D, torch.zeros(n_samples)), F.linear(self.generators, D))
-        X_hat = torch.where(z_sample.generators > 0, 1., -1.)
+        X_hat = torch.where(z_sample.generators > 0, torch.tensor(1., dtype=data_type), torch.tensor(-1., dtype=data_type))
 
         P = self.generators.T @ X_hat + self.center.reshape(-1, 1)
         return P
