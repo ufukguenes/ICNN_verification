@@ -139,7 +139,7 @@ class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
 
         # do line search until any bound is violated
         for_plotting = []
-        for x in [10, 20, 50, 80, 100]:
+        for x in [100]: # [10, 20, 50, 80, 100]:
             max_iterations = x
             individual_step_size = torch.ones((amount, 1), dtype=data_type).to(device)
             for i in range(max_iterations):
@@ -178,13 +178,13 @@ class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
             # get intermediate output before current layer
 
             included_space = nn_until_current_layer(adapted_input_samples)
-            for_plotting.append(included_space.index_select(1, torch.IntTensor(index_to_select)).detach().cpu().numpy())
+            """for_plotting.append(included_space.index_select(1, torch.IntTensor(index_to_select)).detach().cpu().numpy())
 
 
         for_plotting.append(output_samples.index_select(1, torch.IntTensor(index_to_select)).detach().cpu().numpy())
         matplotlib.use("TkAgg")
         self.plt_inc_amb_3D("test {}".format(max_iterations),
-                            for_plotting)
+                            for_plotting)"""
 
         if keep_samples and included_space.size(0) > 0:
             included_space = torch.cat([data_samples, included_space], dim=0)
