@@ -28,6 +28,7 @@ def train_icnn(model, train_loader, ambient_loader, epochs=10, optimizer="adam",
     low = True
     window_size = 10
     moving_avg_loss = torch.zeros(window_size)
+    zero_tensor = torch.Tensor([0]).to(device)
     for epoch in range(epochs):
         train_loss = 0
         train_n = 0
@@ -61,13 +62,13 @@ def train_icnn(model, train_loader, ambient_loader, epochs=10, optimizer="adam",
                             for p in w.parameters():
                                 if len(p.size()) > 1:  # we have a matrix
                                     # only want positive entries
-                                    p[:] = torch.maximum(torch.Tensor([0]).to(device), p)
+                                    p[:] = torch.maximum(zero_tensor, p)
                 else:
                     with torch.no_grad():
                         for p in model.parameters():
                             if len(p.size()) > 1:  # we have a matrix
                                 # only want positive entries
-                                p[:] = torch.maximum(torch.Tensor([0]).to(device), p)
+                                p[:] = torch.maximum(zero_tensor, p)
 
             last_loss = loss
 
