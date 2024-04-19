@@ -11,6 +11,7 @@ from script.NeuralNets.Networks import SequentialNN
 import matplotlib.pyplot as plt
 import matplotlib
 
+
 class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -24,60 +25,55 @@ class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
                           "Sampling over input space is not yet supported when using per group sampling. "
                           "Using sampling over output space instead...")
 
-    def sampling_by_round(self, affine_w, affine_b, all_group_indices, gurobi_model, current_layer_index, bounds_affine_out,
+    def sampling_by_round(self, affine_w, affine_b, all_group_indices, gurobi_model, current_layer_index,
+                          bounds_affine_out,
                           bounds_layer_out, list_of_icnns):
         list_included_spaces = []
         list_ambient_spaces = []
         included_sample_count, ambient_sample_count = self.get_num_of_samples()
         group_indices = all_group_indices[current_layer_index]
-        for i, index_to_select in enumerate(group_indices):
 
-            rand_samples_percent = 0.2
-            rand_sample_alternation_percent = 0.01
+        rand_samples_percent = 0.2
+        rand_sample_alternation_percent = 0.01
 
-            if current_layer_index == 0:
-                sample_space = torch.empty((0, affine_w.size(1)), dtype=data_type).to(device)
-                ambient_space = torch.empty((0, affine_w.size(1)), dtype=data_type).to(device)
+        if current_layer_index == 0:
+            sample_space = torch.empty((len(group_indices), 0, affine_w.size(1)), dtype=data_type).to(device)
 
-                #  this is the same as for the PerGroupSamplingStrategy
-                sample_space = ds.sample_per_group(sample_space, included_sample_count, affine_w, self.center,
-                                                   self.eps, index_to_select,
-                                                   rand_samples_percent=rand_samples_percent,
-                                                   rand_sample_alternation_percent=rand_sample_alternation_percent)
+            #  this is the same as for the PerGroupSamplingStrategy
+            sample_space = ds.sample_per_group_all_groups(sample_space, included_sample_count, affine_w, self.center,
+                                                          self.eps, group_indices,
+                                                          rand_samples_percent=rand_samples_percent,
+                                                          rand_sample_alternation_percent=rand_sample_alternation_percent)
 
-                sample_space = ds.apply_affine_transform(affine_w, affine_b, sample_space)
-                ambient_space = ds.apply_affine_transform(affine_w, affine_b, ambient_space)
+            sample_space = (torch
+                            .matmul(affine_w, sample_space.view(sample_space.shape[0], sample_space.shape[1], sample_space.shape[2], 1))
+                            .view(sample_space.shape[0], sample_space.shape[1], affine_w.shape[0])
+                            .add(affine_b)
+                            )
 
-            elif current_layer_index > 0:
-                sample_space = torch.empty((0, affine_w.size(0)), dtype=data_type).to(device)
-                ambient_space = torch.empty((0, affine_w.size(0)), dtype=data_type).to(device)
+        elif current_layer_index > 0:
+            sample_space = torch.empty((0, affine_w.size(0)), dtype=data_type).to(device)
 
-                current_bounds_affine_out = bounds_affine_out[current_layer_index]
-                sample_space = self._sample_group_line_search_lp(sample_space, included_sample_count, self.nn_model,
-                                                                 index_to_select, affine_w, all_group_indices,
-                                                                 current_bounds_affine_out,
-                                                                 current_layer_index, list_of_icnns,
-                                                                 rand_samples_percent=rand_samples_percent,
-                                                                 rand_sample_alternation_percent=rand_sample_alternation_percent)
-            else:
-                raise ValueError("round_index must be a positive integer or zero. Got: ", current_layer_index)
+            current_bounds_affine_out = bounds_affine_out[current_layer_index]
+            sample_space = self._sample_group_line_search_lp(sample_space, included_sample_count, self.nn_model,
+                                                             index_to_select, affine_w, all_group_indices,
+                                                             current_bounds_affine_out,
+                                                             current_layer_index, list_of_icnns,
+                                                             rand_samples_percent=rand_samples_percent,
+                                                             rand_sample_alternation_percent=rand_sample_alternation_percent)
+        else:
+            raise ValueError("round_index must be a positive integer or zero. Got: ", current_layer_index)
 
-            sample_space = ds.apply_relu_transform(sample_space)
-            ambient_space = ds.apply_relu_transform(ambient_space)
+        sample_space = ds.apply_relu_transform(sample_space)
 
+        new_amb_space = ds.samples_uniform_over_all_groups((len(group_indices), ambient_sample_count, affine_w.size(0)),
+                                                           bounds_layer_out[current_layer_index],
+                                                           padding=self.eps)
+
+        for index_to_select in group_indices:
             index_to_select = torch.tensor(index_to_select).to(device)
-            list_included_spaces.append(torch.index_select(sample_space, 1, index_to_select))
-
-            list_ambient_spaces.append(ambient_space)
-
-        if self.sample_over_output_space:
-            for i in range(len(list_ambient_spaces)):
-                new_amb_space = ds.samples_uniform_over(list_ambient_spaces[i], ambient_sample_count,
-                                                        bounds_layer_out[current_layer_index],
-                                                        padding=self.eps)
-                new_amb_space = torch.index_select(new_amb_space, 1, torch.tensor(group_indices[i]).to(device))
-                old_amb_space = torch.index_select(list_ambient_spaces[i], 1, torch.tensor(group_indices[i]).to(device))
-                list_ambient_spaces[i] = torch.concat((old_amb_space, new_amb_space), dim=0)
+            list_included_spaces.append(torch.index_select(sample_space, 2, index_to_select))
+            list_ambient_spaces.append(torch.index_select(new_amb_space, 2, index_to_select))
 
         return list_included_spaces, list_ambient_spaces
 
@@ -129,7 +125,6 @@ class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
 
         optimizer = torch.optim.Adam([input_samples])
 
-
         # loss = torch.subtract(output_samples, torch.zeros_like(output_samples))
         loss = torch.sum(output_samples * cs)
         loss.backward()
@@ -139,16 +134,17 @@ class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
 
         # do line search until any bound is violated
         for_plotting = []
-        for x in [100]: # [10, 20, 50, 80, 100]:
+        for x in [100]:  # [10, 20, 50, 80, 100]:
             max_iterations = x
             individual_step_size = torch.ones((amount, 1), dtype=data_type).to(device)
             for i in range(max_iterations):
                 optimizer.zero_grad()
-                loss = self._loss_for_boundary(nn_until_current_layer, input_samples, output_samples, cs, eps_bounds, list_of_icnns, all_group_indices)
+                loss = self._loss_for_boundary(nn_until_current_layer, input_samples, output_samples, cs, eps_bounds,
+                                               list_of_icnns, all_group_indices)
                 loss.backward()
                 optimizer.step()
                 adapted_input_samples = input_samples
-                #todo precision rausnehmen wenn ich dabei bleibe nur outside_eps zu verwenden
+                # todo precision rausnehmen wenn ich dabei bleibe nur outside_eps zu verwenden
                 continue
 
                 adapted_input_samples = input_samples + torch.mul(gradients, individual_step_size)
@@ -192,10 +188,13 @@ class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
             included_space = included_space
         return included_space
 
-    def _loss_for_boundary(self, nn_model, input_samples, output_samples, direction, eps_bounds, list_of_icnns, all_group_indices):
+    def _loss_for_boundary(self, nn_model, input_samples, output_samples, direction, eps_bounds, list_of_icnns,
+                           all_group_indices):
         output_samples = nn_model(input_samples)
         loss = torch.sum(output_samples * direction)
-        loss += 1000 * torch.logical_not(torch.logical_and(self._outside_eps(input_samples, eps_bounds), self._check_icnns(nn_model, input_samples, list_of_icnns, all_group_indices))).any() # self._outside_eps(input_samples, eps_bounds).any() #todo 1000 adaptable machen
+        loss += 1000 * torch.logical_not(torch.logical_and(self._outside_eps(input_samples, eps_bounds),
+                                                           self._check_icnns(nn_model, input_samples, list_of_icnns,
+                                                                             all_group_indices))).any()  # self._outside_eps(input_samples, eps_bounds).any() #todo 1000 adaptable machen
         return loss
 
     def _check_icnns(self, nn_model, input_samples, list_of_icnns, all_group_indices, precision=1e-5):
@@ -215,14 +214,14 @@ class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
             for group_index in range(len(all_group_indices[layer_index])):
                 current_icnn = list_of_icnns[layer_index][group_index]
                 current_indices = all_group_indices[layer_index][group_index]
-                current_intermediate = torch.index_select(intermediate_inputs[layer_index], 1, torch.IntTensor(current_indices))
+                current_intermediate = torch.index_select(intermediate_inputs[layer_index], 1,
+                                                          torch.IntTensor(current_indices))
                 current_is_outside_icnn = torch.greater(current_icnn(current_intermediate), 0 + precision)
                 sample_is_outside_any_icnn = torch.logical_or(sample_is_outside_any_icnn, current_is_outside_icnn)
 
         return sample_is_outside_any_icnn
 
-
-    def plt_inc_amb_3D(self, caption, myList: []): #inc, amb
+    def plt_inc_amb_3D(self, caption, myList: []):  # inc, amb
         fig = plt.figure()
         ax = fig.add_subplot(projection="3d")
         ax.set_ylim(-0.2, 0.2)
