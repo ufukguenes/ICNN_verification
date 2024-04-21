@@ -14,10 +14,12 @@ def load(icnn):
     icnn.load_state_dict(torch.load("../convexHullModel.pth"), strict=False)
 
 
-def generate_model_center_eps(model, center, eps, layer_index):
+def generate_model_center_bounds(model, center, input_bounds, layer_index):
     input_to_previous_layer_size = len(center)
-    input_approx_layer = model.addMVar(input_to_previous_layer_size, lb=[elem - eps for elem in center.cpu()],
-                                        ub=[elem + eps for elem in center.cpu()], name="output_layer_[{}]_".format(layer_index))
+    lower_bound = input_bounds[0].cpu().numpy()
+    upper_bound = input_bounds[1].cpu().numpy()
+    input_approx_layer = model.addMVar(input_to_previous_layer_size, lb=lower_bound,
+                                        ub=upper_bound, name="output_layer_[{}]_".format(layer_index))
     return input_approx_layer
 
 

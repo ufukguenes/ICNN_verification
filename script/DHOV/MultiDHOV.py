@@ -70,7 +70,7 @@ class MultiDHOV:
         self.list_of_included_samples = []
         self.list_of_ambient_samples = []
 
-    def start_verification(self, nn: SequentialNN, input, icnn_factory, group_size, eps=0.001, icnn_batch_size=1000,
+    def start_verification(self, nn: SequentialNN, input, icnn_factory, group_size, input_bounds, icnn_batch_size=1000,
                            icnn_epochs=100, hyper_lambda=1, init_affine_bounds=None, init_layer_bounds=None,
                            break_after=None, tighten_bounds=False, use_fixed_neurons_in_grouping=False, layers_as_milp=[], layers_as_snr=[],
                            use_over_approximation=True, opt_steps_gd=100,
@@ -87,7 +87,7 @@ class MultiDHOV:
         :param icnn_factory: ICNNFactory that can generate new ICNNs given a needed input dimension
         :param group_size: the size of one group for the approximation with the ICNN. If not enough neurons are
             available the group size is smaller
-        :param eps: the epsilon radius for around the input (l-infinity norm)
+        :param input_bounds: the lower and upper bounds for the input
         :param icnn_batch_size: batch size for each ICNN. Usually we can fit all training data into one batch
         :param icnn_epochs: maximum number of epochs each ICNN is going to train if not interrupted
         :param sample_count: number of trainings data points generated for each ICNN.
@@ -190,9 +190,8 @@ class MultiDHOV:
 
         input_flattened = torch.flatten(input)
         center = input_flattened
-        eps_bounds = [input_flattened.add(-eps), input_flattened.add(eps)]
 
-        bounds_affine_out, bounds_layer_out = nn.calculate_box_bounds(eps_bounds)
+        bounds_affine_out, bounds_layer_out = nn.calculate_box_bounds(input_bounds)
 
         if init_affine_bounds is not None:
             bounds_affine_out = init_affine_bounds
@@ -219,7 +218,7 @@ class MultiDHOV:
         current_layer_index = 0
 
         self.nn_encoding_model = nn_encoding_model
-        self.input_var = ver.generate_model_center_eps(nn_encoding_model, center, eps, -1)
+        self.input_var = ver.generate_model_center_bounds(nn_encoding_model, center, input_bounds, -1)
         nn_encoding_model.update()
 
         self.bounds_affine_out = bounds_affine_out

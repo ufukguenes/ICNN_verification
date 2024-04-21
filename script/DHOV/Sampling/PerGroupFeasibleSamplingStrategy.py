@@ -51,8 +51,7 @@ class PerGroupFeasibleSamplingStrategy(SamplingStrategy):
         if self.sample_over_output_space:
             for i in range(len(list_ambient_spaces)):
                 new_amb_space = ds.samples_uniform_over(list_ambient_spaces[i], ambient_sample_count,
-                                                        bounds_layer_out[current_layer_index],
-                                                        padding=self.eps)
+                                                        bounds_layer_out[current_layer_index])
                 new_amb_space = torch.index_select(new_amb_space, 1, group_indices[i])
                 old_amb_space = torch.index_select(list_ambient_spaces[i], 1, group_indices[i])
                 list_ambient_spaces[i] = torch.concat((old_amb_space, new_amb_space), dim=0)

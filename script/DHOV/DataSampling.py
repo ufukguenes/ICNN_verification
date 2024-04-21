@@ -113,15 +113,17 @@ def sample_uniform_over_icnn(data_samples, amount, icnns, group_indices, curr_bo
     return data_samples
 
 
-def sample_linspace(data_samples, amount, center, eps, keep_samples=True):
-    step_number = 1  # math.floor(math.sqrt(amount))
-    xs = torch.linspace(-eps, eps, steps=step_number)
+def sample_linspace(data_samples, amount, input_bounds, keep_samples=True):
+    lower_bounds = input_bounds[0]
+    upper_bounds = input_bounds[1]
+    # step_number = 1  # math.floor(math.sqrt(amount))
+    new_samples = torch.linspace(lower_bounds, upper_bounds, steps=amount)
     """#ys = torch.linspace(-eps, eps, steps=step_number)
     tens = [xs for i in range(step_number)]
     grid = torch.meshgrid(*tens)
     new_samples = torch.add(center, grid)"""
-    mask = torch.combinations(xs, r=data_samples.size(1), with_replacement=True)
-    new_samples = torch.add(center, mask)
+    # mask = torch.combinations(xs, r=data_samples.size(1), with_replacement=True)
+    # new_samples = torch.add(center, mask)
     if keep_samples and data_samples.size(0) > 0:
         data_samples = torch.cat([data_samples, new_samples], dim=0)
     else:
@@ -490,9 +492,10 @@ def sample_at_0(data_samples, amount, affine_w, affine_b, index_to_select, model
 
     return data_samples
 
-def sample_per_group(data_samples, amount, affine_w, center, eps, index_to_select, keep_samples=True, rand_samples_percent=0, rand_sample_alternation_percent=0.2, with_noise=False, with_sign_swap=False):
+def sample_per_group(data_samples, amount, affine_w, input_bounds, index_to_select, keep_samples=True, rand_samples_percent=0, rand_sample_alternation_percent=0.2, with_noise=False, with_sign_swap=False):
     samples_per_bound = amount // 2
-    eps_tensor = torch.tensor(eps, dtype=data_type).to(device)
+    lower_bounds = input_bounds[0]
+    upper_bounds = input_bounds[1]
 
     upper = 1
     lower = - 1
@@ -517,23 +520,21 @@ def sample_per_group(data_samples, amount, affine_w, center, eps, index_to_selec
                 cs[i][index] = rand_samples[i][k]
 
     affine_w_temp = torch.matmul(cs, affine_w)
-    upper_samples = torch.where(affine_w_temp > 0, eps_tensor, - eps_tensor)
-    lower_samples = torch.where(affine_w_temp < 0, eps_tensor, - eps_tensor)
+    upper_samples = torch.where(affine_w_temp > 0, upper_bounds, lower_bounds)
+    lower_samples = torch.where(affine_w_temp < 0, upper_bounds, lower_bounds)
 
     if with_noise:
-        upper = eps
-        lower = - eps
-        noise_per_sample = (upper - lower) * torch.rand((samples_per_bound, data_samples.size(1)),
-                                                        dtype=data_type).to(device) + lower
+        noise_per_sample = (upper_bounds - lower_bounds) * torch.rand((samples_per_bound, data_samples.size(1)),
+                                                        dtype=data_type).to(device) + lower_bounds
 
         upper_samples.add_(noise_per_sample)
         lower_samples.add_(noise_per_sample)
 
-        upper_samples = torch.where(upper_samples <= eps, upper_samples, eps_tensor)
-        upper_samples = torch.where(upper_samples >= -eps, upper_samples, -eps_tensor)
+        upper_samples = torch.where(upper_samples <= upper_bounds, upper_samples, upper_bounds)
+        upper_samples = torch.where(upper_samples >= lower_bounds, upper_samples, lower_bounds)
 
-        lower_samples = torch.where(lower_samples <= eps, lower_samples, eps_tensor)
-        lower_samples = torch.where(lower_samples >= -eps, lower_samples, -eps_tensor)
+        lower_samples = torch.where(lower_samples <= upper_bounds, lower_samples, upper_bounds)
+        lower_samples = torch.where(lower_samples >= lower_bounds, lower_samples, lower_bounds)
 
     if with_sign_swap:
         # changing sign
@@ -558,7 +559,6 @@ def sample_per_group(data_samples, amount, affine_w, center, eps, index_to_selec
 
 
     all_samples = torch.cat([upper_samples, lower_samples], dim=0)
-    all_samples.add_(center)
 
     if keep_samples and data_samples.size(0) > 0:
         data_samples = torch.cat([data_samples, all_samples], dim=0)
@@ -566,9 +566,10 @@ def sample_per_group(data_samples, amount, affine_w, center, eps, index_to_selec
         data_samples = all_samples
     return data_samples
 
-def sample_per_group_all_groups(data_samples, amount, affine_w, center, eps, group_indices, keep_samples=True, rand_samples_percent=0, rand_sample_alternation_percent=0.2, with_noise=False, with_sign_swap=False):
+def sample_per_group_all_groups(data_samples, amount, affine_w, input_bounds, group_indices, keep_samples=True, rand_samples_percent=0, rand_sample_alternation_percent=0.2, with_noise=False, with_sign_swap=False):
     samples_per_bound = amount // 2
-    eps_tensor = torch.tensor(eps, dtype=data_type).to(device)
+    lower_bounds = input_bounds[0]
+    upper_bounds = input_bounds[1]
 
     upper = 1
     lower = - 1
@@ -586,23 +587,21 @@ def sample_per_group_all_groups(data_samples, amount, affine_w, center, eps, gro
         cs[i] = torch.where(cs[i] == -1, (upper - lower) * torch.rand(affine_w.size(0)) + lower, cs[i])
 
     affine_w_temp = torch.matmul(cs, affine_w)
-    upper_samples = torch.where(affine_w_temp > 0, eps_tensor, - eps_tensor)
-    lower_samples = torch.where(affine_w_temp < 0, eps_tensor, - eps_tensor)
+    upper_samples = torch.where(affine_w_temp > 0, upper_bounds, lower_bounds)
+    lower_samples = torch.where(affine_w_temp < 0, upper_bounds, lower_bounds)
 
     if with_noise:
-        upper = eps
-        lower = - eps
-        noise_per_sample = (upper - lower) * torch.rand((len(group_indices), samples_per_bound, data_samples.size(2)),
-                                                        dtype=data_type).to(device) + lower
+        noise_per_sample = (upper_bounds - lower_bounds) * torch.rand((len(group_indices), samples_per_bound, data_samples.size(2)),
+                                                        dtype=data_type).to(device) + lower_bounds
 
         upper_samples.add_(noise_per_sample)
         lower_samples.add_(noise_per_sample)
 
-        upper_samples = torch.where(upper_samples <= eps, upper_samples, eps_tensor)
-        upper_samples = torch.where(upper_samples >= -eps, upper_samples, -eps_tensor)
+        upper_samples = torch.where(upper_samples <= upper_bounds, upper_samples, upper_bounds)
+        upper_samples = torch.where(upper_samples >= lower_bounds, upper_samples, lower_bounds)
 
-        lower_samples = torch.where(lower_samples <= eps, lower_samples, eps_tensor)
-        lower_samples = torch.where(lower_samples >= -eps, lower_samples, -eps_tensor)
+        lower_samples = torch.where(lower_samples <= upper_bounds, lower_samples, upper_bounds)
+        lower_samples = torch.where(lower_samples >= lower_bounds, lower_samples, lower_bounds)
 
     if with_sign_swap:
         # changing sign
@@ -627,7 +626,6 @@ def sample_per_group_all_groups(data_samples, amount, affine_w, center, eps, gro
 
 
     all_samples = torch.cat([upper_samples, lower_samples], dim=1)
-    all_samples.add_(center)
 
     if keep_samples and data_samples.size(1) > 0:
         data_samples = torch.cat([data_samples, all_samples], dim=1)

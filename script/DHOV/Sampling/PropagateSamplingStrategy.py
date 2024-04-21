@@ -5,11 +5,12 @@ import torch
 import script.DHOV.DataSampling as ds
 from script.settings import data_type, device
 from script.DHOV.Sampling.SamplingStrategy import SamplingStrategy
-
-
+import warnings
 class PropagateSamplingStrategy(SamplingStrategy, ABC):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        raise NotImplementedError("This sampling strategy still needs to be adapted to work without "
+                                  "specification of eps and just use the input bounds")
         self.unaltered_included_space_prev_round = None
         self.unaltered_ambient_space_prev_round = None
         self.prev_group_indices = None

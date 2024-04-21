@@ -32,8 +32,8 @@ class PerGroupSamplingStrategy(SamplingStrategy):
             rand_sample_alternation_percent = 0.01
 
             if current_layer_index == 0:
-                sample_space = ds.sample_per_group(sample_space, included_sample_count, affine_w, self.center,
-                                                   self.eps, index_to_select,
+                sample_space = ds.sample_per_group(sample_space, included_sample_count, affine_w, self.input_bounds,
+                                                   index_to_select,
                                                    rand_samples_percent=rand_samples_percent,
                                                    rand_sample_alternation_percent=rand_sample_alternation_percent)
             elif current_layer_index > 0:
@@ -62,8 +62,7 @@ class PerGroupSamplingStrategy(SamplingStrategy):
         if self.sample_over_output_space:
             for i in range(len(list_ambient_spaces)):
                 new_amb_space = ds.samples_uniform_over(list_ambient_spaces[i], ambient_sample_count,
-                                                        bounds_layer_out[current_layer_index],
-                                                        padding=self.eps)
+                                                        bounds_layer_out[current_layer_index])
                 new_amb_space = torch.index_select(new_amb_space, 1, torch.tensor(group_indices[i]).to(device))
                 old_amb_space = torch.index_select(list_ambient_spaces[i], 1, torch.tensor(group_indices[i]).to(device))
                 list_ambient_spaces[i] = torch.concat((old_amb_space, new_amb_space), dim=0)

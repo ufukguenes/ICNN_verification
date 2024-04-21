@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 # todo make each strategy return an iterator by group for before and after sampling
 #todo remove affine_w and affine_b from the sampling strategy, not neaded as nn_model includes that inforamtion
 class SamplingStrategy(ABC):
-    def __init__(self, center, eps, nn_model, keep_ambient_space=False, sample_count=10, sample_over_output_space=True,
+    def __init__(self, center, input_bounds, nn_model, keep_ambient_space=False, sample_count=10, sample_over_output_space=True,
                  sample_over_input_space=False, sample_new=True):
         self.current_sample_space = None  # todo soll ich das behalten?, wenn ja, dann muss ich das updaten
         self.keep_ambient_space = keep_ambient_space
@@ -14,7 +14,7 @@ class SamplingStrategy(ABC):
         self.sample_count = sample_count
         self.sample_new = sample_new
         self.center = center
-        self.eps = eps
+        self.input_bounds = input_bounds
         self.nn_model = nn_model
 
     def get_num_of_samples(self):

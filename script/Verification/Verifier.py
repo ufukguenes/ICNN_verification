@@ -10,12 +10,12 @@ from script.settings import device, data_type
 
 
 class Verifier(ABC):
-    def __init__(self, net, input_x, eps, time_limit=None, solver_bound=None, print_log=False):
+    def __init__(self, net, input_x, input_bounds, time_limit=None, solver_bound=None, print_log=False):
         self.time_limit = time_limit
         self.solver_bound = solver_bound
         self.net = net
         self.input_x = input_x
-        self.eps = eps
+        self.input_bounds = input_bounds
         self.print_log = print_log
         self.model = None
         self.output_vars = None
@@ -75,14 +75,13 @@ class SingleNeuronVerifier(Verifier):
 
         input_flattened = torch.flatten(self.input_x)
         input_size = input_flattened.size(0)
-        bounds_affine_out, bounds_layer_out = self.net.calculate_box_bounds([input_flattened.add(-self.eps), input_flattened.add(self.eps)])
+        bounds_affine_out, bounds_layer_out = self.net.calculate_box_bounds(self.input_bounds)
 
         self.bounds_affine_out, self.bounds_layer_out = bounds_affine_out, bounds_layer_out
 
-        input_flattened = input_flattened.cpu().numpy()
-
-        input_var = m.addMVar(input_size, lb=[elem - self.eps for elem in input_flattened],
-                              ub=[elem + self.eps for elem in input_flattened], name="in_var")
+        lower_bound = self.input_bounds[0].cpu().numpy()
+        upper_bound = self.input_bounds[1].cpu().numpy()
+        input_var = m.addMVar(input_size, lb=lower_bound, ub=upper_bound, name="in_var")
 
 
         parameter_list = list(self.net.parameters())
@@ -167,12 +166,12 @@ class MILPVerifier(Verifier):
 
         input_flattened = torch.flatten(self.input_x)
         input_size = input_flattened.size(0)
-        bounds_affine_out, bounds_layer_out = self.net.calculate_box_bounds([input_flattened.add(-self.eps), input_flattened.add(self.eps)])
+        bounds_affine_out, bounds_layer_out = self.net.calculate_box_bounds(self.input_bounds)
 
-        input_flattened = input_flattened.cpu().numpy()
-
-        input_var = m.addMVar(input_size, lb=[elem - self.eps for elem in input_flattened],
-                              ub=[elem + self.eps for elem in input_flattened], name="in_var")
+        lower_bound = self.input_bounds[0].cpu().numpy()
+        upper_bound = self.input_bounds[1].cpu().numpy()
+        input_var = m.addMVar(input_size, lb=lower_bound,
+                              ub=upper_bound, name="in_var")
 
         parameter_list = list(self.net.parameters())
         in_var = input_var
