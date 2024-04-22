@@ -22,14 +22,6 @@ def samples_uniform_over(data_samples, amount, bounds, keep_samples=True, paddin
 
     return data_samples
 
-def samples_uniform_over_all_groups(shape, bounds, padding=0):
-    lb = bounds[0] - padding
-    ub = bounds[1] + padding
-    random_samples = (ub - lb) * torch.rand(shape, dtype=data_type).to(device) + lb
-    data_samples = random_samples
-
-    return data_samples
-
 
 def sample_per_group_as_lp(data_samples, amount, affine_w, affine_b, index_to_select, model, curr_bounds_affine_out, prev_layer_index, rand_samples_percent=0, rand_sample_alternation_percent=0.2, keep_samples=True):
     upper = 1
@@ -227,85 +219,3 @@ def sample_per_group(data_samples, amount, affine_w, input_bounds, index_to_sele
     else:
         data_samples = all_samples
     return data_samples
-
-def sample_per_group_all_groups(data_samples, amount, affine_w, input_bounds, group_indices, keep_samples=True, rand_samples_percent=0, rand_sample_alternation_percent=0.2, with_noise=False, with_sign_swap=False):
-    samples_per_bound = amount // 2
-    lower_bounds = input_bounds[0]
-    upper_bounds = input_bounds[1]
-
-    upper = 1
-    lower = - 1
-    num_rand_samples = math.floor(amount * rand_samples_percent)
-    alternations_per_sample = math.floor(affine_w.size(0) * rand_sample_alternation_percent)
-
-    cs = torch.zeros((len(group_indices), samples_per_bound, affine_w.size(0)), dtype=data_type).to(device)
-    for i, group in enumerate(group_indices):
-        cs[i] = cs[i].index_fill(1, torch.LongTensor(group), -1)
-
-        if num_rand_samples > 0 and alternations_per_sample > 0:
-            rand_index = torch.randint(low=0, high=num_rand_samples * affine_w.size(0), size=(num_rand_samples * alternations_per_sample,), dtype=torch.int64).to(device)
-            cs[i][:num_rand_samples] = cs[i][:num_rand_samples].view(-1).index_fill(0, rand_index, -1).view(num_rand_samples, -1)
-
-        cs[i] = torch.where(cs[i] == -1, (upper - lower) * torch.rand(affine_w.size(0)) + lower, cs[i])
-
-    affine_w_temp = torch.matmul(cs, affine_w)
-    upper_samples = torch.where(affine_w_temp > 0, upper_bounds, lower_bounds)
-    lower_samples = torch.where(affine_w_temp < 0, upper_bounds, lower_bounds)
-
-    if with_noise:
-        noise_per_sample = (upper_bounds - lower_bounds) * torch.rand((len(group_indices), samples_per_bound, data_samples.size(2)),
-                                                        dtype=data_type).to(device) + lower_bounds
-
-        upper_samples.add_(noise_per_sample)
-        lower_samples.add_(noise_per_sample)
-
-        upper_samples = torch.where(upper_samples <= upper_bounds, upper_samples, upper_bounds)
-        upper_samples = torch.where(upper_samples >= lower_bounds, upper_samples, lower_bounds)
-
-        lower_samples = torch.where(lower_samples <= upper_bounds, lower_samples, upper_bounds)
-        lower_samples = torch.where(lower_samples >= lower_bounds, lower_samples, lower_bounds)
-
-    if with_sign_swap:
-        # changing sign
-        swap_probability = 0.2
-        if swap_probability == 0:
-            swaps = torch.ones((samples_per_bound, data_samples.size(1)))
-        elif swap_probability == 1:
-            swaps = -1 * torch.ones((samples_per_bound, data_samples.size(1)))
-        elif swap_probability <= 0.5:
-            swap_probability = int(1 / swap_probability)
-            swaps = torch.randint(-1, swap_probability, (len(group_indices), samples_per_bound, data_samples.size(2)),
-                                  dtype=torch.int8)
-            swaps = torch.where(swaps >= 0, 1, swaps)
-        else:
-            swap_probability = 1 - swap_probability
-            swap_probability = - int(1 / swap_probability)
-            swaps = torch.randint(swap_probability, 1, (len(group_indices), samples_per_bound, data_samples.size(2)),
-                                  dtype=torch.int8)
-            swaps = torch.where(swaps <= 0, 1, swaps)
-        upper_samples = torch.mul(upper_samples, swaps)
-        lower_samples = torch.mul(lower_samples, swaps)
-
-
-    all_samples = torch.cat([upper_samples, lower_samples], dim=1)
-
-    if keep_samples and data_samples.size(1) > 0:
-        data_samples = torch.cat([data_samples, all_samples], dim=1)
-    else:
-        data_samples = all_samples
-    return data_samples
-
-
-def apply_affine_transform(affine_w, affine_b, data_samples):
-    transformed_samples = torch.empty((data_samples.size(0), affine_b.size(0)), dtype=data_type).to(device)
-    for i in range(data_samples.shape[0]):
-        transformed_samples[i] = torch.matmul(affine_w, data_samples[i]).add(affine_b)
-
-    return transformed_samples
-
-
-def apply_relu_transform(data_samples):
-    relu = torch.nn.ReLU()
-    transformed_samples = relu(data_samples)
-
-    return transformed_samples

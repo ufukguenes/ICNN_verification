@@ -1,8 +1,10 @@
 from abc import ABC, abstractmethod
+import torch
+import math
+from script.settings import data_type, device
 
 
 # todo i need to adapt each jupyter notebook to the new sampling strategy
-# todo make each strategy return an iterator by group for before and after sampling
 #todo remove affine_w and affine_b from the sampling strategy, not neaded as nn_model includes that inforamtion
 class SamplingStrategy(ABC):
     def __init__(self, center, input_bounds, nn_model, keep_ambient_space=False, sample_count=10, sample_over_output_space=True,
@@ -46,3 +48,56 @@ class SamplingStrategy(ABC):
 
         """
         pass
+
+    def _sample_over_input_all_groups(self, amount, affine_w, input_bounds, group_indices, 
+                                      rand_samples_percent=0, rand_sample_alternation_percent=0.2):
+        samples_per_bound = amount // 2
+        lower_bounds = input_bounds[0]
+        upper_bounds = input_bounds[1]
+
+        upper = 1
+        lower = - 1
+        num_rand_samples = math.floor(amount * rand_samples_percent)
+        alternations_per_sample = math.floor(affine_w.size(0) * rand_sample_alternation_percent)
+
+        cs = torch.zeros((len(group_indices), samples_per_bound, affine_w.size(0)), dtype=data_type).to(device)
+        for i, group in enumerate(group_indices):
+            cs[i] = cs[i].index_fill(1, torch.LongTensor(group), -1)
+
+            if num_rand_samples > 0 and alternations_per_sample > 0:
+                rand_index = torch.randint(low=0, high=num_rand_samples * affine_w.size(0),
+                                           size=(num_rand_samples * alternations_per_sample,), dtype=torch.int64).to(
+                    device)
+                cs[i][:num_rand_samples] = cs[i][:num_rand_samples].view(-1).index_fill(0, rand_index, -1).view(
+                    num_rand_samples, -1)
+
+            cs[i] = torch.where(cs[i] == -1, (upper - lower) * torch.rand(affine_w.size(0)) + lower, cs[i])
+
+        affine_w_temp = torch.matmul(cs, affine_w)
+        upper_samples = torch.where(affine_w_temp > 0, upper_bounds, lower_bounds)
+        lower_samples = torch.where(affine_w_temp < 0, upper_bounds, lower_bounds)
+
+        all_samples = torch.cat([upper_samples, lower_samples], dim=1)
+
+        return all_samples
+
+    def _samples_uniform_over_all_groups(self, shape, bounds, padding=0):
+        lb = bounds[0] - padding
+        ub = bounds[1] + padding
+        random_samples = (ub - lb) * torch.rand(shape, dtype=data_type).to(device) + lb
+        data_samples = random_samples
+
+        return data_samples
+
+    def _apply_relu_transform(self, data_samples):
+        relu = torch.nn.ReLU()
+        transformed_samples = relu(data_samples)
+
+        return transformed_samples
+
+    def _apply_affine_transform(self, affine_w, affine_b, data_samples):
+        transformed_samples = torch.empty((data_samples.size(0), affine_b.size(0)), dtype=data_type).to(device)
+        for i in range(data_samples.shape[0]):
+            transformed_samples[i] = torch.matmul(affine_w, data_samples[i]).add(affine_b)
+
+        return transformed_samples

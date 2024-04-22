@@ -4,7 +4,6 @@ import warnings
 import torch
 import gurobipy as grp
 
-import script.DHOV.DataSampling as ds
 from script.settings import data_type, device
 from script.DHOV.Sampling.SamplingStrategy import SamplingStrategy
 from script.NeuralNets.Networks import SequentialNN
@@ -35,12 +34,13 @@ class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
 
         rand_samples_percent = 0.2
         rand_sample_alternation_percent = 0.01
-
+        
         if current_layer_index == 0:
             sample_space = torch.empty((len(group_indices), 0, affine_w.size(1)), dtype=data_type).to(device)
 
             #  this is the same as for the PerGroupSamplingStrategy
-            sample_space = ds.sample_per_group_all_groups(sample_space, included_sample_count, affine_w,
+
+            sample_space = self._sample_over_input_all_groups(included_sample_count, affine_w,
                                                           self.input_bounds, group_indices,
                                                           rand_samples_percent=rand_samples_percent,
                                                           rand_sample_alternation_percent=rand_sample_alternation_percent)
@@ -64,9 +64,9 @@ class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
         else:
             raise ValueError("round_index must be a positive integer or zero. Got: ", current_layer_index)
 
-        sample_space = ds.apply_relu_transform(sample_space)
+        sample_space = self._apply_relu_transform(sample_space)
 
-        new_amb_space = ds.samples_uniform_over_all_groups((len(group_indices), ambient_sample_count, affine_w.size(0)),
+        new_amb_space = self._samples_uniform_over_all_groups((len(group_indices), ambient_sample_count, affine_w.size(0)),
                                                            bounds_layer_out[current_layer_index])
 
         for i, index_to_select in enumerate(group_indices):
@@ -100,7 +100,7 @@ class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
             cs[i] = torch.nn.functional.normalize(torch.where(cs[i] == -1, (upper - lower) * torch.rand(affine_w.size(0)) + lower, cs[i]), dim=1)
 
         # sample a random point in the input space of the nn_model
-        input_samples = ds.samples_uniform_over_all_groups((len(group_indices), amount, self.center.size(0)), self.input_bounds)
+        input_samples = self._samples_uniform_over_all_groups((len(group_indices), amount, self.center.size(0)), self.input_bounds)
 
         cs = cs.view(-1, cs.shape[-1])
         input_samples = input_samples.view(-1, input_samples.shape[-1]).detach()
