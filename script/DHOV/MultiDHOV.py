@@ -14,18 +14,13 @@ import numpy as np
 import script.DHOV.Normalisation as norm
 import script.Verification.Verification as ver
 import script.Verification.VerificationBasics as verbas
-import script.DHOV.DataSampling as ds
-import script.DHOV.DataOptimization as dop
 from script.dataInit import ConvexDataset
-from script.eval import Plots_for
-from script.NeuralNets.trainFunction import train_icnn, train_icnn_outer
-from script.NeuralNets.testFunction import test_icnn
+
+from script.NeuralNets.trainFunction import train_icnn
 from script.settings import device, data_type
 import gurobipy as grp
 import warnings
 from script.DHOV.Sampling import SamplingStrategy
-from script.DHOV.Sampling.PropagateSamplingStrategy import UniformSamplingStrategy
-
 #todo adapt everything to also work on gpu
 class MultiDHOV:
     """
@@ -74,10 +69,9 @@ class MultiDHOV:
                            icnn_epochs=100, hyper_lambda=1, init_affine_bounds=None, init_layer_bounds=None,
                            break_after=None, tighten_bounds=False, use_fixed_neurons_in_grouping=False, layers_as_milp=[], layers_as_snr=[],
                            use_over_approximation=True, opt_steps_gd=100,
-                           data_grad_descent_steps=0,
-                           train_outer=False, preemptive_stop=True, store_samples=False,
+                           preemptive_stop=True, store_samples=False,
                            force_inclusion_steps=0, grouping_method="consecutive", group_num_multiplier=None,
-                           init_network=False, adapt_lambda="none", should_plot='none', optimizer="adam",
+                           init_network=False, adapt_lambda="none", optimizer="adam",
                            print_training_loss=False, print_last_loss=False, print_optimization_steps=False, print_new_bounds=False,
                            sampling_strategy: SamplingStrategy = UniformSamplingStrategy):
         """
@@ -90,10 +84,6 @@ class MultiDHOV:
         :param input_bounds: the lower and upper bounds for the input
         :param icnn_batch_size: batch size for each ICNN. Usually we can fit all training data into one batch
         :param icnn_epochs: maximum number of epochs each ICNN is going to train if not interrupted
-        :param sample_count: number of trainings data points generated for each ICNN.
-            Depending on the parameters sampling_method, sample_new and keep_ambient_space the actual number of samples
-            can be different from this number
-        :param sampling_method: The method used for generating new training data points for the ICNN
         :param hyper_lambda: the hyperparameter controlling the balance between inclusion loss and ambient loss
         :param init_affine_bounds: List of torch.Tensor of each neuron in each layer giving a lower and upper bound
             of the output of that neuron before the activation function.
@@ -114,24 +104,10 @@ class MultiDHOV:
         :param layers_as_milp: list of indices indicating which layers should be encoded as a MILP instead of using DHOV
         :param layers_as_snr: list of indices indicating which layers should be encoded with Single-Neuron-Relaxation
             instead of using DHOV
-        :param keep_ambient_space: if true, the ambient samples used for the previous layer will be used as ambient
-            samples for the training of the approximation of the next layer # todo dependency on sampling_methods
-        :param sample_new: if true, sample_count many new samples will be generated for the representation of the
-            output of each layer, otherwise samples will only be generated in the input space and then propagated,
-            regrouped and split into included and ambient samples for each layer # todo dependency on sampling_methods
         :param use_over_approximation: boolean, deciding whether each ICNN should be enlarged to guarantee the encoding
             being an over approximation. If true, it might also shrink an approximation to the minimal size needed
             to be an over approximation
         :param opt_steps_gd: number of steps the gradient descent should do for each optimization of a training data point #todo dependency on data_grad_descent_steps should be clear
-        :param sample_over_input_space: if true, (only) ambient samples will be (uniformly) generated in the
-            input space of each layer and through that layer propagated, for training the ICNNs.
-            This is independent of the parameter sample_new
-        :param sample_over_output_space: if true, (only) ambient samples will be (uniformly) generated over the
-            output space of each layer, for training the ICNNs.
-        :param data_grad_descent_steps: number of steps, that the training data points should be tried to optimized
-            by pushing them in the direction of the current decission boundry with gradient descent
-        :param train_outer: if true, (currently not fully working) there will be another training part which only
-            focuses on training the boarder of the approximation
         :param preemptive_stop: decides if the training of each ICNN can be preemptively stopped if the moving average
             of the loss is smaller than a certain value
         :param store_samples: whether the generated training data points for each ICNN should be stored
@@ -144,8 +120,6 @@ class MultiDHOV:
             upper and lower bounds for the neurons in the corresponding group
         :param adapt_lambda: the strategy to use for adapting the hyperparameter lambda based on the current state of
             balance between included and ambient space
-        :param should_plot: plotting strategy which generates multiple plots for each group
-            (samples, decision boundary... - depending on the strategy) only works if dimension of group is <= 3
         :param optimizer: optimizer to use for training each ICNN
         :param print_training_loss: if true, loss for each epoch during ICNN training will be printed
         :param print_last_loss: if true, the last loss for each ICNN after training will be printed
@@ -157,10 +131,7 @@ class MultiDHOV:
         :return:
         """
         valid_adapt_lambda = ["none", "high_low", "included"]
-        valid_should_plot = ["none", "simple", "detailed", "verification", "output"]
         valid_optimizer = ["adam", "LBFGS", "SdLBFGS"]
-        valid_sampling_methods = ["uniform", "linespace", "boarder", "sum_noise", "min_max_perturbation",
-                                  "alternate_min_max", "per_group_sampling", "per_group_feasible"]
         valid_grouping_methods = ["consecutive", "random"]
 
         parameter_list = list(nn.parameters())
@@ -168,22 +139,16 @@ class MultiDHOV:
         if adapt_lambda not in valid_adapt_lambda:
             raise AttributeError(
                 "Expected adaptive lambda mode to be one of: {}, actual: {}".format(valid_adapt_lambda, adapt_lambda))
-        if should_plot not in valid_should_plot:
-            raise AttributeError("Expected plotting mode to be one of: {}, actual: {}".format(valid_should_plot, should_plot))
         if optimizer not in valid_optimizer:
             raise AttributeError("Expected optimizer to be one of: {}, actual: {}".format(valid_optimizer, optimizer))
         if force_inclusion_steps < 0:
             raise AttributeError("Expected force_inclusion to be:  >= 0 , got: {}".format(force_inclusion_steps))
-        if data_grad_descent_steps < 0 or data_grad_descent_steps > icnn_epochs:
-            raise AttributeError(
-                "Expected data_grad_descent_steps to be:  >= {}} , got: {}".format(icnn_epochs,
-                                                                                   data_grad_descent_steps))
         if grouping_method not in valid_grouping_methods:
             raise AttributeError("Expected grouping method to be one of: {}, actual: {}".format(valid_grouping_methods,
                                                                                    grouping_method))
         if grouping_method == "random" and group_num_multiplier is None and group_num_multiplier % 1 != 0:
             raise AttributeError(
-                "Expected group_num_multiplier to be integer > 0 , got: {}".format(data_grad_descent_steps))
+                "Expected group_num_multiplier to be integer > 0 , got: {}".format(group_num_multiplier))
         if group_num_multiplier is not None and grouping_method == "consecutive":
             warnings.warn("value for group number multiplier is given with grouping method consecutive. "
                           "consecutive grouping does not use variable number of groups")
@@ -207,7 +172,6 @@ class MultiDHOV:
 
 
         force_inclusion_steps += 1
-        data_grad_descent_steps += 1
 
         fixed_neuron_per_layer_lower = []
         fixed_neuron_per_layer_upper = []
@@ -390,70 +354,11 @@ class MultiDHOV:
                         out = current_icnn(group_norm_included_space)
                         max_out = torch.max(out)
                         current_icnn.apply_enlargement(max_out)
-                    if data_grad_descent_steps > 1:
-                        untouched_amb_space = group_norm_ambient_space.detach().clone()
-                        if should_plot in ["simple", "detailed"] and len(group_indices[group_i]) == 2:
-                            plt_inc_amb("without gradient descent", group_norm_included_space.tolist(),
-                                        group_norm_ambient_space.tolist())
-                        for gd_round in range(data_grad_descent_steps):
-                            optimization_steps = opt_steps_gd
-                            if data_grad_descent_steps > epochs_per_inclusion:
-                                epochs_in_run = 1
-                            elif gd_round == data_grad_descent_steps - 1 and epochs_per_inclusion % data_grad_descent_steps != 0:
-                                epochs_in_run = epochs_per_inclusion % data_grad_descent_steps
-                            else:
-                                epochs_in_run = epochs_per_inclusion // data_grad_descent_steps
-                            print("===== grad descent =====")
-                            train_icnn(current_icnn, train_loader, ambient_loader, epochs=epochs_in_run, hyper_lambda=hyper_lambda,
-                                       optimizer=optimizer, adapt_lambda=adapt_lambda, preemptive_stop=preemptive_stop,
-                                       verbose=print_training_loss, print_last_loss=print_last_loss)
 
-                            for v in range(optimization_steps):
-                                # normalized_ambient_space =
-                                # dop.gradient_descent_data_optim(current_icnn, normalized_ambient_space.detach())
-                                group_norm_ambient_space = dop.adam_data_optim(current_icnn,
-                                                                               group_norm_ambient_space.detach())
-                            dataset = ConvexDataset(group_norm_ambient_space.detach())
-
-                            ambient_loader = DataLoader(dataset, batch_size=icnn_batch_size, shuffle=True)
-
-                            if should_plot in ["simple", "detailed"] and len(group_indices[group_i]) == 2:
-                                """plt_inc_amb("with gradient descent", normalized_included_space.tolist(),
-                                            torch.cat([normalized_ambient_space.detach(),
-                                                       untouched_normalized_ambient_space.detach()]).tolist())"""
-                                min_x, max_x, min_y, max_y = get_min_max_x_y(torch.cat(
-                                    [group_norm_included_space.detach(), group_norm_ambient_space.detach()]))
-
-                                plots = Plots_for(0, current_icnn, group_norm_included_space.detach(),
-                                                  group_norm_ambient_space.detach(),
-                                                  [min_x, max_x], [min_y, max_y])
-
-                                plots.plt_mesh()
-
-                        if print_training_loss:
-                            dataset = ConvexDataset(data=group_norm_included_space)
-                            train_loader = DataLoader(dataset, batch_size=icnn_batch_size)
-                            dataset = ConvexDataset(data=untouched_amb_space)
-                            ambient_loader = DataLoader(dataset, batch_size=icnn_batch_size)
-                            test_icnn(current_icnn, train_loader, ambient_loader)
-
-
-                    else:
-                        train_icnn(current_icnn, train_loader, ambient_loader, epochs=epochs_per_inclusion,
-                                   hyper_lambda=hyper_lambda,
-                                   optimizer=optimizer, adapt_lambda=adapt_lambda, preemptive_stop=preemptive_stop,
-                                   verbose=print_training_loss, print_last_loss=print_last_loss)
-
-                if train_outer:  # todo will ich train outer behalten oder einfach verwerfen?
-                    for k in range(icnn_epochs):
-                        train_icnn_outer(current_icnn, train_loader, ambient_loader, epochs=1)
-                        if k % 10 == 0:
-                            min_x, max_x, min_y, max_y = get_min_max_x_y(torch.cat(
-                                [group_norm_included_space.detach(), group_norm_ambient_space.detach()]))
-                            plots = Plots_for(0, current_icnn, group_norm_included_space.detach(),
-                                              group_norm_ambient_space.detach(),
-                                              [min_x, max_x], [min_y, max_y])
-                            plots.plt_mesh()
+                    train_icnn(current_icnn, train_loader, ambient_loader, epochs=epochs_per_inclusion,
+                               hyper_lambda=hyper_lambda,
+                               optimizer=optimizer, adapt_lambda=adapt_lambda, preemptive_stop=preemptive_stop,
+                               verbose=print_training_loss, print_last_loss=print_last_loss)
 
                 current_icnn.apply_normalisation(mean, std)
 
@@ -463,17 +368,6 @@ class MultiDHOV:
 
                 t = time.time()
                 # verify and enlarge convex approximation
-
-                if should_plot in ["detailed", "verification"] and should_plot != "none":
-                    if len(group_indices[group_i]) == 2:
-                        min_x, max_x, min_y, max_y = \
-                            get_min_max_x_y(torch.cat([group_inc_space.detach(), group_amb_space.detach()]))
-                        plots = Plots_for(0, current_icnn, group_inc_space.detach(), group_amb_space.detach(),
-                                          [min_x, max_x], [min_y, max_y])
-                        plots.plt_mesh()
-
-                    elif len(group_indices[group_i]) == 1:
-                        visualize_single_neuron(current_icnn, group_indices[group_i], current_layer_index, bounds_affine_out)
 
                 if use_over_approximation:
                     copy_model = nn_encoding_model.copy()
@@ -486,22 +380,6 @@ class MultiDHOV:
                     current_icnn.apply_enlargement(c)
 
                 print("        time for verification: {}".format(time.time() - t))
-
-                if should_plot in ["detailed", "verification"] and should_plot != "none":
-                    if len(group_indices[group_i]) == 2:
-                        min_x, max_x, min_y, max_y = \
-                            get_min_max_x_y(torch.cat([group_inc_space.detach(), group_amb_space.detach()]))
-                        plots = Plots_for(0, current_icnn, group_inc_space.detach(), group_amb_space.detach(),
-                                          [min_x, max_x], [min_y, max_y])
-                        plots.plt_mesh()
-
-                    elif len(group_indices[group_i]) == 1:
-                        visualize_single_neuron(current_icnn, group_indices[group_i], current_layer_index,
-                                                bounds_affine_out)
-
-                # inp_bounds_icnn = bounds_layer_out[current_layer_index]
-                # ver.min_max_of_icnns([current_icnn], inp_bounds_icnn, [group_indices[group_i]], print_log=False)
-                # ver.min_max_of_icnns([current_icnn], inp_bounds_icnn, [group_indices[group_i]], print_log1, 23=False)
 
 
                 if break_after is not None and break_after == 0:
@@ -522,20 +400,6 @@ class MultiDHOV:
             nn_encoding_model.update()
 
 
-        if should_plot in valid_should_plot and should_plot != "none" and sampling_method != "per_group_sampling" and included_space.size(
-                1) == 2:
-            index = len(parameter_list) - 2
-            affine_w, affine_b = parameter_list[index], parameter_list[index + 1]
-            included_space = ds.apply_affine_transform(affine_w, affine_b, included_space)
-            ambient_space = ds.apply_affine_transform(affine_w, affine_b, ambient_space)
-            original_included_space = ds.apply_affine_transform(affine_w, affine_b, original_included_space)
-
-            min_x, max_x, min_y, max_y = \
-                get_min_max_x_y(torch.cat([included_space.detach(), ambient_space.detach()]))
-            plots = Plots_for(0, current_icnn, included_space.detach().cpu(), ambient_space.detach().cpu(),
-                              [min_x, max_x], [min_y, max_y],
-                              extr=original_included_space.detach().cpu())
-            plots.plt_initial()
         t = time.time()
         affine_w, affine_b = parameter_list[-2].detach().cpu().numpy(), parameter_list[-1].detach().cpu().numpy()
         last_layer_index = current_layer_index + 1
@@ -552,30 +416,6 @@ class MultiDHOV:
 
         nn_encoding_model.update()
 
-        """if tighten_bounds:
-            #todo this is a code duplicat
-            for neuron_to_optimize in range(len(output_nn.tolist())):
-                nn_encoding_model.setObjective(output_nn[neuron_to_optimize], grp.GRB.MINIMIZE)
-                nn_encoding_model.optimize()
-                if nn_encoding_model.Status == grp.GRB.OPTIMAL:
-                    value = output_nn.getAttr("x")
-                    if print_new_bounds and abs(value[neuron_to_optimize] - bounds_affine_out[last_layer_index][0][neuron_to_optimize]) > 0.00001:
-                        print("        {}, lower: new {}, old {}".format(neuron_to_optimize, value[neuron_to_optimize], bounds_affine_out[last_layer_index][0][neuron_to_optimize]))
-                    bounds_affine_out[last_layer_index][0][neuron_to_optimize] = value[neuron_to_optimize]
-
-                nn_encoding_model.setObjective(output_nn[neuron_to_optimize], grp.GRB.MAXIMIZE)
-                nn_encoding_model.optimize()
-                if nn_encoding_model.Status == grp.GRB.OPTIMAL:
-                    value = output_nn.getAttr("x")
-                    if print_new_bounds and abs(value[neuron_to_optimize] - bounds_affine_out[last_layer_index][1][neuron_to_optimize]) > 0.00001:
-                        print("        {}, upper: new {}, old {}".format(neuron_to_optimize, value[neuron_to_optimize], bounds_affine_out[last_layer_index][1][neuron_to_optimize]))
-                    bounds_affine_out[last_layer_index][1][neuron_to_optimize] = value[neuron_to_optimize]
-
-            if i < len(parameter_list) - 2:
-                relu_out_lb, relu_out_ub = verbas.calc_relu_out_bound(bounds_affine_out[last_layer_index][0],
-                                                                      bounds_affine_out[last_layer_index][1])
-            bounds_layer_out[last_layer_index][0] = relu_out_lb
-            bounds_layer_out[last_layer_index][1] = relu_out_ub"""
         print("time for icnn_bound calculation (last layer):{}".format(time.time() - t))
         self.output_var = output_nn
         print("done...")

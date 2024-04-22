@@ -3,15 +3,12 @@ import time
 
 import numpy as np
 import torch
-from gurobipy import Model, GRB, max_
+from gurobipy import GRB
 import gurobipy as grp
 import script.Verification.VerificationBasics as verbas
 
 from script.settings import device, data_type
 
-
-def load(icnn):
-    icnn.load_state_dict(torch.load("../convexHullModel.pth"), strict=False)
 
 
 def generate_model_center_bounds(model, center, input_bounds, layer_index):
@@ -74,12 +71,6 @@ def add_layer_to_model(model, affine_w, affine_b, curr_constraint_icnns, curr_gr
 
     for i, var in enumerate(in_var.tolist()):
         var.setAttr("varname", "output_layer_[{}]_[{}]".format(current_layer_index, i))
-
-
-def generate_model_A_b(model, a_matrix, b_vector, layer_index):
-    input_size = len(b_vector)
-    input_var = model.addMVar(input_size, lb=-float('inf'), name="output_layer_[{}]_".format(layer_index))
-    model.addMConstr(a_matrix, input_var, "<=", b_vector)
 
 
 def verification(icnn, model, affine_w, affine_b, index_to_select, curr_bounds_affine_out, curr_bounds_layer_out, prev_layer_index, has_relu=False):
