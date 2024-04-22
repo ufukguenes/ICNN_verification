@@ -21,6 +21,7 @@ from script.settings import device, data_type
 import gurobipy as grp
 import warnings
 from script.DHOV.Sampling import SamplingStrategy
+from script.DHOV.Sampling import SamplingStrategy
 #todo adapt everything to also work on gpu
 class MultiDHOV:
     """
@@ -152,6 +153,9 @@ class MultiDHOV:
             warnings.warn("value for group number multiplier is given with grouping method consecutive. "
                           "consecutive grouping does not use variable number of groups")
 
+        input.to(device)
+        input_bounds[0].to(device)
+        input_bounds[1].to(device)
         input_flattened = torch.flatten(input)
         center = input_flattened
 

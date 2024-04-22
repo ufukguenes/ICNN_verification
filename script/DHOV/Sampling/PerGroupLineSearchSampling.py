@@ -88,16 +88,15 @@ class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
 
         cs = torch.zeros((len(group_indices), amount, affine_w.size(0)), dtype=data_type).to(device)
         for i, group in enumerate(group_indices):
-            cs[i] = cs[i].index_fill(1, torch.LongTensor(group), -1)
+            cs[i] = cs[i].index_fill(1, torch.LongTensor(group).to(device), -1)
 
             if num_rand_samples > 0 and alternations_per_sample > 0:
                 rand_index = torch.randint(low=0, high=num_rand_samples * affine_w.size(0),
-                                           size=(num_rand_samples * alternations_per_sample,), dtype=torch.int64).to(
-                    device)
+                                           size=(num_rand_samples * alternations_per_sample,), dtype=torch.int64).to(device)
                 cs[i][:num_rand_samples] = cs[i][:num_rand_samples].view(-1).index_fill(0, rand_index, -1).view(
                     num_rand_samples, -1)
 
-            cs[i] = torch.nn.functional.normalize(torch.where(cs[i] == -1, (upper - lower) * torch.rand(affine_w.size(0)) + lower, cs[i]), dim=1)
+            cs[i] = torch.nn.functional.normalize(torch.where(cs[i] == -1, (upper - lower) * torch.rand(affine_w.size(0)).to(device) + lower, cs[i]), dim=1)
 
         # sample a random point in the input space of the nn_model
         input_samples = self._samples_uniform_over_all_groups((len(group_indices), amount, self.center.size(0)), self.input_bounds)
@@ -151,7 +150,7 @@ class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
         current_input = input_samples
         intermediate_inputs = []
         relu = torch.nn.ReLU()
-        sample_is_outside_any_icnn = torch.zeros(len(input_samples)).bool()
+        sample_is_outside_any_icnn = torch.zeros(len(input_samples)).bool().to(device)
 
         for layer in range(0, len(parameters) - 2, 2):
             W = list(nn_model.parameters())[layer].data
@@ -166,7 +165,7 @@ class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
                 current_icnn = list_of_icnns[layer_index][group_index]
                 current_indices = all_group_indices[layer_index][group_index]
                 current_intermediate = torch.index_select(intermediate_inputs[layer_index], 1,
-                                                          torch.IntTensor(current_indices))
+                                                          torch.IntTensor(current_indices).to(device))
                 current_is_outside_icnn = torch.greater(current_icnn(current_intermediate), 0 + precision)
                 sample_is_outside_any_icnn = torch.logical_or(sample_is_outside_any_icnn, current_is_outside_icnn)
 
