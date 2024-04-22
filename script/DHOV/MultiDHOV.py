@@ -65,15 +65,14 @@ class MultiDHOV:
         self.list_of_included_samples = []
         self.list_of_ambient_samples = []
 
-    def start_verification(self, nn: SequentialNN, input, icnn_factory, group_size, input_bounds, icnn_batch_size=1000,
+    def start_verification(self, nn: SequentialNN, input, icnn_factory, group_size, input_bounds, sampling_strategy: SamplingStrategy, icnn_batch_size=1000,
                            icnn_epochs=100, hyper_lambda=1, init_affine_bounds=None, init_layer_bounds=None,
                            break_after=None, tighten_bounds=False, use_fixed_neurons_in_grouping=False, layers_as_milp=[], layers_as_snr=[],
                            use_over_approximation=True, opt_steps_gd=100,
                            preemptive_stop=True, store_samples=False,
                            force_inclusion_steps=0, grouping_method="consecutive", group_num_multiplier=None,
                            init_network=False, adapt_lambda="none", optimizer="adam",
-                           print_training_loss=False, print_last_loss=False, print_optimization_steps=False, print_new_bounds=False,
-                           sampling_strategy: SamplingStrategy = UniformSamplingStrategy):
+                           print_training_loss=False, print_last_loss=False, print_optimization_steps=False, print_new_bounds=False):
         """
 
         :param nn: the NN to encode as a Gurobi model given. This has to be a Sequential/ Feedforward NN
