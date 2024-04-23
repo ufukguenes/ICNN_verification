@@ -69,7 +69,7 @@ class MultiDHOV:
     def start_verification(self, nn: SequentialNN, input, icnn_factory, group_size, input_bounds, sampling_strategy: SamplingStrategy, icnn_batch_size=1000,
                            icnn_epochs=100, hyper_lambda=1, init_affine_bounds=None, init_layer_bounds=None,
                            break_after=None, tighten_bounds=False, use_fixed_neurons_in_grouping=False, layers_as_milp=[], layers_as_snr=[],
-                           use_over_approximation=True, opt_steps_gd=100,
+                           use_over_approximation=True, skip_last_layer=False,
                            preemptive_stop=True, store_samples=False,
                            force_inclusion_steps=0, grouping_method="consecutive", group_num_multiplier=None,
                            init_network=False, adapt_lambda="none", optimizer="adam",
@@ -107,7 +107,6 @@ class MultiDHOV:
         :param use_over_approximation: boolean, deciding whether each ICNN should be enlarged to guarantee the encoding
             being an over approximation. If true, it might also shrink an approximation to the minimal size needed
             to be an over approximation
-        :param opt_steps_gd: number of steps the gradient descent should do for each optimization of a training data point #todo dependency on data_grad_descent_steps should be clear
         :param preemptive_stop: decides if the training of each ICNN can be preemptively stopped if the moving average
             of the loss is smaller than a certain value
         :param store_samples: whether the generated training data points for each ICNN should be stored
@@ -402,6 +401,9 @@ class MultiDHOV:
                                    current_layer_index)
             nn_encoding_model.update()
 
+        if skip_last_layer:
+            print("the last layer was skipped, as requested")
+            return
 
         t = time.time()
         affine_w, affine_b = parameter_list[-2].detach().cpu().numpy(), parameter_list[-1].detach().cpu().numpy()
