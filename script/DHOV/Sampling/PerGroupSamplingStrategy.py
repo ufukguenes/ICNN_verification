@@ -33,4 +33,6 @@ class PerGroupSamplingStrategy(SamplingStrategy):
                                                      rand_sample_alternation_percent=self.rand_sample_alternation_percent)
             sample_space = self._apply_affine_transform(self._current_affine_w, self._current_affine_b, sample_space)
             sample_space = self._apply_relu_transform(sample_space)
-            self._current_list_included_spaces.append(sample_space)
+
+            index_to_select = torch.tensor(index_to_select).to(device)
+            self._current_list_included_spaces.append(torch.index_select(sample_space, 1, index_to_select))

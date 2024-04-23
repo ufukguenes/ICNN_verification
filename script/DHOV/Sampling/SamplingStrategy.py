@@ -44,7 +44,7 @@ class SamplingStrategy(ABC):
                                                           rand_samples_percent=self.rand_samples_percent,
                                                           rand_sample_alternation_percent=self.rand_sample_alternation_percent)
 
-        self.current_sample_space = (torch
+        self._current_sample_space = (torch
                                      .matmul(self._current_affine_w,
                                              sample_space.view(sample_space.shape[0], sample_space.shape[1],
                                                                sample_space.shape[2], 1))
@@ -103,7 +103,8 @@ class SamplingStrategy(ABC):
         if len(self._current_list_included_spaces) == 0 and self._current_sample_space is not None:
 
             expected_shape = [len(self._current_group_indices), self._current_included_sample_count, affine_w.size(0)]
-            if self._current_sample_space.shape != expected_shape:
+
+            if list(self._current_sample_space.shape) != expected_shape:
                 raise RuntimeError("Expected the tensor for all groups of the included space to be of shape {}, "
                                    "but got: {}".format(expected_shape, self._current_sample_space.shape))
             create_groups_for_included_space = True
