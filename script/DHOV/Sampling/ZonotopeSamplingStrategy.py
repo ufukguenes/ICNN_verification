@@ -13,12 +13,13 @@ class ZonotopeSamplingStrategy(SamplingStrategy):
     def __init__(self, *args, use_intermediate_bounds=True, **kwargs):
         super().__init__(*args, **kwargs)
 
-        in_lbs = self.center - self.eps
-        in_ubs = self.center + self.eps
+        in_lbs = self.input_bounds[0]
+        in_ubs = self.input_bounds[1]
         self.zono = Zonotope.from_bounds(in_lbs, in_ubs, shape=(len(in_lbs),), dtype=data_type)
         self.use_intermediate_bounds = use_intermediate_bounds
 
-        self.sampling_eps = self.eps
+    def _sampling_strategy(self):
+        pass
 
     def sampling_by_round(self, affine_w, affine_b, group_indices, gurobi_model, current_layer_index, bounds_affine_out,
                           bounds_layer_out, list_of_icnns):
@@ -55,8 +56,7 @@ class ZonotopeSamplingStrategy(SamplingStrategy):
             included_samples.append(samples)
 
             new_amb_space = ds.samples_uniform_over(torch.zeros((n_ambient, affine_b.shape[0])), n_ambient,
-                                                        current_bounds_layer_out,
-                                                        padding=self.sampling_eps, keep_samples=False)
+                                                        current_bounds_layer_out, keep_samples=False)
             new_amb_space = torch.index_select(new_amb_space, 1, torch.tensor(group))
 
             ambient_samples.append(new_amb_space)
