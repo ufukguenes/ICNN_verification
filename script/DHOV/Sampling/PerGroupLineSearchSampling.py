@@ -2,13 +2,11 @@ import math
 import warnings
 
 import torch
-import gurobipy as grp
 
 from script.settings import data_type, device
 from script.DHOV.Sampling.SamplingStrategy import SamplingStrategy
 from script.NeuralNets.Networks import SequentialNN
 import matplotlib.pyplot as plt
-import matplotlib
 
 
 class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
@@ -24,62 +22,19 @@ class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
                           "Sampling over input space is not yet supported when using per group sampling. "
                           "Using sampling over output space instead...")
 
-    def sampling_by_round(self, affine_w, affine_b, all_group_indices, gurobi_model, current_layer_index,
-                          bounds_affine_out,
-                          bounds_layer_out, list_of_icnns):
-        list_included_spaces = []
-        list_ambient_spaces = []
-        included_sample_count, ambient_sample_count = self.get_num_of_samples()
-        group_indices = all_group_indices[current_layer_index]
-
-        rand_samples_percent = 0.2
-        rand_sample_alternation_percent = 0.01
-        
-        if current_layer_index == 0:
-            sample_space = torch.empty((len(group_indices), 0, affine_w.size(1)), dtype=data_type).to(device)
-
-            #  this is the same as for the PerGroupSamplingStrategy
-
-            sample_space = self._sample_over_input_all_groups(included_sample_count, affine_w,
-                                                          self.input_bounds, group_indices,
-                                                          rand_samples_percent=rand_samples_percent,
-                                                          rand_sample_alternation_percent=rand_sample_alternation_percent)
-
-            sample_space = (torch
-                            .matmul(affine_w, sample_space.view(sample_space.shape[0], sample_space.shape[1], sample_space.shape[2], 1))
-                            .view(sample_space.shape[0], sample_space.shape[1], affine_w.shape[0])
-                            .add(affine_b)
-                            )
-
-        elif current_layer_index > 0:
-            sample_space = torch.empty((len(group_indices), 0, affine_w.size(0)), dtype=data_type).to(device)
-
-            current_bounds_affine_out = bounds_affine_out[current_layer_index]
-            sample_space = self._sample_group_line_search_lp(sample_space, included_sample_count, self.nn_model,
-                                                             group_indices, affine_w, all_group_indices,
-                                                             current_bounds_affine_out,
-                                                             current_layer_index, list_of_icnns,
-                                                             rand_samples_percent=rand_samples_percent,
-                                                             rand_sample_alternation_percent=rand_sample_alternation_percent)
-        else:
-            raise ValueError("round_index must be a positive integer or zero. Got: ", current_layer_index)
-
-        sample_space = self._apply_relu_transform(sample_space)
-
-        new_amb_space = self._samples_uniform_over_all_groups((len(group_indices), ambient_sample_count, affine_w.size(0)),
-                                                           bounds_layer_out[current_layer_index])
-
-        for i, index_to_select in enumerate(group_indices):
-            index_to_select = torch.tensor(index_to_select).to(device)
-            list_included_spaces.append(torch.index_select(sample_space[i], 1, index_to_select))
-            list_ambient_spaces.append(torch.index_select(new_amb_space[i], 1, index_to_select))
-
-        return list_included_spaces, list_ambient_spaces
+    def _sampling_strategy(self):
+        sample_space = self._sample_group_line_search_lp(self._current_included_sample_count, self.nn_model,
+                                                         self._current_group_indices, self._current_affine_w,
+                                                         self._current_all_group_indices,
+                                                         self._current_layer_index, self._current_list_of_icnns,
+                                                         rand_samples_percent=self.rand_samples_percent,
+                                                         rand_sample_alternation_percent=self.rand_sample_alternation_percent)
+        self._current_sample_space = self._apply_relu_transform(sample_space)
 
     # todo nn_model is in self, so I don't need to pass it as an argument
-    def _sample_group_line_search_lp(self, data_samples, amount, nn_model, group_indices, affine_w, all_group_indices,
-                                     curr_bounds_affine_out, current_layer_index, list_of_icnns, rand_samples_percent=0,
-                                     rand_sample_alternation_percent=0.2, keep_samples=True):
+    def _sample_group_line_search_lp(self, amount, nn_model, group_indices, affine_w, all_group_indices,
+                                     current_layer_index, list_of_icnns, rand_samples_percent=0,
+                                     rand_sample_alternation_percent=0.2):
         # getting the random directions with controlled random noise
         upper = 1
         lower = - 1
@@ -92,19 +47,22 @@ class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
 
             if num_rand_samples > 0 and alternations_per_sample > 0:
                 rand_index = torch.randint(low=0, high=num_rand_samples * affine_w.size(0),
-                                           size=(num_rand_samples * alternations_per_sample,), dtype=torch.int64).to(device)
+                                           size=(num_rand_samples * alternations_per_sample,), dtype=torch.int64).to(
+                    device)
                 cs[i][:num_rand_samples] = cs[i][:num_rand_samples].view(-1).index_fill(0, rand_index, -1).view(
                     num_rand_samples, -1)
 
-            cs[i] = torch.nn.functional.normalize(torch.where(cs[i] == -1, (upper - lower) * torch.rand(affine_w.size(0)).to(device) + lower, cs[i]), dim=1)
+            cs[i] = torch.nn.functional.normalize(
+                torch.where(cs[i] == -1, (upper - lower) * torch.rand(affine_w.size(0)).to(device) + lower, cs[i]),
+                dim=1)
 
         # sample a random point in the input space of the nn_model
-        input_samples = self._samples_uniform_over_all_groups((len(group_indices), amount, self.center.size(0)), self.input_bounds)
+        input_samples = self._samples_uniform_over_all_groups((len(group_indices), amount, self.center.size(0)),
+                                                              self.input_bounds)
 
         cs = cs.view(-1, cs.shape[-1])
         input_samples = input_samples.view(-1, input_samples.shape[-1]).detach()
         input_samples.requires_grad = True
-
 
         # calculate the gradient of the output in the direction of the output plus the direction
         # for W and b
@@ -114,7 +72,6 @@ class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
 
         for i in range((len(nn_until_current_layer.layer_widths) - 1) * 2):
             parameter_list[i].data = list(nn_model.parameters())[i].data
-
 
         output_samples = nn_until_current_layer(input_samples)
 
@@ -142,7 +99,7 @@ class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
         loss = torch.sum(output_samples * direction)
         loss += 1000 * torch.logical_not(torch.logical_and(self._outside_bounds(input_samples, bounds),
                                                            self._check_icnns(nn_model, input_samples, list_of_icnns,
-                                                                             all_group_indices))).any() #todo 1000 adaptable machen
+                                                                             all_group_indices))).any()  # todo 1000 adaptable machen
         return loss
 
     def _check_icnns(self, nn_model, input_samples, list_of_icnns, all_group_indices, precision=1e-5):
