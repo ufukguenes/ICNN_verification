@@ -192,8 +192,8 @@ def imshow(img):
 
 if __name__ == '__main__':
 
-    num_images = 1
-    epsilons = [0.03, 0.05]
+    num_images = 1000
+    epsilons = [0.015]
 
     transform = Compose([ToTensor()])
     training_data = MNIST(root="../../mnist", train=True, download=True, transform=transform)
@@ -203,14 +203,13 @@ if __name__ == '__main__':
         images.append(image)
         labels.append(label)
 
-    imshow(images[0].view(28, 28))
     for eps in epsilons:
         for i in range(num_images):
 
             image, label = images[i], labels[i]
             input_bounds = create_input_bounds(image, eps)
 
-            spec_path = f"prop_{i}_{eps:.2f}.vnnlib"
+            spec_path = f"updated/specs/1000_mnist_eps_015/prop_{i}_{eps:.3f}.vnnlib"
 
             save_vnnlib(input_bounds, label, spec_path)
 
