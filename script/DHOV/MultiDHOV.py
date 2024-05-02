@@ -229,7 +229,15 @@ class MultiDHOV:
             fixed_neuron_per_layer_lower.append(fix_lower)
             fixed_neuron_per_layer_upper.append(fix_upper)
             num_fixed_neurons_layer.append(len(fix_lower) + len(fix_upper))
-            print("    number of fixed neurons for current layer: {}".format(len(fix_lower) + len(fix_upper)))
+
+
+            total_number_of_neurons_in_current_layer = len(bounds_layer_out[current_layer_index][0])
+            total_neurons_fixed = len(fix_lower) + len(fix_upper)
+            print("    number of fixed neurons for current layer: {}".format(total_neurons_fixed))
+
+            if total_neurons_fixed == total_number_of_neurons_in_current_layer:
+                if current_layer_index not in layers_as_milp or current_layer_index not in layers_as_snr:
+                    layers_as_milp.append(current_layer_index)
 
 
             if current_layer_index in layers_as_milp or current_layer_index in layers_as_snr:
