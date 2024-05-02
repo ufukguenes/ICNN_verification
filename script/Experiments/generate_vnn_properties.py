@@ -1,3 +1,4 @@
+import math
 import os
 import sys
 
@@ -203,13 +204,15 @@ if __name__ == '__main__':
         images.append(image)
         labels.append(label)
 
+    leading_zeros = math.ceil(math.log10(num_images))
+    print(leading_zeros)
     for eps in epsilons:
         for i in range(num_images):
-
             image, label = images[i], labels[i]
             input_bounds = create_input_bounds(image, eps)
 
-            spec_path = f"updated/specs/1000_mnist_eps_015/prop_{i}_{eps:.3f}.vnnlib"
+            image_index = str(i).zfill(leading_zeros)
+            spec_path = f"updated/specs/1000_mnist_eps_015/prop_{image_index}_{eps:.3f}.vnnlib"
 
             save_vnnlib(input_bounds, label, spec_path)
 
