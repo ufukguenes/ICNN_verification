@@ -37,7 +37,12 @@ class VerifiableNet(ABC):
         with torch.no_grad():
             last_layer = list(self.ws[-1].parameters())
             b = last_layer[1]
-            b.data = b - torch.tensor(value, device=device)
+
+            if torch.is_tensor(value):
+                value.to(device)
+            else:
+                value = torch.tensor(value, device=device)
+            b.data = b - value
 
     @abstractmethod
     def apply_normalisation(self, mean, std):
