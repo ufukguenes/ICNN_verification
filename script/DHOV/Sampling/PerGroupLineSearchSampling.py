@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 
 
 class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
-    def __init__(self, *args, use_icnn_bounds=False, **kwargs):
+    def __init__(self, *args, use_icnn_bounds=False, num_iterations=100, **kwargs):
         super().__init__(*args, **kwargs)
 
         if self.keep_ambient_space:
@@ -24,6 +24,7 @@ class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
                           "Using sampling over output space instead...")
 
         self.use_icnn_bounds = use_icnn_bounds
+        self.num_iterations = num_iterations
 
     def _sampling_strategy(self):
         sample_space = self._sample_group_line_search_lp(self._current_included_sample_count, self.nn_model,
@@ -81,7 +82,7 @@ class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
         optimizer = torch.optim.Adam([input_samples])
 
         # do line search until any bound is violated
-        num_iterations = 100
+        num_iterations = self.num_iterations
 
         for i in range(num_iterations):
             optimizer.zero_grad()
