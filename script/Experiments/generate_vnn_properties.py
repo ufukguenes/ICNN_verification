@@ -200,12 +200,11 @@ if __name__ == '__main__':
     training_data = MNIST(root="../../mnist", train=True, download=True, transform=transform)
     images, labels = [], []
     for i in range(num_images):
-        image, label = training_data[10]
+        image, label = training_data[i]
         images.append(image)
         labels.append(label)
 
     leading_zeros = math.ceil(math.log10(num_images))
-    print(leading_zeros)
     for eps in epsilons:
         for i in range(num_images):
             image, label = images[i], labels[i]
