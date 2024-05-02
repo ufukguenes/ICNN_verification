@@ -40,9 +40,9 @@ def deep_hull_loss(model_output, output_adv, adversarial_output, hyper_lambda=1,
 
 
 def deep_hull_simple_loss(model_output, ambient_space, hyper_lambda=1):
-    def l_pos(x):
+    def l_pos(x, eps=1e-5):
         sig = torch.sigmoid(x)
-        max_value = torch.zeros_like(sig).add(1 - 1e-12)
+        max_value = torch.zeros_like(sig).add(eps)
         sig = torch.minimum(sig, max_value)
 
         loss = - torch.log(1 - sig)
@@ -50,9 +50,9 @@ def deep_hull_simple_loss(model_output, ambient_space, hyper_lambda=1):
         ret = loss / len(x)
         return ret
 
-    def l_neg(z):
+    def l_neg(z, eps=1e-5):
         sig = torch.sigmoid(z)
-        min_value = torch.zeros_like(sig).add(1e-12)
+        min_value = torch.zeros_like(sig).add(eps)
         sig = torch.maximum(sig, min_value)
 
         loss = - torch.log(sig)
