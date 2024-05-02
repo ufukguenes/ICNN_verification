@@ -73,7 +73,7 @@ def add_layer_to_model(model, affine_w, affine_b, curr_constraint_icnns, curr_gr
         var.setAttr("varname", "output_layer_[{}]_[{}]".format(current_layer_index, i))
 
 
-def verification(icnn, model, affine_w, affine_b, index_to_select, curr_bounds_affine_out, curr_bounds_layer_out, prev_layer_index, has_relu=False):
+def verification(icnn, model, affine_w, affine_b, index_to_select, curr_bounds_affine_out, curr_bounds_layer_out, prev_layer_index, has_relu=False, relu_as_lp=False, icnn_as_lp=False):
 
     output_prev_layer = []
     for i in range(affine_w.shape[1]):
@@ -93,8 +93,10 @@ def verification(icnn, model, affine_w, affine_b, index_to_select, curr_bounds_a
     affine_out = verbas.add_affine_constr(model, new_w, new_b, output_prev_layer, in_lb, in_ub)
     if has_relu:
         input_size = len(new_b)
-        relu_out = verbas.add_relu_constr(model, affine_out, input_size, in_lb, in_ub, out_lb, out_ub)
-        # relu_out = verbas.add_single_neuron_constr(m, affine_out, input_size, in_lb, in_ub, out_lb, out_ub)
+        if relu_as_lp:
+            relu_out = verbas.add_single_neuron_constr(model, affine_out, input_size, in_lb, in_ub, out_lb, out_ub)
+        else:
+            relu_out = verbas.add_relu_constr(model, affine_out, input_size, in_lb, in_ub, out_lb, out_ub)
         input_var = relu_out
     else:
         input_var = affine_out
@@ -103,7 +105,7 @@ def verification(icnn, model, affine_w, affine_b, index_to_select, curr_bounds_a
     low = torch.index_select(curr_bounds_layer_out[0], 0, index_to_select)
     up = torch.index_select(curr_bounds_layer_out[1], 0, index_to_select)
     icnn_bounds_affine_out, icnn_bounds_layer_out = icnn.calculate_box_bounds([low, up])
-    output_var = icnn.add_constraints(model, input_var, icnn_bounds_affine_out, icnn_bounds_layer_out)
+    output_var = icnn.add_constraints(model, input_var, icnn_bounds_affine_out, icnn_bounds_layer_out, as_lp=icnn_as_lp)
 
     model.update()
     model.setObjective(output_var[0], GRB.MAXIMIZE)

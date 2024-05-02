@@ -70,7 +70,7 @@ class MultiDHOV:
                            icnn_epochs=100, hyper_lambda=1, init_affine_bounds=None, init_layer_bounds=None,
                            break_after=None, tighten_bounds=False, use_fixed_neurons_in_grouping=False, layers_as_milp=[], layers_as_snr=[],
                            use_over_approximation=True, skip_last_layer=False,
-                           preemptive_stop=True, store_samples=False,
+                           preemptive_stop=True, store_samples=False, encode_icnn_enlargement_as_lp=False, encode_relu_enlargement_as_lp=False,
                            force_inclusion_steps=0, grouping_method="consecutive", group_num_multiplier=None,
                            init_network=False, adapt_lambda="none", optimizer="adam",
                            print_training_loss=False, print_last_loss=False, print_optimization_steps=False, print_new_bounds=False):
@@ -377,7 +377,7 @@ class MultiDHOV:
                                                             affine_b.detach().cpu().numpy(), group_indices[group_i],
                                                             bounds_affine_out[current_layer_index],
                                                             bounds_layer_out[current_layer_index], prev_layer_index,
-                                                            has_relu=True)
+                                                            has_relu=True, relu_as_lp=encode_relu_enlargement_as_lp, icnn_as_lp=encode_icnn_enlargement_as_lp)
 
                     current_icnn.apply_enlargement(c)
 

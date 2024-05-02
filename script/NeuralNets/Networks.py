@@ -316,7 +316,8 @@ class ICNN(nn.Module, VerifiableNet):
                 out_lb = bounds_layer_out[int(i / 2)][0].detach().cpu().numpy()
                 out_ub = bounds_layer_out[int(i / 2)][1].detach().cpu().numpy()
                 if as_lp:
-                    relu_vars = verbas.add_relu_as_lp(model, in_var, out_fet, out_lb, out_ub, i)
+                    # relu_vars = verbas.add_relu_as_lp(model, in_var, out_fet, out_lb, out_ub, i)
+                    relu_vars = verbas.add_single_neuron_constr(model, in_var, out_fet,  affine_lb, affine_ub, out_lb, out_ub, i)
                 else:
                     relu_vars = verbas.add_relu_constr(model, in_var, out_fet, affine_lb, affine_ub, out_lb, out_ub, i)
                 in_var = relu_vars
