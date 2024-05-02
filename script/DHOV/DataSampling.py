@@ -181,8 +181,8 @@ def sample_per_group(data_samples, amount, affine_w, input_bounds, index_to_sele
         noise_per_sample = (upper_bounds - lower_bounds) * torch.rand((samples_per_bound, data_samples.size(1)),
                                                         dtype=data_type).to(device) + lower_bounds
 
-        upper_samples.add_(noise_per_sample)
-        lower_samples.add_(noise_per_sample)
+        upper_samples = upper_samples.add(noise_per_sample)
+        lower_samples = lower_samples.add(noise_per_sample)
 
         upper_samples = torch.where(upper_samples <= upper_bounds, upper_samples, upper_bounds)
         upper_samples = torch.where(upper_samples >= lower_bounds, upper_samples, lower_bounds)
