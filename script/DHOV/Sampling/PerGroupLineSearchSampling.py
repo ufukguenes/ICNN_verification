@@ -1,4 +1,5 @@
 import math
+import time
 import warnings
 
 import torch
@@ -10,7 +11,7 @@ import matplotlib.pyplot as plt
 
 
 class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, use_icnn_bounds=False, **kwargs):
         super().__init__(*args, **kwargs)
 
         if self.keep_ambient_space:
@@ -21,6 +22,8 @@ class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
             warnings.warn("sample_over_input_space is True and sampling method is per_group_sampling. "
                           "Sampling over input space is not yet supported when using per group sampling. "
                           "Using sampling over output space instead...")
+
+        self.use_icnn_bounds = use_icnn_bounds
 
     def _sampling_strategy(self):
         sample_space = self._sample_group_line_search_lp(self._current_included_sample_count, self.nn_model,
@@ -82,8 +85,12 @@ class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
 
         for i in range(num_iterations):
             optimizer.zero_grad()
-            loss = self._loss_for_boundary(nn_until_current_layer, input_samples, cs, self.input_bounds,
-                                           list_of_icnns, all_group_indices)
+            if self.use_icnn_bounds:
+                loss = self._loss_for_boundary(nn_until_current_layer, input_samples, cs, self.input_bounds,
+                                               list_of_icnns, all_group_indices)
+            else:
+                loss = self._loss_for_boundary_without_icnn(nn_until_current_layer, input_samples, cs,
+                                                            self.input_bounds)
             loss.backward()
             optimizer.step()
             adapted_input_samples = input_samples
@@ -101,6 +108,14 @@ class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
                                                            self._check_icnns(nn_model, input_samples, list_of_icnns,
                                                                              all_group_indices))).any()  # todo 1000 adaptable machen
         return loss
+
+
+    def _loss_for_boundary_without_icnn(self, nn_model, input_samples, direction, bounds):
+        output_samples = nn_model(input_samples)
+        loss = torch.sum(output_samples * direction)
+        loss += 1000 * torch.logical_not(self._outside_bounds(input_samples, bounds)).any()  # todo 1000 adaptable machen
+        return loss
+
 
     def _check_icnns(self, nn_model, input_samples, list_of_icnns, all_group_indices, precision=1e-5):
         parameters = list(nn_model.parameters())
