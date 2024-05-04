@@ -117,6 +117,8 @@ def verification(icnn, model, affine_w, affine_b, index_to_select, curr_bounds_a
         print("        actual verification time {}".format(time.time() - t))
         inp = output_prev_layer.getAttr("x")
         return inp, output_var[0].X
+    elif model.Status == GRB.TIME_LIMIT:
+        return None, 0
 
 
 def update_bounds_with_icnns(model, bounds_affine_out, bounds_layer_out, current_layer_index, affine_w, affine_b, print_new_bounds=False, time_out=None):
