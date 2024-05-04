@@ -72,7 +72,7 @@ class MultiDHOV:
                            use_over_approximation=True, skip_last_layer=False,
                            preemptive_stop=True, store_samples=False, encode_icnn_enlargement_as_lp=False, encode_relu_enlargement_as_lp=False,
                            force_inclusion_steps=0, grouping_method="consecutive", group_num_multiplier=None,
-                           init_network=False, adapt_lambda="none", optimizer="adam",
+                           init_network=False, adapt_lambda="none", optimizer="adam", time_out=None,
                            print_training_loss=False, print_last_loss=False, print_optimization_steps=False, print_new_bounds=False):
         """
 
@@ -196,7 +196,15 @@ class MultiDHOV:
         self.list_of_icnns = list_of_icnns
         included_space, ambient_space = None, None
 
+        if time_out is None:
+            time_out = float("inf")
+        time_out_start = time.time()
+
         for i in range(0, len(parameter_list) - 2, 2):  # -2 because last layer has no ReLu activation
+
+            if time.time() - time_out_start >= time_out:
+                return False
+
             current_layer_index = i // 2
             prev_layer_index = current_layer_index - 1
             print("")
@@ -208,11 +216,21 @@ class MultiDHOV:
             affine_w, affine_b = parameter_list[i], parameter_list[i + 1]
 
             if tighten_bounds and i != 0:
+                time_left_before_time_out = time_out - (time.time() - time_out_start)
+                if time_left_before_time_out <= 0:
+                    return False
+
                 t = time.time()
                 copy_model = nn_encoding_model.copy()
-                ver.update_bounds_with_icnns(copy_model, bounds_affine_out, bounds_layer_out,
-                                             current_layer_index, affine_w.detach().cpu().numpy(),
-                                             affine_b.detach().cpu().numpy(), print_new_bounds=print_new_bounds)
+                finished_without_time_out = ver.update_bounds_with_icnns(copy_model,
+                                                                         bounds_affine_out, bounds_layer_out,
+                                                                         current_layer_index,
+                                                                         affine_w.detach().cpu().numpy(),
+                                                                         affine_b.detach().cpu().numpy(),
+                                                                         print_new_bounds=print_new_bounds,
+                                                                         time_out=time_left_before_time_out)
+                if not finished_without_time_out:
+                    return False
                 print("    time for icnn_bound calculation: {}".format(time.time() - t))
 
             fix_upper = []
@@ -314,10 +332,17 @@ class MultiDHOV:
                                                                                 list_of_icnns)
             print("        time for sampling: {}".format(time.time() - t))
 
+            if time.time() - time_out_start >= time_out:
+                return False
+
 
 
             list_of_icnns.append([])
             for group_i in range(number_of_groups):
+
+                if time.time() - time_out_start >= time_out:
+                    return False
+
                 if break_after is not None:
                     break_after -= 1
                 print("    layer progress, group {} of {} ".format(group_i + 1, number_of_groups))
@@ -380,7 +405,12 @@ class MultiDHOV:
                 # verify and enlarge convex approximation
 
                 if use_over_approximation:
+                    time_left_before_time_out = time_out - (time.time() - time_out_start)
+                    if time_left_before_time_out <= 0:
+                        return False
+
                     copy_model = nn_encoding_model.copy()
+                    copy_model.setParam("TimeLimit", time_left_before_time_out)
                     adversarial_input, c = ver.verification(current_icnn, copy_model, affine_w.cpu().detach().cpu().numpy(),
                                                             affine_b.detach().cpu().numpy(), group_indices[group_i],
                                                             bounds_affine_out[current_layer_index],
@@ -393,7 +423,7 @@ class MultiDHOV:
 
 
                 if break_after is not None and break_after == 0:
-                    return
+                    return False
 
             # add current layer to model
             curr_constraint_icnns = list_of_icnns[current_layer_index]
@@ -411,7 +441,7 @@ class MultiDHOV:
 
         if skip_last_layer:
             print("the last layer was skipped, as requested")
-            return
+            return True
 
         t = time.time()
         affine_w, affine_b = parameter_list[-2].detach().cpu().numpy(), parameter_list[-1].detach().cpu().numpy()
@@ -432,7 +462,7 @@ class MultiDHOV:
         print("time for icnn_bound calculation (last layer):{}".format(time.time() - t))
         self.output_var = output_nn
         print("done...")
-        return
+        return True
 
 
 def imshow_flattened(img_flattened, shape):

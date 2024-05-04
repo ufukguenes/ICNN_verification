@@ -119,7 +119,7 @@ def verification(icnn, model, affine_w, affine_b, index_to_select, curr_bounds_a
         return inp, output_var[0].X
 
 
-def update_bounds_with_icnns(model, bounds_affine_out, bounds_layer_out, current_layer_index, affine_w, affine_b, print_new_bounds=False):
+def update_bounds_with_icnns(model, bounds_affine_out, bounds_layer_out, current_layer_index, affine_w, affine_b, print_new_bounds=False, time_out=None):
 
     output_prev_layer = []
     prev_layer_index = current_layer_index - 1
@@ -132,8 +132,15 @@ def update_bounds_with_icnns(model, bounds_affine_out, bounds_layer_out, current
     affine_var = verbas.add_affine_constr(model, affine_w, affine_b, output_prev_layer, lb.cpu(), ub.cpu())
 
     model.update()
-
+    time_out_start = time.time()
     for neuron_to_optimize in range(len(affine_var.tolist())):
+
+        time_left_before_time_out = time_out - (time.time() - time_out_start)
+        if time_left_before_time_out <= 0:
+            return False
+
+        model.setParam("TimeLimit", time_left_before_time_out)
+
         model.setObjective(affine_var[neuron_to_optimize], GRB.MINIMIZE)
         model.optimize()
         if model.Status == GRB.OPTIMAL:
@@ -141,6 +148,14 @@ def update_bounds_with_icnns(model, bounds_affine_out, bounds_layer_out, current
             if print_new_bounds and abs(value[neuron_to_optimize] - bounds_affine_out[current_layer_index][0][neuron_to_optimize]) > 0.00001:
                 print("        {}, lower: new {}, old {}".format(neuron_to_optimize, value[neuron_to_optimize], bounds_affine_out[current_layer_index][0][neuron_to_optimize]))
             bounds_affine_out[current_layer_index][0][neuron_to_optimize] = value[neuron_to_optimize]
+        elif model.Status == GRB.TIME_LIMIT:
+            return False
+
+        time_left_before_time_out = time_out - (time.time() - time_out_start)
+        if time_left_before_time_out <= 0:
+            return False
+
+        model.setParam("TimeLimit", time_left_before_time_out)
 
         model.setObjective(affine_var[neuron_to_optimize], GRB.MAXIMIZE)
         model.optimize()
@@ -149,7 +164,10 @@ def update_bounds_with_icnns(model, bounds_affine_out, bounds_layer_out, current
             if print_new_bounds and abs(value[neuron_to_optimize] - bounds_affine_out[current_layer_index][1][neuron_to_optimize]) > 0.00001:
                 print("        {}, upper: new {}, old {}".format(neuron_to_optimize, value[neuron_to_optimize], bounds_affine_out[current_layer_index][1][neuron_to_optimize]))
             bounds_affine_out[current_layer_index][1][neuron_to_optimize] = value[neuron_to_optimize]
+        elif model.Status == GRB.TIME_LIMIT:
+            return False
 
     relu_out_lb, relu_out_ub = verbas.calc_relu_out_bound(bounds_affine_out[current_layer_index][0], bounds_affine_out[current_layer_index][1])
     bounds_layer_out[current_layer_index][0] = relu_out_lb
     bounds_layer_out[current_layer_index][1] = relu_out_ub
+    return True
