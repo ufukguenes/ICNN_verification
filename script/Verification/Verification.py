@@ -1,5 +1,6 @@
 import math
 import time
+import warnings
 
 import numpy as np
 import torch
@@ -119,6 +120,8 @@ def verification(icnn, model, affine_w, affine_b, index_to_select, curr_bounds_a
         return inp, output_var[0].X
     elif model.Status == GRB.TIME_LIMIT:
         return None, 0
+    else:
+        warnings.warn("something weird happened during enlargement gurobi status: {}".format(model.Status))
 
 
 def update_bounds_with_icnns(model, bounds_affine_out, bounds_layer_out, current_layer_index, affine_w, affine_b, print_new_bounds=False, time_out=None):
