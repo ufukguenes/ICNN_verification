@@ -214,7 +214,7 @@ class MultiDHOV:
                 estimated_time_for_left_layers = layers_left * time_for_prev_layer
                 time_left_before_time_out = time_out - (time.time() - time_out_start)
                 if estimated_time_for_left_layers >= time_left_before_time_out:
-                    print("abort because of heuristic time out estimate.")
+                    print("abort because of heuristic time out estimate, time last layer: {}, layer left {}, time left {}".format(time_for_prev_layer, layers_left, time_left_before_time_out))
                     return False
 
             prev_layer_start_time = time.time()
