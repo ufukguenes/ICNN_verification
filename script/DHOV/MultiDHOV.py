@@ -371,8 +371,6 @@ class MultiDHOV:
                                 time_until_now_in_current_layer, layers_left, time_left_before_time_out))
                         return False
 
-                prev_layer_start_time = time.time()
-
                 print("    layer progress, group {} of {} ".format(group_i + 1, number_of_groups))
 
                 index_to_select = torch.tensor(group_indices[group_i]).to(device)
