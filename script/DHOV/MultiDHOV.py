@@ -207,6 +207,11 @@ class MultiDHOV:
             if time.time() - time_out_start >= time_out:
                 return False
 
+            current_layer_index = i // 2
+            prev_layer_index = current_layer_index - 1
+            print("")
+            print("approximation of layer: {}".format(current_layer_index))
+
             if allow_heuristic_timeout_estimate:
                 time_for_prev_layer = time.time() - prev_layer_start_time
                 num_of_layers = (len(parameter_list) - 2) / 2
@@ -219,10 +224,6 @@ class MultiDHOV:
 
             prev_layer_start_time = time.time()
 
-            current_layer_index = i // 2
-            prev_layer_index = current_layer_index - 1
-            print("")
-            print("approximation of layer: {}".format(current_layer_index))
             if store_samples:
                 self.list_of_included_samples.append([])
                 self.list_of_ambient_samples.append([])
