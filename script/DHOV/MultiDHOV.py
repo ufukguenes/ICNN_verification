@@ -212,10 +212,10 @@ class MultiDHOV:
             print("")
             print("approximation of layer: {}".format(current_layer_index))
 
+            num_of_layers = (len(parameter_list) - 2) / 2
+            layers_left = num_of_layers - current_layer_index - len(layers_as_snr) - len(layers_as_milp)
             if allow_heuristic_timeout_estimate:
                 time_for_prev_layer = time.time() - prev_layer_start_time
-                num_of_layers = (len(parameter_list) - 2) / 2
-                layers_left = num_of_layers - current_layer_index - len(layers_as_snr) - len(layers_as_milp)
                 estimated_time_for_left_layers = layers_left * time_for_prev_layer
                 time_left_before_time_out = time_out - (time.time() - time_out_start)
                 if estimated_time_for_left_layers >= time_left_before_time_out:
@@ -360,6 +360,19 @@ class MultiDHOV:
 
                 if break_after is not None:
                     break_after -= 1
+
+                if allow_heuristic_timeout_estimate:
+                    time_until_now_in_current_layer = time.time() - prev_layer_start_time
+                    estimated_time_for_left_layers = layers_left * time_until_now_in_current_layer
+                    time_left_before_time_out = time_out - (time.time() - time_out_start)
+                    if estimated_time_for_left_layers >= time_left_before_time_out:
+                        print(
+                            "abort because of heuristic time out estimate, time in this layer: {}, layer left {}, time left {}".format(
+                                time_until_now_in_current_layer, layers_left, time_left_before_time_out))
+                        return False
+
+                prev_layer_start_time = time.time()
+
                 print("    layer progress, group {} of {} ".format(group_i + 1, number_of_groups))
 
                 index_to_select = torch.tensor(group_indices[group_i]).to(device)
