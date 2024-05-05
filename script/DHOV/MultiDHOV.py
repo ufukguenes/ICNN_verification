@@ -448,7 +448,6 @@ class MultiDHOV:
                 print("        time for verification: {}".format(time.time() - t))
 
 
-                print("total time for current layer: {}".format(time.time() - prev_layer_start_time))
                 if break_after is not None and break_after == 0:
                     return False
 
@@ -465,6 +464,7 @@ class MultiDHOV:
                                    curr_fixed_neuron_lower, curr_fixed_neuron_upper,
                                    current_layer_index)
             nn_encoding_model.update()
+            print("total time for current layer: {}".format(time.time() - prev_layer_start_time))
 
         if skip_last_layer:
             print("the last layer was skipped, as requested")
