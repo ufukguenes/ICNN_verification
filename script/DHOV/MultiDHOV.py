@@ -72,7 +72,7 @@ class MultiDHOV:
                            use_over_approximation=True, skip_last_layer=False,
                            preemptive_stop=True, store_samples=False, encode_icnn_enlargement_as_lp=False, encode_relu_enlargement_as_lp=False,
                            force_inclusion_steps=0, grouping_method="consecutive", group_num_multiplier=None,
-                           init_network=False, adapt_lambda="none", optimizer="adam", time_out=None,
+                           init_network=False, adapt_lambda="none", optimizer="adam", time_out=None, allow_heuristic_timeout_estimate=False,
                            print_training_loss=False, print_last_loss=False, print_optimization_steps=False, print_new_bounds=False):
         """
 
@@ -200,10 +200,24 @@ class MultiDHOV:
             time_out = float("inf")
         time_out_start = time.time()
 
+        prev_layer_start_time = time.time()
+
         for i in range(0, len(parameter_list) - 2, 2):  # -2 because last layer has no ReLu activation
 
             if time.time() - time_out_start >= time_out:
                 return False
+
+            if allow_heuristic_timeout_estimate:
+                time_for_prev_layer = time.time() - prev_layer_start_time
+                num_of_layers = (len(parameter_list) - 2) / 2
+                layers_left = num_of_layers - current_layer_index - len(layers_as_snr) - len(layers_as_milp)
+                estimated_time_for_left_layers = layers_left * time_for_prev_layer
+                time_left_before_time_out = time_out - (time.time() - time_out_start)
+                if estimated_time_for_left_layers >= time_left_before_time_out:
+                    print("abort because of heuristic time out estimate.")
+                    return False
+
+            prev_layer_start_time = time.time()
 
             current_layer_index = i // 2
             prev_layer_index = current_layer_index - 1
