@@ -9,7 +9,7 @@ import gurobipy as grp
 import script.Verification.VerificationBasics as verbas
 
 from script.settings import device, data_type
-
+import multiprocessing
 
 
 def generate_model_center_bounds(model, center, input_bounds, layer_index):
@@ -119,12 +119,16 @@ def verification(icnn, model, affine_w, affine_b, index_to_select, curr_bounds_a
         inp = output_prev_layer.getAttr("x")
         return inp, output_var[0].X
     elif model.Status == GRB.TIME_LIMIT:
-        return None, 0
+        print("        actual verification time (time limit) {}".format(time.time() - t))
+        inp = None
+        c = model.getAttr("ObjBound")
+        print("enlarge with {}".format(c))
+        return inp, c
     else:
         warnings.warn("something weird happened during enlargement gurobi status: {}".format(model.Status))
 
 
-def update_bounds_with_icnns(model, bounds_affine_out, bounds_layer_out, current_layer_index, affine_w, affine_b, print_new_bounds=False, time_out=None):
+def update_bounds_with_icnns(model, bounds_affine_out, bounds_layer_out, current_layer_index, affine_w, affine_b, print_new_bounds=False, time_out=None, time_per_neuron_refinement=None):
 
     output_prev_layer = []
     prev_layer_index = current_layer_index - 1
@@ -144,33 +148,40 @@ def update_bounds_with_icnns(model, bounds_affine_out, bounds_layer_out, current
         if time_left_before_time_out <= 0:
             return False
 
-        model.setParam("TimeLimit", time_left_before_time_out)
+        model.setParam("TimeLimit", min(time_per_neuron_refinement, time_left_before_time_out))
 
         model.setObjective(affine_var[neuron_to_optimize], GRB.MINIMIZE)
         model.optimize()
         if model.Status == GRB.OPTIMAL:
-            value = affine_var.getAttr("x")
-            if print_new_bounds and abs(value[neuron_to_optimize] - bounds_affine_out[current_layer_index][0][neuron_to_optimize]) > 0.00001:
-                print("        {}, lower: new {}, old {}".format(neuron_to_optimize, value[neuron_to_optimize], bounds_affine_out[current_layer_index][0][neuron_to_optimize]))
-            bounds_affine_out[current_layer_index][0][neuron_to_optimize] = value[neuron_to_optimize]
+            value = affine_var.getAttr("x")[neuron_to_optimize]
         elif model.Status == GRB.TIME_LIMIT:
-            return False
+            value = model.getAttr("ObjBound")
+            print("Time limit during neuron bound. Result {}".format(value))
+        else:
+            print("weird: {}".format(model.Status))
+
+        if print_new_bounds and abs(value[neuron_to_optimize] - bounds_affine_out[current_layer_index][0][neuron_to_optimize]) > 0.00001:
+            print("        {}, lower: new {}, old {}".format(neuron_to_optimize, value[neuron_to_optimize], bounds_affine_out[current_layer_index][0][neuron_to_optimize]))
+        bounds_affine_out[current_layer_index][0][neuron_to_optimize] = value
+
 
         time_left_before_time_out = time_out - (time.time() - time_out_start)
         if time_left_before_time_out <= 0:
             return False
 
-        model.setParam("TimeLimit", time_left_before_time_out)
+        model.setParam("TimeLimit",  min(time_per_neuron_refinement, time_left_before_time_out))
 
         model.setObjective(affine_var[neuron_to_optimize], GRB.MAXIMIZE)
         model.optimize()
         if model.Status == GRB.OPTIMAL:
-            value = affine_var.getAttr("x")
-            if print_new_bounds and abs(value[neuron_to_optimize] - bounds_affine_out[current_layer_index][1][neuron_to_optimize]) > 0.00001:
-                print("        {}, upper: new {}, old {}".format(neuron_to_optimize, value[neuron_to_optimize], bounds_affine_out[current_layer_index][1][neuron_to_optimize]))
-            bounds_affine_out[current_layer_index][1][neuron_to_optimize] = value[neuron_to_optimize]
+            value = affine_var.getAttr("x")[neuron_to_optimize]
         elif model.Status == GRB.TIME_LIMIT:
-            return False
+            value = model.getAttr("ObjBound")
+            print("Time limit during neuron bound. Result {}".format(value))
+
+        if print_new_bounds and abs(value[neuron_to_optimize] - bounds_affine_out[current_layer_index][1][neuron_to_optimize]) > 0.00001:
+            print("        {}, upper: new {}, old {}".format(neuron_to_optimize, value[neuron_to_optimize], bounds_affine_out[current_layer_index][1][neuron_to_optimize]))
+        bounds_affine_out[current_layer_index][1][neuron_to_optimize] = value
 
     relu_out_lb, relu_out_ub = verbas.calc_relu_out_bound(bounds_affine_out[current_layer_index][0], bounds_affine_out[current_layer_index][1])
     bounds_layer_out[current_layer_index][0] = relu_out_lb

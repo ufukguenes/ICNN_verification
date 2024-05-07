@@ -69,7 +69,7 @@ class MultiDHOV:
     def start_verification(self, nn: SequentialNN, input, icnn_factory, group_size, input_bounds, sampling_strategy: SamplingStrategy, icnn_batch_size=1000,
                            icnn_epochs=100, hyper_lambda=1, init_affine_bounds=None, init_layer_bounds=None,
                            break_after=None, tighten_bounds=False, use_fixed_neurons_in_grouping=False, layers_as_milp=[], layers_as_snr=[],
-                           use_over_approximation=True, skip_last_layer=False,
+                           use_over_approximation=True, skip_last_layer=False, time_per_neuron_refinement=None, time_per_icnn_refinement=None,
                            preemptive_stop=True, store_samples=False, encode_icnn_enlargement_as_lp=False, encode_relu_enlargement_as_lp=False,
                            force_inclusion_steps=0, grouping_method="consecutive", group_num_multiplier=None,
                            init_network=False, adapt_lambda="none", optimizer="adam", time_out=None, allow_heuristic_timeout_estimate=False,
@@ -243,7 +243,8 @@ class MultiDHOV:
                                                                          affine_w.detach().cpu().numpy(),
                                                                          affine_b.detach().cpu().numpy(),
                                                                          print_new_bounds=print_new_bounds,
-                                                                         time_out=time_left_before_time_out)
+                                                                         time_out=time_left_before_time_out,
+                                                                         time_per_neuron_refinement=time_per_neuron_refinement)
                 if not finished_without_time_out:
                     return False
                 print("    time for icnn_bound calculation: {}".format(time.time() - t))
@@ -436,7 +437,7 @@ class MultiDHOV:
                         return False
 
                     copy_model = nn_encoding_model.copy()
-                    copy_model.setParam("TimeLimit", time_left_before_time_out)
+                    copy_model.setParam("TimeLimit", min(time_per_icnn_refinement, time_left_before_time_out))
                     adversarial_input, c = ver.verification(current_icnn, copy_model, affine_w.cpu().detach().cpu().numpy(),
                                                             affine_b.detach().cpu().numpy(), group_indices[group_i],
                                                             bounds_affine_out[current_layer_index],
