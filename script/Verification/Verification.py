@@ -75,7 +75,7 @@ def add_layer_to_model(model, affine_w, affine_b, curr_constraint_icnns, curr_gr
 
 
 def verification(icnn, model, affine_w, affine_b, index_to_select, curr_bounds_affine_out, curr_bounds_layer_out, prev_layer_index, has_relu=False, relu_as_lp=False, icnn_as_lp=False):
-
+    back_up_model = model.copy()
     output_prev_layer = []
     for i in range(affine_w.shape[1]):
         output_prev_layer.append(model.getVarByName("output_layer_[{}]_[{}]".format(prev_layer_index, i)))
@@ -86,11 +86,11 @@ def verification(icnn, model, affine_w, affine_b, index_to_select, curr_bounds_a
     new_w = np.delete(affine_w, rows_to_delete, axis=0)
     new_b = np.delete(affine_b, rows_to_delete, axis=0)
 
-    index_to_select = torch.tensor(index_to_select).to(device)
-    in_lb = torch.index_select(curr_bounds_affine_out[0], 0, index_to_select).detach().cpu().numpy()
-    in_ub = torch.index_select(curr_bounds_affine_out[1], 0, index_to_select).detach().cpu().numpy()
-    out_lb = torch.index_select(curr_bounds_layer_out[0], 0, index_to_select).detach().cpu().numpy()
-    out_ub = torch.index_select(curr_bounds_layer_out[1], 0, index_to_select).detach().cpu().numpy()
+    index_to_select_torch = torch.tensor(index_to_select).to(device)
+    in_lb = torch.index_select(curr_bounds_affine_out[0], 0, index_to_select_torch).detach().cpu().numpy()
+    in_ub = torch.index_select(curr_bounds_affine_out[1], 0, index_to_select_torch).detach().cpu().numpy()
+    out_lb = torch.index_select(curr_bounds_layer_out[0], 0, index_to_select_torch).detach().cpu().numpy()
+    out_ub = torch.index_select(curr_bounds_layer_out[1], 0, index_to_select_torch).detach().cpu().numpy()
     affine_out = verbas.add_affine_constr(model, new_w, new_b, output_prev_layer, in_lb, in_ub)
     if has_relu:
         input_size = len(new_b)
@@ -103,8 +103,8 @@ def verification(icnn, model, affine_w, affine_b, index_to_select, curr_bounds_a
         input_var = affine_out
 
 
-    low = torch.index_select(curr_bounds_layer_out[0], 0, index_to_select)
-    up = torch.index_select(curr_bounds_layer_out[1], 0, index_to_select)
+    low = torch.index_select(curr_bounds_layer_out[0], 0, index_to_select_torch)
+    up = torch.index_select(curr_bounds_layer_out[1], 0, index_to_select_torch)
     icnn_bounds_affine_out, icnn_bounds_layer_out = icnn.calculate_box_bounds([low, up])
     output_var = icnn.add_constraints(model, input_var, icnn_bounds_affine_out, icnn_bounds_layer_out, as_lp=icnn_as_lp)
 
@@ -122,7 +122,10 @@ def verification(icnn, model, affine_w, affine_b, index_to_select, curr_bounds_a
         print("        actual verification time (time limit) {}".format(time.time() - t))
         inp = None
         c = model.getAttr("ObjBound")
-        print("enlarge with {}".format(c))
+        if c == float("inf"):
+            _, c = verification(icnn, back_up_model, affine_w, affine_b, index_to_select, curr_bounds_affine_out, curr_bounds_layer_out, prev_layer_index, has_relu=has_relu, relu_as_lp=True, icnn_as_lp=True)
+            print("            fall back to lp solving of icnn enlargement")
+        print("            enlarge with {}".format(c))
         return inp, c
     else:
         warnings.warn("something weird happened during enlargement gurobi status: {}".format(model.Status))
