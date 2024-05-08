@@ -435,20 +435,27 @@ class MultiDHOV:
                 t = time.time()
                 # verify and enlarge convex approximation
 
-                if use_over_approximation:
-                    time_left_before_time_out = time_out - (time.time() - time_out_start)
-                    if time_left_before_time_out <= 0:
-                        return False
+            if use_over_approximation:
+                time_left_before_time_out = time_out - (time.time() - time_out_start)
+                if time_left_before_time_out <= 0:
+                    return False
 
-                    copy_model = nn_encoding_model.copy()
-                    copy_model.setParam("TimeLimit", min(time_per_icnn_refinement, time_left_before_time_out))
-                    adversarial_input, c = ver.verification(current_icnn, copy_model, affine_w.cpu().detach().cpu().numpy(),
-                                                            affine_b.detach().cpu().numpy(), group_indices[group_i],
-                                                            bounds_affine_out[current_layer_index],
-                                                            bounds_layer_out[current_layer_index], prev_layer_index,
-                                                            has_relu=True, relu_as_lp=encode_relu_enlargement_as_lp, icnn_as_lp=encode_icnn_enlargement_as_lp)
 
-                    current_icnn.apply_enlargement(c)
+                Cache.model = nn_encoding_model
+                Cache.time_per_icnn_refinement = time_per_icnn_refinement
+                Cache.time_left_before_time_out = time_left_before_time_out
+                Cache.affine_w = affine_w
+                Cache.affine_b = affine_b
+                Cache.bounds_affine_out_current = bounds_affine_out[current_layer_index]
+                Cache.bounds_layer_out_current = bounds_layer_out[current_layer_index]
+                Cache.relu_as_lp = encode_relu_enlargement_as_lp
+                Cache.icnn_as_lp = encode_icnn_enlargement_as_lp
+                Cache.prev_layer_index = prev_layer_index
+
+                num_processors = multiprocessing.cpu_count()
+                args = zip(list_of_icnns[current_layer_index], group_indices)
+                with multiprocessing.Pool(num_processors) as pool:
+                    result = pool.starmap(parallel_icnn_enlargement, args)
 
                 print("        time for verification: {}".format(time.time() - t))
 
@@ -496,6 +503,44 @@ class MultiDHOV:
         print("done...")
         return True
 
+
+class Cache:
+    model = None
+    time_per_icnn_refinement = None
+    time_left_before_time_out = None
+    affine_w = None
+    affine_b = None
+    bounds_affine_out_current = None
+    bounds_layer_out_current = None
+    relu_as_lp = None
+    icnn_as_lp = None
+    prev_layer_index = None
+
+
+def parallel_icnn_enlargement(icnn, group):
+    model = Cache.model.copy()
+    time_per_icnn_refinement = Cache.time_per_icnn_refinement
+    time_left_before_time_out = Cache.time_left_before_time_out
+    affine_w = Cache.affine_w
+    affine_b = Cache.affine_b
+    bounds_affine_out_current = Cache.bounds_affine_out_current
+    bounds_layer_out_current = Cache.bounds_layer_out_current
+    encode_relu_enlargement_as_lp = Cache.relu_as_lp
+    encode_icnn_enlargement_as_lp = Cache.icnn_as_lp
+    prev_layer_index = Cache.prev_layer_index
+
+    copy_model = Cache.model.copy()
+    copy_model.setParam("TimeLimit", min(time_per_icnn_refinement, time_left_before_time_out))
+    adversarial_input, c = ver.verification(icnn, copy_model,
+                                            affine_w.cpu().detach().cpu().numpy(),
+                                            affine_b.detach().cpu().numpy(), group,
+                                            bounds_affine_out_current,
+                                            bounds_layer_out_current, prev_layer_index,
+                                            has_relu=True, relu_as_lp=encode_relu_enlargement_as_lp,
+                                            icnn_as_lp=encode_icnn_enlargement_as_lp)
+
+    icnn.apply_enlargement(c)
+    return
 
 def imshow_flattened(img_flattened, shape):
     img = np.reshape(img_flattened, shape)
