@@ -131,7 +131,7 @@ def verification(icnn, model, affine_w, affine_b, index_to_select, curr_bounds_a
         warnings.warn("something weird happened during enlargement gurobi status: {}".format(model.Status))
 
 
-def update_bounds_with_icnns(model, bounds_affine_out, bounds_layer_out, current_layer_index, affine_w, affine_b, print_new_bounds=False, time_out=None, time_per_neuron_refinement=None):
+def update_bounds_with_icnns(model, bounds_affine_out, bounds_layer_out, current_layer_index, affine_w, affine_b):
 
     output_prev_layer = []
     prev_layer_index = current_layer_index - 1
@@ -141,52 +141,53 @@ def update_bounds_with_icnns(model, bounds_affine_out, bounds_layer_out, current
 
     lb = bounds_affine_out[current_layer_index][0].detach()
     ub = bounds_affine_out[current_layer_index][1].detach()
-    affine_var = verbas.add_affine_constr(model, affine_w, affine_b, output_prev_layer, lb.cpu(), ub.cpu())
+    affine_var = verbas.add_affine_constr(model, affine_w, affine_b, output_prev_layer, lb.cpu(), ub.cpu(), i="myVarWithNewName")
 
+    model.setParam(GRB.Param.Threads, 2)
     model.update()
-    time_out_start = time.time()
+
+    num_processors = multiprocessing.cpu_count()
+    Cache.model = model
+    Cache.affine_var_name = list(affine_var.VarName)
+    neuron_indices = list(range(len(affine_var.tolist())))
+    with multiprocessing.Pool(num_processors) as pool:
+        result = pool.map(parallel_call, neuron_indices)
+
     for neuron_to_optimize in range(len(affine_var.tolist())):
+        bounds_affine_out[current_layer_index][0][neuron_to_optimize] = result[neuron_to_optimize][0]
+        bounds_affine_out[current_layer_index][1][neuron_to_optimize] = result[neuron_to_optimize][1]
 
-        time_left_before_time_out = time_out - (time.time() - time_out_start)
-        if time_left_before_time_out <= 0:
-            return False
+    relu_out_lb, relu_out_ub = verbas.calc_relu_out_bound(bounds_affine_out[current_layer_index][0],
+                                                          bounds_affine_out[current_layer_index][1])
 
-        model.setParam("TimeLimit", min(time_per_neuron_refinement, time_left_before_time_out))
-
-        model.setObjective(affine_var[neuron_to_optimize], GRB.MINIMIZE)
-        model.optimize()
-        if model.Status == GRB.OPTIMAL:
-            value = affine_var.getAttr("x")[neuron_to_optimize]
-        elif model.Status == GRB.TIME_LIMIT:
-            value = model.getAttr("ObjBound")
-            print("Time limit during neuron bound. Result {}".format(value))
-        else:
-            print("weird: {}".format(model.Status))
-
-        if print_new_bounds and abs(value[neuron_to_optimize] - bounds_affine_out[current_layer_index][0][neuron_to_optimize]) > 0.00001:
-            print("        {}, lower: new {}, old {}".format(neuron_to_optimize, value[neuron_to_optimize], bounds_affine_out[current_layer_index][0][neuron_to_optimize]))
-        bounds_affine_out[current_layer_index][0][neuron_to_optimize] = value
-
-
-        time_left_before_time_out = time_out - (time.time() - time_out_start)
-        if time_left_before_time_out <= 0:
-            return False
-
-        model.setParam("TimeLimit",  min(time_per_neuron_refinement, time_left_before_time_out))
-
-        model.setObjective(affine_var[neuron_to_optimize], GRB.MAXIMIZE)
-        model.optimize()
-        if model.Status == GRB.OPTIMAL:
-            value = affine_var.getAttr("x")[neuron_to_optimize]
-        elif model.Status == GRB.TIME_LIMIT:
-            value = model.getAttr("ObjBound")
-            print("Time limit during neuron bound. Result {}".format(value))
-
-        if print_new_bounds and abs(value[neuron_to_optimize] - bounds_affine_out[current_layer_index][1][neuron_to_optimize]) > 0.00001:
-            print("        {}, upper: new {}, old {}".format(neuron_to_optimize, value[neuron_to_optimize], bounds_affine_out[current_layer_index][1][neuron_to_optimize]))
-        bounds_affine_out[current_layer_index][1][neuron_to_optimize] = value
-
-    relu_out_lb, relu_out_ub = verbas.calc_relu_out_bound(bounds_affine_out[current_layer_index][0], bounds_affine_out[current_layer_index][1])
     bounds_layer_out[current_layer_index][0] = relu_out_lb
     bounds_layer_out[current_layer_index][1] = relu_out_ub
     return True
+
+
+
+class Cache:
+    model = None
+    affine_var_name = None
+
+
+def parallel_call(neuron_index):
+
+    model = Cache.model.copy()
+    affine_var = model.getVarByName(Cache.affine_var_name[neuron_index])
+
+    lb_ub = []
+    model.setObjective(affine_var, GRB.MINIMIZE)
+    model.optimize()
+    if model.Status == GRB.OPTIMAL:
+        value = affine_var.getAttr("x")
+        lb_ub.append(value)
+
+
+    model.setObjective(affine_var, GRB.MAXIMIZE)
+    model.optimize()
+    if model.Status == GRB.OPTIMAL:
+        value = affine_var.getAttr("x")
+        lb_ub.append(value)
+
+    return lb_ub

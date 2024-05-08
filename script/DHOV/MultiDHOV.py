@@ -196,8 +196,15 @@ class MultiDHOV:
         self.list_of_icnns = list_of_icnns
         included_space, ambient_space = None, None
 
+
         if time_out is None:
             time_out = float("inf")
+
+        if time_per_neuron_refinement is None:
+            time_per_neuron_refinement = time_out
+
+        if time_per_icnn_refinement is None:
+            time_per_icnn_refinement = time_out
         time_out_start = time.time()
 
         prev_layer_start_time = time.time()
@@ -241,10 +248,7 @@ class MultiDHOV:
                                                                          bounds_affine_out, bounds_layer_out,
                                                                          current_layer_index,
                                                                          affine_w.detach().cpu().numpy(),
-                                                                         affine_b.detach().cpu().numpy(),
-                                                                         print_new_bounds=print_new_bounds,
-                                                                         time_out=time_left_before_time_out,
-                                                                         time_per_neuron_refinement=time_per_neuron_refinement)
+                                                                         affine_b.detach().cpu().numpy())
                 if not finished_without_time_out:
                     return False
                 print("    time for icnn_bound calculation: {}".format(time.time() - t))
