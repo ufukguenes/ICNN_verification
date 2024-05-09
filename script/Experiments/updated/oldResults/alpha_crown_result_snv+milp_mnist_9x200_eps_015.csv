@@ -1,0 +1,22 @@
+Input name,State of optimization,time for just solving,time overall,was successful?,max distance
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_001_0.015.vnnlib,finished,1.7367169857025146,519.1283419132233,False,17.603111267089844
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_001_0.015.vnnlib,finished,2.125882863998413,410.7270452976227,False,17.60311126671966
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_001_0.015.vnnlib,finished,2.677553176879883,5.085069894790649,False,22.63590024716536

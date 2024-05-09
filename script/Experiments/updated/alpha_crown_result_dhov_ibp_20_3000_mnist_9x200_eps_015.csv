@@ -1,0 +1,1 @@
+Input name,State of optimization,time for just solving,time overall,was successful?,max distance,"group_size: 20, sample_count: 3000, crown_method: alpha-crown, tighten_bounds: False, time_out: 3600, time_per_neuron_refinement: 1, time_per_icnn_refinement: 30, allow_heuristic_timeout_estimate: True"
