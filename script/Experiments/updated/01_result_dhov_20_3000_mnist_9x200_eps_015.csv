@@ -1,3 +1,0 @@
-Input name,State of optimization,time for just solving,time overall,was successful?,max distance
-prop_000_0.015.vnnlib,wrong classification
-prop_001_0.015.vnnlib,finished,1.0361402034759521,656.4056162834167,True,-4.9309292934494735

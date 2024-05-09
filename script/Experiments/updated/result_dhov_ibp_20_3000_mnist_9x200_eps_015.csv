@@ -1,6 +1,0 @@
-Input name,State of optimization,time for just solving,time overall,was successful?,max distance
-prop_000_0.015.vnnlib,wrong classification
-prop_001_0.015.vnnlib,finished,1.1220688819885254,636.861724615097,True,-4.965400640269488
-prop_002_0.015.vnnlib,time_out of DHOV,-,672.6120598316193,False
-prop_003_0.015.vnnlib,time_out of DHOV,-,1530.1395461559296,False
-prop_004_0.015.vnnlib,time_out of DHOV,-,1025.7036907672882,False
