@@ -121,10 +121,13 @@ def verification(icnn, model, affine_w, affine_b, index_to_select, curr_bounds_a
     elif model.Status == GRB.TIME_LIMIT:
         print("        actual verification time (time limit) {}".format(time.time() - t))
         inp = None
-        c = model.getAttr("ObjBound")
-        if c == float("inf"):
+
+        if model.SolCount == 0:
             _, c = verification(icnn, back_up_model, affine_w, affine_b, index_to_select, curr_bounds_affine_out, curr_bounds_layer_out, prev_layer_index, has_relu=has_relu, relu_as_lp=True, icnn_as_lp=True)
             print("            fall back to lp solving of icnn enlargement")
+        else:
+            c = model.ObjBound
+
         print("            enlarge with {}".format(c))
         return inp, c
     else:
@@ -181,13 +184,21 @@ def parallel_call(neuron_index):
     model.optimize()
     if model.Status == GRB.OPTIMAL:
         value = affine_var.getAttr("x")
-        lb_ub.append(value)
+    elif model.Status == GRB.TIME_LIMIT:
+        value = affine_var.getAttr("lb") if model.SolCount == 0 else model.objbound
+    elif model.Status == GRB.INFEASIBLE:
+        raise RuntimeError("Model is infeasible lb")
 
+    lb_ub.append(value)
 
     model.setObjective(affine_var, GRB.MAXIMIZE)
     model.optimize()
     if model.Status == GRB.OPTIMAL:
         value = affine_var.getAttr("x")
-        lb_ub.append(value)
+    elif model.Status == GRB.TIME_LIMIT:
+        value = affine_var.getAttr("ub") if model.SolCount == 0 else model.objbound
+    elif model.Status == GRB.INFEASIBLE:
+        raise RuntimeError("Model is infeasible ub")
+    lb_ub.append(value)
 
     return lb_ub
