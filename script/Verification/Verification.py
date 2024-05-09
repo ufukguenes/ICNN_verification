@@ -115,20 +115,20 @@ def verification(icnn, model, affine_w, affine_b, index_to_select, curr_bounds_a
     model.optimize()
 
     if model.Status == GRB.OPTIMAL:
-        print("        actual verification time {}".format(time.time() - t))
+        # print("        actual verification time {}".format(time.time() - t))
         inp = output_prev_layer.getAttr("x")
         return inp, output_var[0].X
     elif model.Status == GRB.TIME_LIMIT:
-        print("        actual verification time (time limit) {}".format(time.time() - t))
+        # print("        actual verification time (time limit) {}".format(time.time() - t))
         inp = None
 
         if model.SolCount == 0:
             _, c = verification(icnn, back_up_model, affine_w, affine_b, index_to_select, curr_bounds_affine_out, curr_bounds_layer_out, prev_layer_index, has_relu=has_relu, relu_as_lp=True, icnn_as_lp=True)
-            print("            fall back to lp solving of icnn enlargement")
+            # print("            fall back to lp solving of icnn enlargement")
         else:
             c = model.ObjBound
 
-        print("            enlarge with {}".format(c))
+        # print("            enlarge with {}".format(c))
         return inp, c
     elif model.Status == GRB.INFEASIBLE:
         raise RuntimeError("Model is infeasible")
