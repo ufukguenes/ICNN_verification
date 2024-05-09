@@ -130,8 +130,8 @@ def verification(icnn, model, affine_w, affine_b, index_to_select, curr_bounds_a
 
         print("            enlarge with {}".format(c))
         return inp, c
-    else:
-        warnings.warn("something weird happened during enlargement gurobi status: {}".format(model.Status))
+    elif model.Status == GRB.INFEASIBLE:
+        raise RuntimeError("Model is infeasible")
 
 
 def update_bounds_with_icnns(model, bounds_affine_out, bounds_layer_out, current_layer_index, affine_w, affine_b):
