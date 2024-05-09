@@ -244,6 +244,7 @@ class MultiDHOV:
 
                 t = time.time()
                 copy_model = nn_encoding_model.copy()
+                copy_model.setParam("TimeLimit", min(time_per_neuron_refinement, time_left_before_time_out))
                 finished_without_time_out = ver.update_bounds_with_icnns(copy_model,
                                                                          bounds_affine_out, bounds_layer_out,
                                                                          current_layer_index,
@@ -455,7 +456,10 @@ class MultiDHOV:
                 num_processors = multiprocessing.cpu_count()
                 args = zip(list_of_icnns[current_layer_index], group_indices)
                 with multiprocessing.Pool(num_processors) as pool:
-                    result = pool.starmap(parallel_icnn_enlargement, args)
+                    result_enlarge = pool.starmap(parallel_icnn_enlargement, args)
+
+                for index, icnn in enumerate(list_of_icnns[current_layer_index]):
+                    icnn.apply_enlargement(result_enlarge[index])
 
                 print("        time for verification: {}".format(time.time() - t))
 
@@ -529,9 +533,8 @@ def parallel_icnn_enlargement(icnn, group):
     encode_icnn_enlargement_as_lp = Cache.icnn_as_lp
     prev_layer_index = Cache.prev_layer_index
 
-    copy_model = Cache.model.copy()
-    copy_model.setParam("TimeLimit", min(time_per_icnn_refinement, time_left_before_time_out))
-    adversarial_input, c = ver.verification(icnn, copy_model,
+    model.setParam("TimeLimit", min(time_per_icnn_refinement, time_left_before_time_out))
+    adversarial_input, c = ver.verification(icnn, model,
                                             affine_w.cpu().detach().cpu().numpy(),
                                             affine_b.detach().cpu().numpy(), group,
                                             bounds_affine_out_current,
@@ -539,8 +542,7 @@ def parallel_icnn_enlargement(icnn, group):
                                             has_relu=True, relu_as_lp=encode_relu_enlargement_as_lp,
                                             icnn_as_lp=encode_icnn_enlargement_as_lp)
 
-    icnn.apply_enlargement(c)
-    return
+    return c
 
 def imshow_flattened(img_flattened, shape):
     img = np.reshape(img_flattened, shape)
