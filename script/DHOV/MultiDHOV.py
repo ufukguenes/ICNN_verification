@@ -433,8 +433,8 @@ class MultiDHOV:
 
                 print("        time for training: {}".format(time.time() - t))
 
-                t = time.time()
-                # verify and enlarge convex approximation
+            t = time.time()
+            # verify and enlarge convex approximation
 
             if use_over_approximation:
                 time_left_before_time_out = time_out - (time.time() - time_out_start)
