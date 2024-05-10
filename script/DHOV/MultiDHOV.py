@@ -461,7 +461,7 @@ class MultiDHOV:
                 for index, icnn in enumerate(list_of_icnns[current_layer_index]):
                     icnn.apply_enlargement(result_enlarge[index])
 
-                print("        time for verification: {}".format(time.time() - t))
+                print("    time for verification: {}".format(time.time() - t))
 
 
                 if break_after is not None and break_after == 0:
