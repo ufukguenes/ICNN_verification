@@ -1,2 +1,0 @@
-Input name,State of optimization,time for just solving,time overall,was successful?,max distance,"crown_method: alpha-crown, tighten_bounds: True, time_out: 3600, time_per_neuron_refinement: 1, allow_heuristic_timeout_estimate: True"
-prop_002_0.015.vnnlib,finished,5.032036066055298,156.96031284332275,False,13602.342674237565
