@@ -441,7 +441,7 @@ class MultiDHOV:
 
                 current_icnn.use_training_setup = False
                 time_for_training = time.time() - t
-                self.timings.icnn_training_time_per_layer_per_icnn[0].append(time_for_training)
+                self.timings.icnn_training_time_per_layer_per_icnn[-1].append(time_for_training)
                 print("        time for training: {}".format(time_for_training))
 
             self.timings.icnn_training_time_per_layer_total.append(time.time() - total_training_time)
@@ -468,12 +468,16 @@ class MultiDHOV:
                 num_processors = multiprocessing.cpu_count()
                 args = zip(list_of_icnns[current_layer_index], group_indices)
                 with multiprocessing.Pool(num_processors) as pool:
-                    result_enlarge, time_per_icnn = pool.starmap(parallel_icnn_enlargement, args)
+                    result_enlarge = pool.starmap(parallel_icnn_enlargement, args)
+
+                self.timings.icnn_verification_time_per_layer_per_icnn.append([])
                 for index, icnn in enumerate(list_of_icnns[current_layer_index]):
-                    icnn.apply_enlargement(result_enlarge[index])
+                    c = result_enlarge[index][0]
+                    ver_time = result_enlarge[index][1]
+                    icnn.apply_enlargement(result_enlarge[index][0])
+                    self.timings.icnn_verification_time_per_layer_per_icnn[-1].append(ver_time)
 
                 total_icnn_ver_time = time.time() - t
-                self.timings.icnn_verification_time_per_layer_per_icnn.append(time_per_icnn)
                 self.timings.icnn_verification_time_per_layer_total.append(total_icnn_ver_time)
                 print("    time for verification: {}".format(total_icnn_ver_time))
 
