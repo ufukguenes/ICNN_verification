@@ -20,7 +20,7 @@ from script.NeuralNets.trainFunction import train_icnn
 from script.settings import device, data_type
 import gurobipy as grp
 import warnings
-from script.DHOV.Sampling import SamplingStrategy
+from script.Profiling import Timings
 from script.DHOV.Sampling import SamplingStrategy
 #todo adapt everything to also work on gpu
 class MultiDHOV:
@@ -65,6 +65,7 @@ class MultiDHOV:
         self.list_of_icnns = None
         self.list_of_included_samples = []
         self.list_of_ambient_samples = []
+        self.timings: Timings = Timings()
 
     def start_verification(self, nn: SequentialNN, input, icnn_factory, group_size, input_bounds, sampling_strategy: SamplingStrategy, icnn_batch_size=1000,
                            icnn_epochs=100, hyper_lambda=1, init_affine_bounds=None, init_layer_bounds=None,
@@ -252,7 +253,11 @@ class MultiDHOV:
                                                                          affine_b.detach().cpu().numpy())
                 if not finished_without_time_out:
                     return False
-                print("    time for icnn_bound calculation: {}".format(time.time() - t))
+
+                neuron_refinement_time = time.time() - t
+                self.timings.neuron_refinement_time_per_layer.append(neuron_refinement_time)
+
+                print("    time for icnn_bound calculation: {}".format(neuron_refinement_time))
 
             fix_upper = []
             fix_lower = []
@@ -351,7 +356,10 @@ class MultiDHOV:
                                                                                 gurobi_model, current_layer_index,
                                                                                 bounds_affine_out, bounds_layer_out,
                                                                                 list_of_icnns)
-            print("        time for sampling: {}".format(time.time() - t))
+
+            time_for_sampling = time.time() - t
+            self.timings.data_sampling_time_per_layer.append(time_for_sampling)
+            print("        time for sampling: {}".format(time_for_sampling))
 
             if time.time() - time_out_start >= time_out:
                 return False
@@ -359,6 +367,8 @@ class MultiDHOV:
 
 
             list_of_icnns.append([])
+            self.timings.icnn_training_time_per_layer_per_icnn.append([])
+            total_training_time = time.time()
             for group_i in range(number_of_groups):
 
                 if time.time() - time_out_start >= time_out:
@@ -430,9 +440,11 @@ class MultiDHOV:
                 current_icnn.apply_normalisation(mean, std)
 
                 current_icnn.use_training_setup = False
+                time_for_training = time.time() - t
+                self.timings.icnn_training_time_per_layer_per_icnn[0].append(time_for_training)
+                print("        time for training: {}".format(time_for_training))
 
-                print("        time for training: {}".format(time.time() - t))
-
+            self.timings.icnn_training_time_per_layer_total.append(time.time() - total_training_time)
             t = time.time()
             # verify and enlarge convex approximation
 
@@ -456,12 +468,14 @@ class MultiDHOV:
                 num_processors = multiprocessing.cpu_count()
                 args = zip(list_of_icnns[current_layer_index], group_indices)
                 with multiprocessing.Pool(num_processors) as pool:
-                    result_enlarge = pool.starmap(parallel_icnn_enlargement, args)
-
+                    result_enlarge, time_per_icnn = pool.starmap(parallel_icnn_enlargement, args)
                 for index, icnn in enumerate(list_of_icnns[current_layer_index]):
                     icnn.apply_enlargement(result_enlarge[index])
 
-                print("    time for verification: {}".format(time.time() - t))
+                total_icnn_ver_time = time.time() - t
+                self.timings.icnn_verification_time_per_layer_per_icnn.append(time_per_icnn)
+                self.timings.icnn_verification_time_per_layer_total.append(total_icnn_ver_time)
+                print("    time for verification: {}".format(total_icnn_ver_time))
 
 
                 if break_after is not None and break_after == 0:
@@ -480,7 +494,10 @@ class MultiDHOV:
                                    curr_fixed_neuron_lower, curr_fixed_neuron_upper,
                                    current_layer_index)
             nn_encoding_model.update()
-            print("total time for current layer: {}".format(time.time() - prev_layer_start_time))
+
+            total_layer_time = time.time() - prev_layer_start_time
+            self.timings.total_time_per_layer.append(total_layer_time)
+            print("total time for current layer: {}".format(total_layer_time))
 
         if skip_last_layer:
             print("the last layer was skipped, as requested")
@@ -522,6 +539,7 @@ class Cache:
 
 
 def parallel_icnn_enlargement(icnn, group):
+    t = time.time()
     model = Cache.model.copy()
     time_per_icnn_refinement = Cache.time_per_icnn_refinement
     time_left_before_time_out = Cache.time_left_before_time_out
@@ -542,7 +560,7 @@ def parallel_icnn_enlargement(icnn, group):
                                             has_relu=True, relu_as_lp=encode_relu_enlargement_as_lp,
                                             icnn_as_lp=encode_icnn_enlargement_as_lp)
 
-    return c
+    return c, time.time() - t
 
 def imshow_flattened(img_flattened, shape):
     img = np.reshape(img_flattened, shape)
