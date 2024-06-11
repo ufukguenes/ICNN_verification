@@ -14,18 +14,44 @@ import numpy as np
 import script.DHOV.Normalisation as norm
 import script.Verification.Verification as ver
 import script.Verification.VerificationBasics as verbas
-import script.DHOV.DataSampling as ds
-import script.DHOV.DataOptimization as dop
 from script.dataInit import ConvexDataset
-from script.eval import Plots_for
-from script.NeuralNets.trainFunction import train_icnn, train_icnn_outer
-from script.NeuralNets.testFunction import test_icnn
+
+from script.NeuralNets.trainFunction import train_icnn
 from script.settings import device, data_type
 import gurobipy as grp
 import warnings
-
-
+from script.Profiling import Timings
+from script.DHOV.Sampling import SamplingStrategy
+#todo adapt everything to also work on gpu
 class MultiDHOV:
+    """
+    Multiple groups - DeepHull-Over approximated-Verification
+    This class provides a method which encodes a NN given a specific input as a Gurobi encoding.
+    The encoding can be forced to be an over approximation.
+    It can encode multiple groups within one layer together
+
+    Attributes
+        self.nn_encoding_model = None :  the final Gurobi model/ encoding of the NN
+        self.input_var = None : the Gurobi variables describing the input neurons of the NN
+        self.output_var = None : the Gurobi variables describing the output neurons of the NN
+        self.bounds_affine_out = None : List of torch.Tensor describing bounds for each layer and each neuron
+            before an activation function
+        self.bounds_layer_out = None : List of torch.Tensor describing bounds for each layer and each neuron
+            after an activation function. It is the same as self.bounds_affine_out for each layer where
+            there is no activation function
+        self.fixed_neuron_per_layer_lower = None : List of neurons which have been fixed to 0 and
+            therefore don't need to be approximated by an ICNN (i.e. for Relu(x)=0 because x <= 0)
+        self.fixed_neuron_per_layer_upper = None : List of neurons which have been fixed to x and
+            therefore don't need to be approximated by an ICNN (i.e. for Relu(x)=x because x >= 0)
+        self.num_fixed_neurons_layer = None : the total number of neurons which have been fixed in each layer
+        self.all_group_indices = None : List of groups created for each layer by indices
+            indicating the neuron of that layer
+        self.list_of_icnns = None : List of all ICNNs trained for each group in each layer
+        self.list_of_included_samples = [] : if wanted, the included space samples used for training each ICNN
+            are stored here
+        self.list_of_ambient_samples = [] : if wanted, the included ambient samples used for training each ICNN
+            are stored here
+    """
     def __init__(self):
         self.nn_encoding_model = None
         self.input_var = None
@@ -39,67 +65,101 @@ class MultiDHOV:
         self.list_of_icnns = None
         self.list_of_included_samples = []
         self.list_of_ambient_samples = []
+        self.timings: Timings = Timings()
 
-    def start_verification(self, nn: SequentialNN, input, icnn_factory, group_size, eps=0.001, icnn_batch_size=1000,
-                           icnn_epochs=100, sample_count=1000, sampling_method="uniform", hyper_lambda=1, init_affine_bounds=None, init_layer_bounds=None,
+    def start_verification(self, nn: SequentialNN, input, icnn_factory, group_size, input_bounds, sampling_strategy: SamplingStrategy, icnn_batch_size=1000,
+                           icnn_epochs=100, hyper_lambda=1, init_affine_bounds=None, init_layer_bounds=None,
                            break_after=None, tighten_bounds=False, use_fixed_neurons_in_grouping=False, layers_as_milp=[], layers_as_snr=[],
-                           keep_ambient_space=False, sample_new=True, use_over_approximation=True, opt_steps_gd=100,
-                           sample_over_input_space=False, sample_over_output_space=True, data_grad_descent_steps=0,
-                           train_outer=False, preemptive_stop=True, even_gradient_training=False, store_samples=False,
+                           use_over_approximation=True, skip_last_layer=False, time_per_neuron_refinement=None, time_per_icnn_refinement=None,
+                           preemptive_stop=True, store_samples=False, encode_icnn_enlargement_as_lp=False, encode_relu_enlargement_as_lp=False,
                            force_inclusion_steps=0, grouping_method="consecutive", group_num_multiplier=None,
-                           init_network=False, adapt_lambda="none", should_plot='none', optimizer="adam",
+                           init_network=False, adapt_lambda="none", optimizer="adam", time_out=None, allow_heuristic_timeout_estimate=False,
                            print_training_loss=False, print_last_loss=False, print_optimization_steps=False, print_new_bounds=False):
+        """
+
+        :param nn: the NN to encode as a Gurobi model given. This has to be a Sequential/ Feedforward NN
+        :param input: the input to the NN for which the encoding should be generated
+        :param icnn_factory: ICNNFactory that can generate new ICNNs given a needed input dimension
+        :param group_size: the size of one group for the approximation with the ICNN. If not enough neurons are
+            available the group size is smaller
+        :param input_bounds: the lower and upper bounds for the input
+        :param icnn_batch_size: batch size for each ICNN. Usually we can fit all training data into one batch
+        :param icnn_epochs: maximum number of epochs each ICNN is going to train if not interrupted
+        :param hyper_lambda: the hyperparameter controlling the balance between inclusion loss and ambient loss
+        :param init_affine_bounds: List of torch.Tensor of each neuron in each layer giving a lower and upper bound
+            of the output of that neuron before the activation function.
+            If not provided and tighten_bounds is false these will be just box-bounds
+        :param init_layer_bounds: List of torch.Tensor of each neuron in each layer giving a lower and upper bound
+            of the output of that neuron after the activation function. It should be same as init_layer_bounds for
+            each layer where there is no activation function.
+            If not provided and tighten_bounds is false these will be just box-bounds
+        :param break_after: int, parameter to preemptively interrupt the generation of the encoding for
+            debugging purpose. breaks after n many groups of neurons have been approximated
+        :param tighten_bounds: if true, the bounds for self.bounds_affine_out, self.bounds_layer_out are not just
+            box-bounds/ the bound provided by init_affine_bounds, init_layer_bounds, for each neuron a new
+            upper and lower bound will be determined by solving a maximization/ minimization problem
+            given the current encoding of the NN
+        :param use_fixed_neurons_in_grouping: boolean deciding whether neurons which can be fixed, hence be exactly
+            encoded should instead be included in the grouping and therefore also in the
+            approximation of the layer output
+        :param layers_as_milp: list of indices indicating which layers should be encoded as a MILP instead of using DHOV
+        :param layers_as_snr: list of indices indicating which layers should be encoded with Single-Neuron-Relaxation
+            instead of using DHOV
+        :param use_over_approximation: boolean, deciding whether each ICNN should be enlarged to guarantee the encoding
+            being an over approximation. If true, it might also shrink an approximation to the minimal size needed
+            to be an over approximation
+        :param preemptive_stop: decides if the training of each ICNN can be preemptively stopped if the moving average
+            of the loss is smaller than a certain value
+        :param store_samples: whether the generated training data points for each ICNN should be stored
+        :param force_inclusion_steps: number of times the each ICNN should be enlarged during training to include
+            all included space data samples
+        :param grouping_method: method to use for grouping neurons
+        :param group_num_multiplier: depending on the grouping method, this parameter is multiplied by the number of
+            existing groups to determine a larger of groups (e.g. to have over lapping groups in random grouping) # todo dependency on each grouping method should be clear
+        :param init_network: whether each ICNN should be initialized with the current
+            upper and lower bounds for the neurons in the corresponding group
+        :param adapt_lambda: the strategy to use for adapting the hyperparameter lambda based on the current state of
+            balance between included and ambient space
+        :param optimizer: optimizer to use for training each ICNN
+        :param print_training_loss: if true, loss for each epoch during ICNN training will be printed
+        :param print_last_loss: if true, the last loss for each ICNN after training will be printed
+        :param print_optimization_steps: if true, optimization steps of Gurobi will be printed where ever
+            the optimizer is called. That includes, calculating tighter bounds, the proof for over approximation
+            and if applicable data sampling
+        :param print_new_bounds: if true, tightened bounds are printed for each layer
+        :param sampling_strategy: the sampling strategy to use for generating new training data points for each ICNN defaults to UniformSamplingStrategy
+        :return:
+        """
         valid_adapt_lambda = ["none", "high_low", "included"]
-        valid_should_plot = ["none", "simple", "detailed", "verification", "output"]
         valid_optimizer = ["adam", "LBFGS", "SdLBFGS"]
-        valid_sampling_methods = ["uniform", "linespace", "boarder", "sum_noise", "min_max_perturbation",
-                                  "alternate_min_max", "per_group_sampling", "per_group_feasible"]
         valid_grouping_methods = ["consecutive", "random"]
 
         parameter_list = list(nn.parameters())
-        force_break = False
-
 
         if adapt_lambda not in valid_adapt_lambda:
             raise AttributeError(
                 "Expected adaptive lambda mode to be one of: {}, actual: {}".format(valid_adapt_lambda, adapt_lambda))
-        if should_plot not in valid_should_plot:
-            raise AttributeError("Expected plotting mode to be one of: {}, actual: {}".format(valid_should_plot, should_plot))
         if optimizer not in valid_optimizer:
             raise AttributeError("Expected optimizer to be one of: {}, actual: {}".format(valid_optimizer, optimizer))
         if force_inclusion_steps < 0:
             raise AttributeError("Expected force_inclusion to be:  >= 0 , got: {}".format(force_inclusion_steps))
-        if data_grad_descent_steps < 0 or data_grad_descent_steps > icnn_epochs:
-            raise AttributeError(
-                "Expected data_grad_descent_steps to be:  >= {}} , got: {}".format(icnn_epochs,
-                                                                                   data_grad_descent_steps))
         if grouping_method not in valid_grouping_methods:
             raise AttributeError("Expected grouping method to be one of: {}, actual: {}".format(valid_grouping_methods,
                                                                                    grouping_method))
         if grouping_method == "random" and group_num_multiplier is None and group_num_multiplier % 1 != 0:
             raise AttributeError(
-                "Expected group_num_multiplier to be integer > 0 , got: {}".format(data_grad_descent_steps))
-        if sampling_method not in valid_sampling_methods:
-            raise AttributeError(
-                "Expected sampling method to be one of: {} , got: {}".format(valid_sampling_methods, sampling_method))
-        if keep_ambient_space and sampling_method == "per_group_sampling":
-            warnings.warn("keep_ambient_space is True and sampling method is per_group_sampling. "
-                          "Keeping previous samples is not supported when using per group sampling")
-        if sample_over_input_space:
-            sample_over_input_space = False
-            sample_over_output_space = True
-            warnings.warn("sample_over_input_space is True and sampling method is per_group_sampling. "
-                          "Sampling over input space is not yet supported when using per group sampling. "
-                          "Using sampling over output space instead...")
+                "Expected group_num_multiplier to be integer > 0 , got: {}".format(group_num_multiplier))
         if group_num_multiplier is not None and grouping_method == "consecutive":
             warnings.warn("value for group number multiplier is given with grouping method consecutive. "
                           "consecutive grouping does not use variable number of groups")
 
+        input.to(device)
+        input_bounds[0].to(device)
+        input_bounds[1].to(device)
         input_flattened = torch.flatten(input)
         center = input_flattened
-        eps_bounds = [input_flattened.add(-eps), input_flattened.add(eps)]
 
-        bounds_affine_out, bounds_layer_out = nn.calculate_box_bounds(eps_bounds)
+        bounds_affine_out, bounds_layer_out = nn.calculate_box_bounds(input_bounds)
 
         if init_affine_bounds is not None:
             bounds_affine_out = init_affine_bounds
@@ -113,43 +173,8 @@ class MultiDHOV:
         else:
             nn_encoding_model.Params.LogToConsole = 0
 
-        included_space = torch.empty((0, input_flattened.size(0)), dtype=data_type).to(device)
-
-        inc_space_sample_count = sample_count // 2
-
-        if sample_over_input_space and sample_over_output_space:
-            amb_space_sample_count = sample_count // 4
-        else:
-            amb_space_sample_count = sample_count // 2
-
-        if sampling_method not in ["per_group_sampling", "per_group_feasible"]:
-            if sampling_method == "uniform":
-                included_space = ds.samples_uniform_over(included_space, inc_space_sample_count, eps_bounds)
-            elif sampling_method == "linespace":
-                included_space = ds.sample_linspace(included_space, inc_space_sample_count, center, eps)
-            elif sampling_method == "boarder":
-                included_space = ds.sample_boarder(included_space, inc_space_sample_count, center, eps)
-            elif sampling_method == "sum_noise":
-                included_space = ds.sample_random_sum_noise(included_space, inc_space_sample_count, center, eps)
-            elif sampling_method == "min_max_perturbation":
-                included_space = ds.sample_min_max_perturbation(included_space, inc_space_sample_count,
-                                                                parameter_list[0],
-                                                                center, eps)
-            elif sampling_method == "alternate_min_max":
-                included_space = ds.sample_alternate_min_max(included_space, inc_space_sample_count, parameter_list[0],
-                                                             center, eps)
-
-            # included_space = ds.samples_uniform_over(included_space, int(sample_count / 2), eps_bounds, keep_samples=True)
-
-            ambient_space = torch.empty((0, input_flattened.size(0)), dtype=data_type).to(device)
-            original_included_space = torch.empty((0, input_flattened.size(0)), dtype=data_type).to(device)
-            original_ambient_space = torch.empty((0, input_flattened.size(0)), dtype=data_type).to(device)
-
-            if should_plot in valid_should_plot and should_plot != "none":
-                original_included_space, original_ambient_space = included_space, ambient_space
 
         force_inclusion_steps += 1
-        data_grad_descent_steps += 1
 
         fixed_neuron_per_layer_lower = []
         fixed_neuron_per_layer_upper = []
@@ -160,7 +185,7 @@ class MultiDHOV:
         current_layer_index = 0
 
         self.nn_encoding_model = nn_encoding_model
-        self.input_var = ver.generate_model_center_eps(nn_encoding_model, center, eps, -1)
+        self.input_var = ver.generate_model_center_bounds(nn_encoding_model, center, input_bounds, -1)
         nn_encoding_model.update()
 
         self.bounds_affine_out = bounds_affine_out
@@ -170,12 +195,43 @@ class MultiDHOV:
         self.num_fixed_neurons_layer = num_fixed_neurons_layer
         self.all_group_indices = all_group_indices
         self.list_of_icnns = list_of_icnns
+        included_space, ambient_space = None, None
+
+
+        if time_out is None:
+            time_out = float("inf")
+
+        if time_per_neuron_refinement is None:
+            time_per_neuron_refinement = time_out
+
+        if time_per_icnn_refinement is None:
+            time_per_icnn_refinement = time_out
+        time_out_start = time.time()
+
+        prev_layer_start_time = time.time()
 
         for i in range(0, len(parameter_list) - 2, 2):  # -2 because last layer has no ReLu activation
+
+            if time.time() - time_out_start >= time_out:
+                return False
+
             current_layer_index = i // 2
             prev_layer_index = current_layer_index - 1
             print("")
             print("approximation of layer: {}".format(current_layer_index))
+
+            num_of_layers = (len(parameter_list) - 2) / 2
+            layers_left = num_of_layers - current_layer_index - len(layers_as_snr) - len(layers_as_milp)
+            if allow_heuristic_timeout_estimate:
+                time_for_prev_layer = time.time() - prev_layer_start_time
+                estimated_time_for_left_layers = layers_left * time_for_prev_layer
+                time_left_before_time_out = time_out - (time.time() - time_out_start)
+                if estimated_time_for_left_layers >= time_left_before_time_out:
+                    print("abort because of heuristic time out estimate, time last layer: {}, layer left {}, time left {}".format(time_for_prev_layer, layers_left, time_left_before_time_out))
+                    return False
+
+            prev_layer_start_time = time.time()
+
             if store_samples:
                 self.list_of_included_samples.append([])
                 self.list_of_ambient_samples.append([])
@@ -183,12 +239,25 @@ class MultiDHOV:
             affine_w, affine_b = parameter_list[i], parameter_list[i + 1]
 
             if tighten_bounds and i != 0:
+                time_left_before_time_out = time_out - (time.time() - time_out_start)
+                if time_left_before_time_out <= 0:
+                    return False
+
                 t = time.time()
                 copy_model = nn_encoding_model.copy()
-                ver.update_bounds_with_icnns(copy_model, bounds_affine_out, bounds_layer_out,
-                                             current_layer_index, affine_w.detach().numpy(),
-                                             affine_b.detach().numpy(), print_new_bounds=print_new_bounds)
-                print("    time for icnn_bound calculation: {}".format(time.time() - t))
+                copy_model.setParam("TimeLimit", min(time_per_neuron_refinement, time_left_before_time_out))
+                finished_without_time_out = ver.update_bounds_with_icnns(copy_model,
+                                                                         bounds_affine_out, bounds_layer_out,
+                                                                         current_layer_index,
+                                                                         affine_w.detach().cpu().numpy(),
+                                                                         affine_b.detach().cpu().numpy())
+                if not finished_without_time_out:
+                    return False
+
+                neuron_refinement_time = time.time() - t
+                self.timings.neuron_refinement_time_per_layer.append(neuron_refinement_time)
+
+                print("    time for icnn_bound calculation: {}".format(neuron_refinement_time))
 
             fix_upper = []
             fix_lower = []
@@ -204,7 +273,15 @@ class MultiDHOV:
             fixed_neuron_per_layer_lower.append(fix_lower)
             fixed_neuron_per_layer_upper.append(fix_upper)
             num_fixed_neurons_layer.append(len(fix_lower) + len(fix_upper))
-            print("    number of fixed neurons for current layer: {}".format(len(fix_lower) + len(fix_upper)))
+
+
+            total_number_of_neurons_in_current_layer = len(bounds_layer_out[current_layer_index][0])
+            total_neurons_fixed = len(fix_lower) + len(fix_upper)
+            print("    number of fixed neurons for current layer: {}".format(total_neurons_fixed))
+
+            if total_neurons_fixed == total_number_of_neurons_in_current_layer:
+                if current_layer_index not in layers_as_milp or current_layer_index not in layers_as_snr:
+                    layers_as_milp.append(current_layer_index)
 
 
             if current_layer_index in layers_as_milp or current_layer_index in layers_as_snr:
@@ -246,97 +323,6 @@ class MultiDHOV:
                 nn_encoding_model.update()
                 continue
 
-            if sampling_method not in ["per_group_sampling", "per_group_feasible"]:
-                if current_layer_index != 0:
-                    # sample neue punkte
-                    t = time.time()
-                    if sample_new:
-                        included_space, ambient_space = ds.sample_max_radius(list_of_icnns[current_layer_index - 1],
-                                                                             sample_count // 2, group_indices,
-                                                                             bounds_layer_out[current_layer_index - 1],
-                                                                             keep_ambient_space=keep_ambient_space)
-
-                    else:
-                        # re-grouping
-                        included_space, ambient_space = ds.regroup_samples(list_of_icnns[current_layer_index],
-                                                                           included_space, ambient_space, group_indices)
-                    print("    time for regrouping method: {}".format(time.time() - t))
-
-                if not keep_ambient_space:
-                    ambient_space = torch.empty((0, nn.layer_widths[current_layer_index]), dtype=data_type).to(device)
-
-                if sample_over_input_space:
-                    if i == 0:
-                        ambient_space = ds.sample_uniform_excluding(ambient_space, amb_space_sample_count, eps_bounds,
-                                                                    excluding_bound=eps_bounds, padding=eps)
-                    else:
-                        ambient_space = ds.sample_uniform_excluding(ambient_space, amb_space_sample_count,
-                                                                    bounds_layer_out[current_layer_index - 1],
-                                                                    icnns=list_of_icnns[current_layer_index - 1],
-                                                                    layer_index=current_layer_index,
-                                                                    group_size=group_size,
-                                                                    padding=eps)
-
-                if should_plot == "detailed" and included_space.size(1) == 2:
-                    plt_inc_amb("start " + str(i), included_space.tolist(), ambient_space.tolist())
-
-                included_space = ds.apply_affine_transform(affine_w, affine_b, included_space)
-                ambient_space = ds.apply_affine_transform(affine_w, affine_b, ambient_space)
-
-                """plt_inc_amb("second layer output of neuron 2, 3 / number of samples {}".format(sample_count),
-                            torch.index_select(included_space, 1, torch.tensor([1, 23])).tolist(),
-                            torch.index_select(ambient_space, 1, torch.tensor([1, 23])).tolist())"""
-
-                if should_plot in valid_should_plot and should_plot != "none" and included_space.size(1) == 2:
-                    original_included_space = ds.apply_affine_transform(affine_w, affine_b, original_included_space)
-                    original_ambient_space = ds.apply_affine_transform(affine_w, affine_b, original_ambient_space)
-                    if should_plot == "detailed":
-                        plt_inc_amb("affin e" + str(i), included_space.tolist(), ambient_space.tolist())
-                        plt_inc_amb("original affin e" + str(i), original_included_space.tolist(),
-                                    original_ambient_space.tolist())
-
-                included_space = ds.apply_relu_transform(included_space)
-                ambient_space = ds.apply_relu_transform(ambient_space)
-
-                """plt_inc_amb("second layer output of neuron 2, 3", torch.index_select(included_space, 1, torch.tensor([2, 3])).tolist(),
-                            torch.index_select(ambient_space, 1, torch.tensor([2, 3])).tolist())"""
-
-                if should_plot in valid_should_plot and should_plot != "none" and included_space.size(1) == 2:
-                    original_included_space = ds.apply_relu_transform(original_included_space)
-                    original_ambient_space = ds.apply_relu_transform(original_ambient_space)
-                    if should_plot == "detailed":
-                        plt_inc_amb("relu " + str(i), included_space.tolist(), ambient_space.tolist())
-                        plt_inc_amb("original relu e" + str(i), original_included_space.tolist(),
-                                    original_ambient_space.tolist())
-
-                if sample_over_output_space:
-                    ambient_space = ds.samples_uniform_over(ambient_space, amb_space_sample_count,
-                                                            bounds_layer_out[current_layer_index], padding=eps)
-                    if should_plot in ["simple", "detailed"] and included_space.size(1) == 2:
-                        original_ambient_space = ds.samples_uniform_over(original_ambient_space, amb_space_sample_count,
-                                                                         bounds_layer_out[current_layer_index],
-                                                                         padding=eps)
-
-                if store_samples:
-                    self.list_of_included_samples[current_layer_index].append(included_space)
-                    self.list_of_ambient_samples[current_layer_index].append(ambient_space)
-
-                if should_plot == "detailed" and included_space.size(1) == 2:
-                    plt_inc_amb("enhanced ambient space " + str(i), included_space.tolist(), ambient_space.tolist())
-                    plt_inc_amb("original enhanced ambient space " + str(i), original_included_space.tolist(),
-                                original_ambient_space.tolist())
-
-            """if use_over_approximation:
-                if i == 0:
-                    model = ver.generate_model_center_eps(center.detach().cpu().numpy(), eps)
-                else:
-                    affine_w_list = parameter_list[:i:2]
-                    affine_b_list = parameter_list[1:i:2] #todo das model muss auch erstellt werden, wenn man per group sampling macht
-                    model = ver.generate_complete_model_icnn(center, eps, affine_w_list, affine_b_list, list_of_icnns,
-                                                             all_group_indices, bounds_affine_out, bounds_layer_out,
-                                                             fixed_neuron_per_layer_lower, fixed_neuron_per_layer_upper)"""
-
-
             if grouping_method == "consecutive":
                 if use_fixed_neurons_in_grouping:
                     number_of_groups = get_num_of_groups(len(affine_b), group_size)
@@ -362,14 +348,45 @@ class MultiDHOV:
                                                       fixed_neuron_per_layer_upper[current_layer_index])
 
             all_group_indices.append(group_indices)
-            if force_break:
-                print("aborting because of force break. Layer currently approximated is not ")
-                return
+
+            gurobi_model = nn_encoding_model.copy()
+
+            t = time.time()
+            included_space, ambient_space = sampling_strategy.sampling_by_round(affine_w, affine_b, all_group_indices,
+                                                                                gurobi_model, current_layer_index,
+                                                                                bounds_affine_out, bounds_layer_out,
+                                                                                list_of_icnns)
+
+            time_for_sampling = time.time() - t
+            self.timings.data_sampling_time_per_layer.append(time_for_sampling)
+            print("        time for sampling: {}".format(time_for_sampling))
+
+            if time.time() - time_out_start >= time_out:
+                return False
+
+
 
             list_of_icnns.append([])
+            self.timings.icnn_training_time_per_layer_per_icnn.append([])
+            total_training_time = time.time()
             for group_i in range(number_of_groups):
+
+                if time.time() - time_out_start >= time_out:
+                    return False
+
                 if break_after is not None:
                     break_after -= 1
+
+                if allow_heuristic_timeout_estimate:
+                    time_until_now_in_current_layer = time.time() - prev_layer_start_time
+                    estimated_time_for_left_layers = (layers_left - 1) * time_until_now_in_current_layer # -1 to ignore current layer
+                    time_left_before_time_out = time_out - (time.time() - time_out_start)
+                    if estimated_time_for_left_layers >= time_left_before_time_out:
+                        print(
+                            "abort because of heuristic time out estimate, time in this layer: {}, layer left {}, time left {}".format(
+                                time_until_now_in_current_layer, layers_left - 1, time_left_before_time_out))
+                        return False
+
                 print("    layer progress, group {} of {} ".format(group_i + 1, number_of_groups))
 
                 index_to_select = torch.tensor(group_indices[group_i]).to(device)
@@ -378,132 +395,12 @@ class MultiDHOV:
                 current_icnn = icnn_factory.get_new_icnn(size_of_icnn_input)
                 list_of_icnns[current_layer_index].append(current_icnn)
 
-                if sampling_method in ["per_group_sampling", "per_group_feasible"]:
-                    included_space = torch.empty((0, affine_w.size(1)), dtype=data_type).to(device)
-                    ambient_space = torch.empty((0, affine_w.size(1)), dtype=data_type).to(device)
 
-                    if i == 0:
-                        t_group = time.time()
-                        if sampling_method == "per_group_sampling":
-                            """included_space = ds.sample_per_group(included_space, sample_count // 2, affine_w, center,
-                                                                 eps, index_to_select)"""
-                            included_space = ds.sample_per_group(included_space, inc_space_sample_count, affine_w,
-                                                                 center,
-                                                                 eps, index_to_select, rand_samples_percent=0.2,
-                                                                 rand_sample_alternation_percent=0.01)
-                            """included_space = ds.samples_uniform_over(included_space, inc_space_sample_count // 2,
-                                                                     eps_bounds,
-                                                                     keep_samples=True)"""
-
-                        elif sampling_method == "per_group_feasible":
-                            copy_model = nn_encoding_model.copy()
-                            included_space, ambient_samples_after_activation = ds.sample_feasible(included_space, inc_space_sample_count,
-                                                                affine_w, affine_b, index_to_select, copy_model,
-                                                                bounds_affine_out[current_layer_index],
-                                                                bounds_layer_out[current_layer_index],
-                                                                prev_layer_index)
-                        # included_space = ds.sample_min_max_perturbation(included_space, inc_space_sample_count // 2, affine_w, center, eps, keep_samples=True, swap_probability=0.2)
-                        # included_space = ds.sample_per_group(included_space, inc_space_sample_count // 2, parameter_list[0], center, eps, index_to_select, with_noise=True, with_sign_swap=True)
-                        # included_space = ds.sample_per_group(included_space, inc_space_sample_count // 2, parameter_list[0], center, eps, index_to_select, with_noise=False, with_sign_swap=True)
-                        # included_space = ds.sample_per_group(included_space, inc_space_sample_count // 2, parameter_list[0], center, eps, index_to_select, with_noise=True, with_sign_swap=False)
-                        print("        time for sampling for one group: {}".format(time.time() - t_group))
-                    else:
-                        t_group = time.time()
-                        copy_model = nn_encoding_model.copy()
-                        if sampling_method == "per_group_sampling":
-                            """if prev_layer_index == 0:
-                                prev_prev_layer_out = eps_bounds
-                            else:
-                                prev_prev_layer_out = bounds_layer_out[prev_layer_index - 1]
-                            included_space = ds.sample_per_group_two(included_space, inc_space_sample_count, affine_w, affine_b, index_to_select,
-                                                                     bounds_affine_out[current_layer_index], bounds_layer_out[current_layer_index], list_of_icnns[prev_layer_index],
-                                                                     all_group_indices[prev_layer_index], bounds_affine_out[prev_layer_index], bounds_layer_out[prev_layer_index],
-                                                                     prev_prev_layer_out, parameter_list[i-2], parameter_list[i-1],
-                                                                     fixed_neuron_per_layer_lower[prev_layer_index], fixed_neuron_per_layer_upper[prev_layer_index],
-                                                                     rand_samples_percent=0.2, rand_sample_alternation_percent=0.2)"""
-
-                            included_space = ds.sample_per_group_as_lp(included_space, inc_space_sample_count,
-                                                                       affine_w, affine_b,
-                                                                       index_to_select, copy_model,
-                                                                       bounds_affine_out[current_layer_index],
-                                                                       prev_layer_index,
-                                                                       rand_samples_percent=0.2,
-                                                                       rand_sample_alternation_percent=0.2)
-
-                            """
-                            copy_model.write("temp_model.lp")
-                            included_space = ds.parallel_per_group_as_lp(inc_space_sample_count,
-                                                                       affine_w, affine_b,
-                                                                       index_to_select,
-                                                                       bounds_affine_out[current_layer_index],
-                                                                       prev_layer_index,
-                                                                       rand_samples_percent=0.2,
-                                                                       rand_sample_alternation_percent=0.2)"""
-
-
-                        elif sampling_method == "per_group_feasible":
-                            included_space, ambient_samples_after_activation = ds.sample_feasible(included_space, inc_space_sample_count,
-                                                                affine_w, affine_b, index_to_select, copy_model,
-                                                                bounds_affine_out[current_layer_index],
-                                                                bounds_layer_out[current_layer_index],
-                                                                prev_layer_index)
-                        print("        time for sampling for one group: {}".format(time.time() - t_group))
-
-                    if should_plot in valid_should_plot and should_plot not in ["none", "verification"] and len(
-                            group_indices[group_i]) == 2:
-                        plt_inc_amb("layer input ",
-                                    torch.index_select(included_space, 1, index_to_select).tolist(),
-                                    torch.index_select(ambient_space, 1, index_to_select).tolist())
-                    elif should_plot in valid_should_plot and should_plot not in ["none", "verification"] and len(
-                            group_indices[group_i]) == 3:
-                        plt_inc_amb_3D("layer input ",
-                                       torch.index_select(included_space, 1, index_to_select).tolist(),
-                                       torch.index_select(ambient_space, 1, index_to_select).tolist())
-
-                    included_space = ds.apply_affine_transform(affine_w, affine_b, included_space)
-                    ambient_space = ds.apply_affine_transform(affine_w, affine_b, ambient_space)
-
-                    if False and sampling_method == "per_group_sampling" and i != 0:
-                        copy_model = nn_encoding_model.copy()
-                        included_space = ds.sample_at_0(included_space, inc_space_sample_count // 2,
-                                                        affine_w, affine_b,
-                                                        index_to_select, copy_model,
-                                                        bounds_affine_out[current_layer_index],
-                                                        prev_layer_index)
-
-                    if should_plot in valid_should_plot and should_plot not in ["none", "verification"] and len(
-                            group_indices[group_i]) == 2:
-                        plt_inc_amb("layer output ",
-                                    torch.index_select(included_space, 1, index_to_select).tolist(),
-                                    torch.index_select(ambient_space, 1, index_to_select).tolist())
-                    elif should_plot in valid_should_plot and should_plot not in ["none", "verification"] and len(
-                            group_indices[group_i]) == 3:
-                        plt_inc_amb_3D("layer output ",
-                                       torch.index_select(included_space, 1, index_to_select).tolist(),
-                                       torch.index_select(ambient_space, 1, index_to_select).tolist())
-
-                    included_space = ds.apply_relu_transform(included_space)
-                    ambient_space = ds.apply_relu_transform(ambient_space)
-
-                    if sample_over_output_space:
-                        ambient_space = ds.samples_uniform_over(ambient_space, amb_space_sample_count,
-                                                                bounds_layer_out[current_layer_index],
-                                                                padding=eps)
-
-                    if store_samples:
-                        self.list_of_included_samples[current_layer_index].append(included_space)
-                        self.list_of_ambient_samples[current_layer_index].append(ambient_space)
 
                 t = time.time()
-                group_inc_space = torch.index_select(included_space, 1, index_to_select)
-                group_amb_space = torch.index_select(ambient_space, 1, index_to_select)
+                group_inc_space = included_space[group_i]
+                group_amb_space = ambient_space[group_i]
 
-                if sampling_method == "per_group_feasible":
-                    group_amb_space = torch.cat([group_amb_space, ambient_samples_after_activation], dim=0)
-
-                    if should_plot in valid_should_plot and should_plot not in ["none", "verification"] and len(
-                            group_indices[group_i]) == 2:
-                        plt_inc_amb("group output ", group_inc_space.tolist(), group_amb_space.tolist())
 
                 mean = norm.get_mean(group_inc_space, group_amb_space)
                 std = norm.get_std(group_inc_space, group_amb_space)
@@ -534,125 +431,59 @@ class MultiDHOV:
                         out = current_icnn(group_norm_included_space)
                         max_out = torch.max(out)
                         current_icnn.apply_enlargement(max_out)
-                    if data_grad_descent_steps > 1:
-                        untouched_amb_space = group_norm_ambient_space.detach().clone()
-                        if should_plot in ["simple", "detailed"] and len(group_indices[group_i]) == 2:
-                            plt_inc_amb("without gradient descent", group_norm_included_space.tolist(),
-                                        group_norm_ambient_space.tolist())
-                        for gd_round in range(data_grad_descent_steps):
-                            optimization_steps = opt_steps_gd
-                            if data_grad_descent_steps > epochs_per_inclusion:
-                                epochs_in_run = 1
-                            elif gd_round == data_grad_descent_steps - 1 and epochs_per_inclusion % data_grad_descent_steps != 0:
-                                epochs_in_run = epochs_per_inclusion % data_grad_descent_steps
-                            else:
-                                epochs_in_run = epochs_per_inclusion // data_grad_descent_steps
-                            print("===== grad descent =====")
-                            train_icnn(current_icnn, train_loader, ambient_loader, epochs=epochs_in_run, hyper_lambda=hyper_lambda,
-                                       optimizer=optimizer, adapt_lambda=adapt_lambda, preemptive_stop=preemptive_stop,
-                                       verbose=print_training_loss, print_last_loss=print_last_loss)
 
-                            for v in range(optimization_steps):
-                                # normalized_ambient_space =
-                                # dop.gradient_descent_data_optim(current_icnn, normalized_ambient_space.detach())
-                                group_norm_ambient_space = dop.adam_data_optim(current_icnn,
-                                                                               group_norm_ambient_space.detach())
-                            dataset = ConvexDataset(group_norm_ambient_space.detach())
-
-                            # todo hier muss ich noch verwalten was passiert wenn ambient space in die nächste runde
-                            #  übernommen wird
-                            ambient_loader = DataLoader(dataset, batch_size=icnn_batch_size, shuffle=True)
-
-                            if should_plot in ["simple", "detailed"] and len(group_indices[group_i]) == 2:
-                                """plt_inc_amb("with gradient descent", normalized_included_space.tolist(),
-                                            torch.cat([normalized_ambient_space.detach(),
-                                                       untouched_normalized_ambient_space.detach()]).tolist())"""
-                                min_x, max_x, min_y, max_y = get_min_max_x_y(torch.cat(
-                                    [group_norm_included_space.detach(), group_norm_ambient_space.detach()]))
-
-                                plots = Plots_for(0, current_icnn, group_norm_included_space.detach(),
-                                                  group_norm_ambient_space.detach(),
-                                                  [min_x, max_x], [min_y, max_y])
-
-                                plots.plt_mesh()
-
-                        if print_training_loss:
-                            dataset = ConvexDataset(data=group_norm_included_space)
-                            train_loader = DataLoader(dataset, batch_size=icnn_batch_size)
-                            dataset = ConvexDataset(data=untouched_amb_space)
-                            ambient_loader = DataLoader(dataset, batch_size=icnn_batch_size)
-                            test_icnn(current_icnn, train_loader, ambient_loader)
-
-
-                    else:
-                        train_icnn(current_icnn, train_loader, ambient_loader, epochs=epochs_per_inclusion,
-                                   hyper_lambda=hyper_lambda,
-                                   optimizer=optimizer, adapt_lambda=adapt_lambda, preemptive_stop=preemptive_stop,
-                                   verbose=print_training_loss, print_last_loss=print_last_loss)
-
-                if train_outer:  # todo will ich train outer behalten oder einfach verwerfen?
-                    for k in range(icnn_epochs):
-                        train_icnn_outer(current_icnn, train_loader, ambient_loader, epochs=1)
-                        if k % 10 == 0:
-                            min_x, max_x, min_y, max_y = get_min_max_x_y(torch.cat(
-                                [group_norm_included_space.detach(), group_norm_ambient_space.detach()]))
-                            plots = Plots_for(0, current_icnn, group_norm_included_space.detach(),
-                                              group_norm_ambient_space.detach(),
-                                              [min_x, max_x], [min_y, max_y])
-                            plots.plt_mesh()
+                    train_icnn(current_icnn, train_loader, ambient_loader, epochs=epochs_per_inclusion,
+                               hyper_lambda=hyper_lambda,
+                               optimizer=optimizer, adapt_lambda=adapt_lambda, preemptive_stop=preemptive_stop,
+                               verbose=print_training_loss, print_last_loss=print_last_loss)
 
                 current_icnn.apply_normalisation(mean, std)
 
                 current_icnn.use_training_setup = False
+                time_for_training = time.time() - t
+                self.timings.icnn_training_time_per_layer_per_icnn[-1].append(time_for_training)
+                print("        time for training: {}".format(time_for_training))
 
-                print("        time for training: {}".format(time.time() - t))
+            self.timings.icnn_training_time_per_layer_total.append(time.time() - total_training_time)
+            t = time.time()
+            # verify and enlarge convex approximation
 
-                t = time.time()
-                # verify and enlarge convex approximation
+            if use_over_approximation:
+                time_left_before_time_out = time_out - (time.time() - time_out_start)
+                if time_left_before_time_out <= 0:
+                    return False
 
-                if should_plot in ["detailed", "verification"] and should_plot != "none":
-                    if len(group_indices[group_i]) == 2:
-                        min_x, max_x, min_y, max_y = \
-                            get_min_max_x_y(torch.cat([group_inc_space.detach(), group_amb_space.detach()]))
-                        plots = Plots_for(0, current_icnn, group_inc_space.detach(), group_amb_space.detach(),
-                                          [min_x, max_x], [min_y, max_y])
-                        plots.plt_mesh()
 
-                    elif len(group_indices[group_i]) == 1:
-                        visualize_single_neuron(current_icnn, group_indices[group_i], current_layer_index, bounds_affine_out)
+                Cache.model = nn_encoding_model
+                Cache.time_per_icnn_refinement = time_per_icnn_refinement
+                Cache.time_left_before_time_out = time_left_before_time_out
+                Cache.affine_w = affine_w
+                Cache.affine_b = affine_b
+                Cache.bounds_affine_out_current = bounds_affine_out[current_layer_index]
+                Cache.bounds_layer_out_current = bounds_layer_out[current_layer_index]
+                Cache.relu_as_lp = encode_relu_enlargement_as_lp
+                Cache.icnn_as_lp = encode_icnn_enlargement_as_lp
+                Cache.prev_layer_index = prev_layer_index
 
-                if use_over_approximation:
-                    copy_model = nn_encoding_model.copy()
-                    adversarial_input, c = ver.verification(current_icnn, copy_model, affine_w.detach().numpy(),
-                                                            affine_b.detach().numpy(), group_indices[group_i],
-                                                            bounds_affine_out[current_layer_index],
-                                                            bounds_layer_out[current_layer_index], prev_layer_index,
-                                                            has_relu=True)
+                num_processors = multiprocessing.cpu_count()
+                args = zip(list_of_icnns[current_layer_index], group_indices)
+                with multiprocessing.Pool(num_processors) as pool:
+                    result_enlarge = pool.starmap(parallel_icnn_enlargement, args)
 
-                    current_icnn.apply_enlargement(c)
+                self.timings.icnn_verification_time_per_layer_per_icnn.append([])
+                for index, icnn in enumerate(list_of_icnns[current_layer_index]):
+                    c = result_enlarge[index][0]
+                    ver_time = result_enlarge[index][1]
+                    icnn.apply_enlargement(result_enlarge[index][0])
+                    self.timings.icnn_verification_time_per_layer_per_icnn[-1].append(ver_time)
 
-                print("        time for verification: {}".format(time.time() - t))
-
-                if should_plot in ["detailed", "verification"] and should_plot != "none":
-                    if len(group_indices[group_i]) == 2:
-                        min_x, max_x, min_y, max_y = \
-                            get_min_max_x_y(torch.cat([group_inc_space.detach(), group_amb_space.detach()]))
-                        plots = Plots_for(0, current_icnn, group_inc_space.detach(), group_amb_space.detach(),
-                                          [min_x, max_x], [min_y, max_y])
-                        plots.plt_mesh()
-
-                    elif len(group_indices[group_i]) == 1:
-                        visualize_single_neuron(current_icnn, group_indices[group_i], current_layer_index,
-                                                bounds_affine_out)
-
-                # inp_bounds_icnn = bounds_layer_out[current_layer_index]
-                # ver.min_max_of_icnns([current_icnn], inp_bounds_icnn, [group_indices[group_i]], print_log=False)
-                # ver.min_max_of_icnns([current_icnn], inp_bounds_icnn, [group_indices[group_i]], print_log1, 23=False)
+                total_icnn_ver_time = time.time() - t
+                self.timings.icnn_verification_time_per_layer_total.append(total_icnn_ver_time)
+                print("    time for verification: {}".format(total_icnn_ver_time))
 
 
                 if break_after is not None and break_after == 0:
-                    force_break = True
-                    return
+                    return False
 
             # add current layer to model
             curr_constraint_icnns = list_of_icnns[current_layer_index]
@@ -661,73 +492,79 @@ class MultiDHOV:
             curr_bounds_layer_out = bounds_layer_out[current_layer_index]
             curr_fixed_neuron_lower = fixed_neuron_per_layer_lower[current_layer_index]
             curr_fixed_neuron_upper = fixed_neuron_per_layer_upper[current_layer_index]
-            ver.add_layer_to_model(nn_encoding_model, affine_w.detach().numpy(), affine_b.detach().numpy(),
+            ver.add_layer_to_model(nn_encoding_model, affine_w.detach().cpu().numpy(), affine_b.detach().cpu().numpy(),
                                    curr_constraint_icnns, curr_group_indices,
                                    curr_bounds_affine_out, curr_bounds_layer_out,
                                    curr_fixed_neuron_lower, curr_fixed_neuron_upper,
                                    current_layer_index)
             nn_encoding_model.update()
 
+            total_layer_time = time.time() - prev_layer_start_time
+            self.timings.total_time_per_layer.append(total_layer_time)
+            print("total time for current layer: {}".format(total_layer_time))
 
-        if should_plot in valid_should_plot and should_plot != "none" and sampling_method != "per_group_sampling" and included_space.size(
-                1) == 2:
-            index = len(parameter_list) - 2
-            affine_w, affine_b = parameter_list[index], parameter_list[index + 1]
-            included_space = ds.apply_affine_transform(affine_w, affine_b, included_space)
-            ambient_space = ds.apply_affine_transform(affine_w, affine_b, ambient_space)
-            original_included_space = ds.apply_affine_transform(affine_w, affine_b, original_included_space)
+        if skip_last_layer:
+            print("the last layer was skipped, as requested")
+            return True
 
-            min_x, max_x, min_y, max_y = \
-                get_min_max_x_y(torch.cat([included_space.detach(), ambient_space.detach()]))
-            plots = Plots_for(0, current_icnn, included_space.detach().cpu(), ambient_space.detach().cpu(),
-                              [min_x, max_x], [min_y, max_y],
-                              extr=original_included_space.detach().cpu())
-            plots.plt_initial()
         t = time.time()
-        affine_w, affine_b = parameter_list[-2].detach().numpy(), parameter_list[-1].detach().numpy()
+        affine_w, affine_b = parameter_list[-2].detach().cpu().numpy(), parameter_list[-1].detach().cpu().numpy()
         last_layer_index = current_layer_index + 1
         output_second_last_layer = []
         for m in range(affine_w.shape[1]):
             output_second_last_layer.append(
                 nn_encoding_model.getVarByName("output_layer_[{}]_[{}]".format(last_layer_index - 1, m)))
         output_second_last_layer = grp.MVar.fromlist(output_second_last_layer)
-        in_lb = bounds_affine_out[last_layer_index][0].detach().numpy()
-        in_ub = bounds_affine_out[last_layer_index][1].detach().numpy()
+        in_lb = bounds_affine_out[last_layer_index][0].detach().cpu().numpy()
+        in_ub = bounds_affine_out[last_layer_index][1].detach().cpu().numpy()
         output_nn = verbas.add_affine_constr(nn_encoding_model, affine_w, affine_b, output_second_last_layer, in_lb, in_ub, i=last_layer_index)
         for m, var in enumerate(output_nn.tolist()):
             var.setAttr("varname", "output_layer_[{}]_[{}]".format(last_layer_index, m))
 
         nn_encoding_model.update()
 
-        """if tighten_bounds:
-            #todo this is a code duplicat
-            for neuron_to_optimize in range(len(output_nn.tolist())):
-                nn_encoding_model.setObjective(output_nn[neuron_to_optimize], grp.GRB.MINIMIZE)
-                nn_encoding_model.optimize()
-                if nn_encoding_model.Status == grp.GRB.OPTIMAL:
-                    value = output_nn.getAttr("x")
-                    if print_new_bounds and abs(value[neuron_to_optimize] - bounds_affine_out[last_layer_index][0][neuron_to_optimize]) > 0.00001:
-                        print("        {}, lower: new {}, old {}".format(neuron_to_optimize, value[neuron_to_optimize], bounds_affine_out[last_layer_index][0][neuron_to_optimize]))
-                    bounds_affine_out[last_layer_index][0][neuron_to_optimize] = value[neuron_to_optimize]
-
-                nn_encoding_model.setObjective(output_nn[neuron_to_optimize], grp.GRB.MAXIMIZE)
-                nn_encoding_model.optimize()
-                if nn_encoding_model.Status == grp.GRB.OPTIMAL:
-                    value = output_nn.getAttr("x")
-                    if print_new_bounds and abs(value[neuron_to_optimize] - bounds_affine_out[last_layer_index][1][neuron_to_optimize]) > 0.00001:
-                        print("        {}, upper: new {}, old {}".format(neuron_to_optimize, value[neuron_to_optimize], bounds_affine_out[last_layer_index][1][neuron_to_optimize]))
-                    bounds_affine_out[last_layer_index][1][neuron_to_optimize] = value[neuron_to_optimize]
-
-            if i < len(parameter_list) - 2:
-                relu_out_lb, relu_out_ub = verbas.calc_relu_out_bound(bounds_affine_out[last_layer_index][0],
-                                                                      bounds_affine_out[last_layer_index][1])
-            bounds_layer_out[last_layer_index][0] = relu_out_lb
-            bounds_layer_out[last_layer_index][1] = relu_out_ub"""
         print("time for icnn_bound calculation (last layer):{}".format(time.time() - t))
         self.output_var = output_nn
         print("done...")
-        return
+        return True
 
+
+class Cache:
+    model = None
+    time_per_icnn_refinement = None
+    time_left_before_time_out = None
+    affine_w = None
+    affine_b = None
+    bounds_affine_out_current = None
+    bounds_layer_out_current = None
+    relu_as_lp = None
+    icnn_as_lp = None
+    prev_layer_index = None
+
+
+def parallel_icnn_enlargement(icnn, group):
+    t = time.time()
+    model = Cache.model.copy()
+    time_per_icnn_refinement = Cache.time_per_icnn_refinement
+    time_left_before_time_out = Cache.time_left_before_time_out
+    affine_w = Cache.affine_w
+    affine_b = Cache.affine_b
+    bounds_affine_out_current = Cache.bounds_affine_out_current
+    bounds_layer_out_current = Cache.bounds_layer_out_current
+    encode_relu_enlargement_as_lp = Cache.relu_as_lp
+    encode_icnn_enlargement_as_lp = Cache.icnn_as_lp
+    prev_layer_index = Cache.prev_layer_index
+
+    model.setParam("TimeLimit", min(time_per_icnn_refinement, time_left_before_time_out))
+    adversarial_input, c = ver.verification(icnn, model,
+                                            affine_w.cpu().detach().cpu().numpy(),
+                                            affine_b.detach().cpu().numpy(), group,
+                                            bounds_affine_out_current,
+                                            bounds_layer_out_current, prev_layer_index,
+                                            has_relu=True, relu_as_lp=encode_relu_enlargement_as_lp,
+                                            icnn_as_lp=encode_icnn_enlargement_as_lp)
+
+    return c, time.time() - t
 
 def imshow_flattened(img_flattened, shape):
     img = np.reshape(img_flattened, shape)
@@ -837,9 +674,9 @@ def visualize_single_neuron(icnn, neuron_index, layer_index, bounds_affine_out):
             leq0.append(samp)
             leq_x.append(relu_out)
 
-    plt.scatter(list(map(lambda x: x.detach().numpy(), gt0)),
-                list(map(lambda x: x.detach().numpy(), gt_x)), c="#ff7f0e")
-    plt.scatter(list(map(lambda x: x.detach().numpy(), leq0)),
-                list(map(lambda x: x.detach().numpy(), leq_x)), c="#1f77b4")
+    plt.scatter(list(map(lambda x: x.detach().cpu().numpy(), gt0)),
+                list(map(lambda x: x.detach().cpu().numpy(), gt_x)), c="#ff7f0e")
+    plt.scatter(list(map(lambda x: x.detach().cpu().numpy(), leq0)),
+                list(map(lambda x: x.detach().cpu().numpy(), leq_x)), c="#1f77b4")
     plt.title("ReLU")
     plt.show()

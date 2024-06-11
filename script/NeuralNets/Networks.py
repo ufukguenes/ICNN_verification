@@ -37,6 +37,11 @@ class VerifiableNet(ABC):
         with torch.no_grad():
             last_layer = list(self.ws[-1].parameters())
             b = last_layer[1]
+
+            if torch.is_tensor(value):
+                value.to(device)
+            else:
+                value = torch.tensor(value, device=device)
             b.data = b - value
 
     @abstractmethod
@@ -311,7 +316,8 @@ class ICNN(nn.Module, VerifiableNet):
                 out_lb = bounds_layer_out[int(i / 2)][0].detach().cpu().numpy()
                 out_ub = bounds_layer_out[int(i / 2)][1].detach().cpu().numpy()
                 if as_lp:
-                    relu_vars = verbas.add_relu_as_lp(model, in_var, out_fet, out_lb, out_ub, i)
+                    # relu_vars = verbas.add_relu_as_lp(model, in_var, out_fet, out_lb, out_ub, i)
+                    relu_vars = verbas.add_single_neuron_constr(model, in_var, out_fet,  affine_lb, affine_ub, out_lb, out_ub, i)
                 else:
                     relu_vars = verbas.add_relu_constr(model, in_var, out_fet, affine_lb, affine_ub, out_lb, out_ub, i)
                 in_var = relu_vars
@@ -559,7 +565,7 @@ class ICNNApproxMax(ICNN):
         tensor_bb_b = torch.tensor(bb_b, dtype=data_type).to(device)
         lb, ub = verbas.calc_affine_out_bound(tensor_bb_w, tensor_bb_b, in_lb, in_ub)
 
-        bb_var = model.addMVar(len(lb), lb=lb, ub=ub, name="skip_var")
+        bb_var = model.addMVar(len(lb), lb=lb.cpu(), ub=ub.cpu(), name="skip_var")
         skip_const = model.addConstr(bb_w @ input_vars + bb_b == bb_var)
         max_var = model.addVar(lb=-float("inf"))
         model.addGenConstrMax(max_var, bb_var.tolist())

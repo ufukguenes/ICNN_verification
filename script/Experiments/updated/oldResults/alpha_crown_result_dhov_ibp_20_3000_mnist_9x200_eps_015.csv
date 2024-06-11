@@ -1,0 +1,60 @@
+Input name,State of optimization,time for just solving,time overall,was successful?,max distance
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_001_0.015.vnnlib,finished,1.201436996459961,180.9370036125183,True,-5.197158832132256
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_001_0.015.vnnlib,finished,1.0892205238342285,305.34415769577026,True,-4.810735788664662
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_000_0.015.vnnlib,wrong classification
+prop_001_0.015.vnnlib,finished,1.3008687496185303,158.6011884212494,True,-6.040122934263754
+prop_025_0.015.vnnlib,finished,3.4123003482818604,279.24559116363525,False,42.45220946186756
+prop_002_0.015.vnnlib,finished,51.483675718307495,1106.192310810089,False,7315.255934177763
+prop_002_0.015.vnnlib,finished,120.55629634857178,537.2988376617432,False,17079.18554317033
+prop_002_0.015.vnnlib,finished,42.574352502822876,458.1499276161194,False,13930.377679104207

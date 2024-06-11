@@ -1,0 +1,10 @@
+To install the icnn-crown conda environment, run the following commands (for installation from the icnn-crown-from-history.yml file).
+Pip installs need to be handled separately because some packages are not installable via conda or we want forked versions.
+The last line is important so we can use the conda environment in a jupyter notebook.
+
+conda env create -n icnn-crown --file icnn-crown-history.yml 
+pip install git+https://github.com/Verified-Intelligence/auto_LiRPA
+pip install onnx
+pip install vnnlib
+pip install git+https://github.com/KaidiXu/onnx2pytorch
+python -m ipykernel install --user --name=icnn-crown
