@@ -1,0 +1,10 @@
+name: icnn-verification
+channels:
+  - https://conda.anaconda.org/gurobi
+  - defaults
+dependencies:
+  - pytorch
+  - gurobi
+  - ipykernel
+  - matplotlib
+prefix: /home/philipp/anaconda3/envs/icnn-verification
