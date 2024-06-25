@@ -571,6 +571,8 @@ def main():
     only_lp = args.only_lp
     verbose = args.verbose
 
+    torch.multiprocessing.set_sharing_strategy('file_system')
+
     onnx_name = "mnist_relu_9_200.onnx"
     vnnlib_name = "1000_mnist_eps_015"
 

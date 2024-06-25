@@ -9,7 +9,7 @@ import gurobipy as grp
 import script.Verification.VerificationBasics as verbas
 
 from script.settings import device, data_type
-import multiprocessing
+import torch.multiprocessing
 
 
 def generate_model_center_bounds(model, center, input_bounds, layer_index):
@@ -149,11 +149,11 @@ def update_bounds_with_icnns(model, bounds_affine_out, bounds_layer_out, current
     model.setParam(GRB.Param.Threads, 2)
     model.update()
 
-    num_processors = multiprocessing.cpu_count()
+    num_processors = torch.multiprocessing.cpu_count()
     Cache.model = model
     Cache.affine_var_name = list(affine_var.VarName)
     neuron_indices = list(range(len(affine_var.tolist())))
-    with multiprocessing.Pool(num_processors) as pool:
+    with torch.multiprocessing.Pool(num_processors) as pool:
         result = pool.map(parallel_call, neuron_indices)
 
     for neuron_to_optimize in range(len(affine_var.tolist())):

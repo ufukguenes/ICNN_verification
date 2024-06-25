@@ -8,7 +8,6 @@ import torch
 import gurobipy as grp
 from script.settings import device, data_type
 import script.Verification.VerificationBasics as verbas
-from multiprocessing.dummy import Pool
 
 def samples_uniform_over(data_samples, amount, bounds, keep_samples=True, padding=0):
     lb = bounds[0] - padding

@@ -2,7 +2,7 @@
 import math
 import random
 import time
-import multiprocessing
+import torch.multiprocessing
 
 from matplotlib import pyplot as plt
 from torch.utils.data import DataLoader
@@ -465,9 +465,9 @@ class MultiDHOV:
                 Cache.icnn_as_lp = encode_icnn_enlargement_as_lp
                 Cache.prev_layer_index = prev_layer_index
 
-                num_processors = multiprocessing.cpu_count()
+                num_processors = torch.multiprocessing.cpu_count()
                 args = zip(list_of_icnns[current_layer_index], group_indices)
-                with multiprocessing.Pool(num_processors) as pool:
+                with torch.multiprocessing.Pool(num_processors) as pool:
                     result_enlarge = pool.starmap(parallel_icnn_enlargement, args)
 
                 self.timings.icnn_verification_time_per_layer_per_icnn.append([])
