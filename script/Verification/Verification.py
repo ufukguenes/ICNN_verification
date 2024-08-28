@@ -8,7 +8,7 @@ from gurobipy import GRB
 import gurobipy as grp
 import script.Verification.VerificationBasics as verbas
 
-from script.settings import device, data_type
+from script.settings import device, data_type, get_gurobi_params
 import torch.multiprocessing
 
 
@@ -175,30 +175,31 @@ class Cache:
 
 
 def parallel_call(neuron_index):
+    gurobi_params = get_gurobi_params()
 
-    model = Cache.model.copy()
-    affine_var = model.getVarByName(Cache.affine_var_name[neuron_index])
+    with grp.Env(params=gurobi_params) as env, Cache.model.copy(env) as model:
+        affine_var = model.getVarByName(Cache.affine_var_name[neuron_index])
 
-    lb_ub = []
-    model.setObjective(affine_var, GRB.MINIMIZE)
-    model.optimize()
-    if model.Status == GRB.OPTIMAL:
-        value = affine_var.getAttr("x")
-    elif model.Status == GRB.TIME_LIMIT:
-        value = affine_var.getAttr("lb") if model.SolCount == 0 else model.objbound
-    elif model.Status == GRB.INFEASIBLE:
-        raise RuntimeError("Model is infeasible lb")
+        lb_ub = []
+        model.setObjective(affine_var, GRB.MINIMIZE)
+        model.optimize()
+        if model.Status == GRB.OPTIMAL:
+            value = affine_var.getAttr("x")
+        elif model.Status == GRB.TIME_LIMIT:
+            value = affine_var.getAttr("lb") if model.SolCount == 0 else model.objbound
+        elif model.Status == GRB.INFEASIBLE:
+            raise RuntimeError("Model is infeasible lb")
 
-    lb_ub.append(value)
+        lb_ub.append(value)
 
-    model.setObjective(affine_var, GRB.MAXIMIZE)
-    model.optimize()
-    if model.Status == GRB.OPTIMAL:
-        value = affine_var.getAttr("x")
-    elif model.Status == GRB.TIME_LIMIT:
-        value = affine_var.getAttr("ub") if model.SolCount == 0 else model.objbound
-    elif model.Status == GRB.INFEASIBLE:
-        raise RuntimeError("Model is infeasible ub")
-    lb_ub.append(value)
+        model.setObjective(affine_var, GRB.MAXIMIZE)
+        model.optimize()
+        if model.Status == GRB.OPTIMAL:
+            value = affine_var.getAttr("x")
+        elif model.Status == GRB.TIME_LIMIT:
+            value = affine_var.getAttr("ub") if model.SolCount == 0 else model.objbound
+        elif model.Status == GRB.INFEASIBLE:
+            raise RuntimeError("Model is infeasible ub")
+        lb_ub.append(value)
 
-    return lb_ub
+        return lb_ub

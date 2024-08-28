@@ -17,11 +17,12 @@ import script.Verification.VerificationBasics as verbas
 from script.dataInit import ConvexDataset
 
 from script.NeuralNets.trainFunction import train_icnn
-from script.settings import device, data_type
+from script.settings import device, data_type, get_gurobi_params
 import gurobipy as grp
 import warnings
 from script.Profiling import Timings
 from script.DHOV.Sampling import SamplingStrategy
+
 #todo adapt everything to also work on gpu
 class MultiDHOV:
     """
@@ -167,366 +168,378 @@ class MultiDHOV:
         if init_layer_bounds is not None:
             bounds_layer_out = init_layer_bounds
 
-        nn_encoding_model = grp.Model()
-        if print_optimization_steps:
-            nn_encoding_model.Params.LogToConsole = 1
-        else:
-            nn_encoding_model.Params.LogToConsole = 0
+        gurobi_params = get_gurobi_params()
+        with grp.Env(params=gurobi_params) as env, grp.Model(env=env) as nn_encoding_model:
+
+            if print_optimization_steps:
+                nn_encoding_model.Params.LogToConsole = 1
+            else:
+                nn_encoding_model.Params.LogToConsole = 0
 
 
-        force_inclusion_steps += 1
+            force_inclusion_steps += 1
 
-        fixed_neuron_per_layer_lower = []
-        fixed_neuron_per_layer_upper = []
-        num_fixed_neurons_layer = []
-        number_of_fixed_neurons = 0
-        all_group_indices = []
-        list_of_icnns = []
-        current_layer_index = 0
+            fixed_neuron_per_layer_lower = []
+            fixed_neuron_per_layer_upper = []
+            num_fixed_neurons_layer = []
+            number_of_fixed_neurons = 0
+            all_group_indices = []
+            list_of_icnns = []
+            current_layer_index = 0
 
-        self.nn_encoding_model = nn_encoding_model
-        self.input_var = ver.generate_model_center_bounds(nn_encoding_model, center, input_bounds, -1)
-        nn_encoding_model.update()
+            self.input_var = ver.generate_model_center_bounds(nn_encoding_model, center, input_bounds, -1)
+            nn_encoding_model.update()
 
-        self.bounds_affine_out = bounds_affine_out
-        self.bounds_layer_out = bounds_layer_out
-        self.fixed_neuron_per_layer_lower = fixed_neuron_per_layer_lower
-        self.fixed_neuron_per_layer_upper = fixed_neuron_per_layer_upper
-        self.num_fixed_neurons_layer = num_fixed_neurons_layer
-        self.all_group_indices = all_group_indices
-        self.list_of_icnns = list_of_icnns
-        included_space, ambient_space = None, None
+            self.bounds_affine_out = bounds_affine_out
+            self.bounds_layer_out = bounds_layer_out
+            self.fixed_neuron_per_layer_lower = fixed_neuron_per_layer_lower
+            self.fixed_neuron_per_layer_upper = fixed_neuron_per_layer_upper
+            self.num_fixed_neurons_layer = num_fixed_neurons_layer
+            self.all_group_indices = all_group_indices
+            self.list_of_icnns = list_of_icnns
+            included_space, ambient_space = None, None
 
 
-        if time_out is None:
-            time_out = float("inf")
+            if time_out is None:
+                time_out = float("inf")
 
-        if time_per_neuron_refinement is None:
-            time_per_neuron_refinement = time_out
+            if time_per_neuron_refinement is None:
+                time_per_neuron_refinement = time_out
 
-        if time_per_icnn_refinement is None:
-            time_per_icnn_refinement = time_out
-        time_out_start = time.time()
-
-        prev_layer_start_time = time.time()
-
-        for i in range(0, len(parameter_list) - 2, 2):  # -2 because last layer has no ReLu activation
-
-            if time.time() - time_out_start >= time_out:
-                return False
-
-            current_layer_index = i // 2
-            prev_layer_index = current_layer_index - 1
-            print("")
-            print("approximation of layer: {}".format(current_layer_index))
-
-            num_of_layers = (len(parameter_list) - 2) / 2
-            layers_left = num_of_layers - current_layer_index - len(layers_as_snr) - len(layers_as_milp)
-            if allow_heuristic_timeout_estimate:
-                time_for_prev_layer = time.time() - prev_layer_start_time
-                estimated_time_for_left_layers = layers_left * time_for_prev_layer
-                time_left_before_time_out = time_out - (time.time() - time_out_start)
-                if estimated_time_for_left_layers >= time_left_before_time_out:
-                    print("abort because of heuristic time out estimate, time last layer: {}, layer left {}, time left {}".format(time_for_prev_layer, layers_left, time_left_before_time_out))
-                    return False
+            if time_per_icnn_refinement is None:
+                time_per_icnn_refinement = time_out
+            time_out_start = time.time()
 
             prev_layer_start_time = time.time()
 
-            if store_samples:
-                self.list_of_included_samples.append([])
-                self.list_of_ambient_samples.append([])
-
-            affine_w, affine_b = parameter_list[i], parameter_list[i + 1]
-
-            if tighten_bounds and i != 0:
-                time_left_before_time_out = time_out - (time.time() - time_out_start)
-                if time_left_before_time_out <= 0:
-                    return False
-
-                t = time.time()
-                copy_model = nn_encoding_model.copy()
-                copy_model.setParam("TimeLimit", min(time_per_neuron_refinement, time_left_before_time_out))
-                finished_without_time_out = ver.update_bounds_with_icnns(copy_model,
-                                                                         bounds_affine_out, bounds_layer_out,
-                                                                         current_layer_index,
-                                                                         affine_w.detach().cpu().numpy(),
-                                                                         affine_b.detach().cpu().numpy())
-                if not finished_without_time_out:
-                    return False
-
-                neuron_refinement_time = time.time() - t
-                self.timings.neuron_refinement_time_per_layer.append(neuron_refinement_time)
-
-                print("    time for icnn_bound calculation: {}".format(neuron_refinement_time))
-
-            fix_upper = []
-            fix_lower = []
-
-            for neuron_index, (lb, ub) in enumerate(
-                    zip(bounds_affine_out[current_layer_index][0], bounds_affine_out[current_layer_index][1])):
-                if ub <= 0:
-                    fix_upper.append(neuron_index)
-                    number_of_fixed_neurons += 1
-                elif lb >= 0:
-                    fix_lower.append(neuron_index)
-                    number_of_fixed_neurons += 1
-            fixed_neuron_per_layer_lower.append(fix_lower)
-            fixed_neuron_per_layer_upper.append(fix_upper)
-            num_fixed_neurons_layer.append(len(fix_lower) + len(fix_upper))
-
-
-            total_number_of_neurons_in_current_layer = len(bounds_layer_out[current_layer_index][0])
-            total_neurons_fixed = len(fix_lower) + len(fix_upper)
-            print("    number of fixed neurons for current layer: {}".format(total_neurons_fixed))
-
-            if total_neurons_fixed == total_number_of_neurons_in_current_layer:
-                if current_layer_index not in layers_as_milp or current_layer_index not in layers_as_snr:
-                    layers_as_milp.append(current_layer_index)
-
-
-            if current_layer_index in layers_as_milp or current_layer_index in layers_as_snr:
-                all_group_indices.append([])
-                list_of_icnns.append([])
-                self.list_of_included_samples.append([])
-                self.list_of_ambient_samples.append([])
-
-                prev_layer_index = current_layer_index - 1
-                output_prev_layer = []
-                for k in range(affine_w.shape[1]):
-                    output_prev_layer.append(nn_encoding_model.getVarByName("output_layer_[{}]_[{}]".format(prev_layer_index, k)))
-                output_prev_layer = grp.MVar.fromlist(output_prev_layer)
-
-                affine_out = verbas.add_affine_constr(nn_encoding_model, affine_w.detach().cpu().numpy(), affine_b.detach().cpu().numpy(), output_prev_layer,
-                                                      bounds_affine_out[current_layer_index][0].detach().cpu().numpy(),
-                                                      bounds_affine_out[current_layer_index][1].detach().cpu().numpy(),
-                                                      i=current_layer_index)
-                if current_layer_index in layers_as_milp:
-                    print("    encode layer {} as MILP".format(current_layer_index))
-                    relu_out = verbas.add_relu_constr(nn_encoding_model, affine_out, len(affine_b),
-                                                      bounds_affine_out[current_layer_index][0].detach().cpu().numpy(),
-                                                      bounds_affine_out[current_layer_index][1].detach().cpu().numpy(),
-                                                      bounds_layer_out[current_layer_index][0].detach().cpu().numpy(),
-                                                      bounds_layer_out[current_layer_index][1].detach().cpu().numpy(),
-                                                      i=current_layer_index)
-
-                elif current_layer_index in layers_as_snr:
-                    print("    encode layer {} as SNR".format(current_layer_index))
-                    relu_out = verbas.add_single_neuron_constr(nn_encoding_model, affine_out, len(affine_b),
-                                                               bounds_affine_out[current_layer_index][0].detach().cpu().numpy(),
-                                                               bounds_affine_out[current_layer_index][1].detach().cpu().numpy(),
-                                                               bounds_layer_out[current_layer_index][0].detach().cpu().numpy(),
-                                                               bounds_layer_out[current_layer_index][1].detach().cpu().numpy(),
-                                                               i=current_layer_index)
-                for k, var in enumerate(relu_out.tolist()):
-                    var.setAttr("varname", "output_layer_[{}]_[{}]".format(current_layer_index, k))
-
-                nn_encoding_model.update()
-                continue
-
-            if grouping_method == "consecutive":
-                if use_fixed_neurons_in_grouping:
-                    number_of_groups = get_num_of_groups(len(affine_b), group_size)
-                    group_indices = get_current_group_indices(len(affine_b), group_size, [], [])
-                else:
-                    number_of_groups = get_num_of_groups(len(affine_b) - num_fixed_neurons_layer[current_layer_index],
-                                                         group_size)
-                    group_indices = get_current_group_indices(len(affine_b), group_size,
-                                                              fixed_neuron_per_layer_lower[current_layer_index],
-                                                              fixed_neuron_per_layer_upper[current_layer_index])
-
-            elif grouping_method == "random":
-                if use_fixed_neurons_in_grouping:
-                    number_of_groups = get_num_of_groups(len(affine_b), group_size)
-                    number_of_groups = group_num_multiplier * number_of_groups
-                    group_indices = get_random_groups(len(affine_b), number_of_groups, group_size, [], [])
-                else:
-                    number_of_groups = get_num_of_groups(len(affine_b) - num_fixed_neurons_layer[current_layer_index],
-                                                         group_size)
-                    number_of_groups = group_num_multiplier * number_of_groups
-                    group_indices = get_random_groups(len(affine_b), number_of_groups, group_size,
-                                                      fixed_neuron_per_layer_lower[current_layer_index],
-                                                      fixed_neuron_per_layer_upper[current_layer_index])
-
-            all_group_indices.append(group_indices)
-
-            gurobi_model = nn_encoding_model.copy()
-
-            t = time.time()
-            included_space, ambient_space = sampling_strategy.sampling_by_round(affine_w, affine_b, all_group_indices,
-                                                                                gurobi_model, current_layer_index,
-                                                                                bounds_affine_out, bounds_layer_out,
-                                                                                list_of_icnns)
-
-            time_for_sampling = time.time() - t
-            self.timings.data_sampling_time_per_layer.append(time_for_sampling)
-            print("        time for sampling: {}".format(time_for_sampling))
-
-            if time.time() - time_out_start >= time_out:
-                return False
-
-
-
-            list_of_icnns.append([])
-            self.timings.icnn_training_time_per_layer_per_icnn.append([])
-            total_training_time = time.time()
-            for group_i in range(number_of_groups):
+            for i in range(0, len(parameter_list) - 2, 2):  # -2 because last layer has no ReLu activation
 
                 if time.time() - time_out_start >= time_out:
+                    self.nn_encoding_model = nn_encoding_model.copy()
                     return False
 
-                if break_after is not None:
-                    break_after -= 1
+                current_layer_index = i // 2
+                prev_layer_index = current_layer_index - 1
+                print("")
+                print("approximation of layer: {}".format(current_layer_index))
 
+                num_of_layers = (len(parameter_list) - 2) / 2
+                layers_left = num_of_layers - current_layer_index - len(layers_as_snr) - len(layers_as_milp)
                 if allow_heuristic_timeout_estimate:
-                    time_until_now_in_current_layer = time.time() - prev_layer_start_time
-                    estimated_time_for_left_layers = (layers_left - 1) * time_until_now_in_current_layer # -1 to ignore current layer
+                    time_for_prev_layer = time.time() - prev_layer_start_time
+                    estimated_time_for_left_layers = layers_left * time_for_prev_layer
                     time_left_before_time_out = time_out - (time.time() - time_out_start)
                     if estimated_time_for_left_layers >= time_left_before_time_out:
-                        print(
-                            "abort because of heuristic time out estimate, time in this layer: {}, layer left {}, time left {}".format(
-                                time_until_now_in_current_layer, layers_left - 1, time_left_before_time_out))
+                        print("abort because of heuristic time out estimate, time last layer: {}, layer left {}, time left {}".format(time_for_prev_layer, layers_left, time_left_before_time_out))
+                        self.nn_encoding_model = nn_encoding_model.copy()
                         return False
 
-                print("    layer progress, group {} of {} ".format(group_i + 1, number_of_groups))
+                prev_layer_start_time = time.time()
 
-                index_to_select = torch.tensor(group_indices[group_i]).to(device)
+                if store_samples:
+                    self.list_of_included_samples.append([])
+                    self.list_of_ambient_samples.append([])
 
-                size_of_icnn_input = len(index_to_select)
-                current_icnn = icnn_factory.get_new_icnn(size_of_icnn_input)
-                list_of_icnns[current_layer_index].append(current_icnn)
+                affine_w, affine_b = parameter_list[i], parameter_list[i + 1]
+
+                if tighten_bounds and i != 0:
+                    time_left_before_time_out = time_out - (time.time() - time_out_start)
+                    if time_left_before_time_out <= 0:
+                        self.nn_encoding_model = nn_encoding_model.copy()
+                        return False
+
+                    t = time.time()
+                    copy_model = nn_encoding_model.copy()
+                    copy_model.setParam("TimeLimit", min(time_per_neuron_refinement, time_left_before_time_out))
+                    finished_without_time_out = ver.update_bounds_with_icnns(copy_model,
+                                                                             bounds_affine_out, bounds_layer_out,
+                                                                             current_layer_index,
+                                                                             affine_w.detach().cpu().numpy(),
+                                                                             affine_b.detach().cpu().numpy())
+                    if not finished_without_time_out:
+                        self.nn_encoding_model = nn_encoding_model.copy()
+                        return False
+
+                    neuron_refinement_time = time.time() - t
+                    self.timings.neuron_refinement_time_per_layer.append(neuron_refinement_time)
+
+                    print("    time for icnn_bound calculation: {}".format(neuron_refinement_time))
+
+                fix_upper = []
+                fix_lower = []
+
+                for neuron_index, (lb, ub) in enumerate(
+                        zip(bounds_affine_out[current_layer_index][0], bounds_affine_out[current_layer_index][1])):
+                    if ub <= 0:
+                        fix_upper.append(neuron_index)
+                        number_of_fixed_neurons += 1
+                    elif lb >= 0:
+                        fix_lower.append(neuron_index)
+                        number_of_fixed_neurons += 1
+                fixed_neuron_per_layer_lower.append(fix_lower)
+                fixed_neuron_per_layer_upper.append(fix_upper)
+                num_fixed_neurons_layer.append(len(fix_lower) + len(fix_upper))
 
 
+                total_number_of_neurons_in_current_layer = len(bounds_layer_out[current_layer_index][0])
+                total_neurons_fixed = len(fix_lower) + len(fix_upper)
+                print("    number of fixed neurons for current layer: {}".format(total_neurons_fixed))
+
+                if total_neurons_fixed == total_number_of_neurons_in_current_layer:
+                    if current_layer_index not in layers_as_milp or current_layer_index not in layers_as_snr:
+                        layers_as_milp.append(current_layer_index)
+
+
+                if current_layer_index in layers_as_milp or current_layer_index in layers_as_snr:
+                    all_group_indices.append([])
+                    list_of_icnns.append([])
+                    self.list_of_included_samples.append([])
+                    self.list_of_ambient_samples.append([])
+
+                    prev_layer_index = current_layer_index - 1
+                    output_prev_layer = []
+                    for k in range(affine_w.shape[1]):
+                        output_prev_layer.append(nn_encoding_model.getVarByName("output_layer_[{}]_[{}]".format(prev_layer_index, k)))
+                    output_prev_layer = grp.MVar.fromlist(output_prev_layer)
+
+                    affine_out = verbas.add_affine_constr(nn_encoding_model, affine_w.detach().cpu().numpy(), affine_b.detach().cpu().numpy(), output_prev_layer,
+                                                          bounds_affine_out[current_layer_index][0].detach().cpu().numpy(),
+                                                          bounds_affine_out[current_layer_index][1].detach().cpu().numpy(),
+                                                          i=current_layer_index)
+                    if current_layer_index in layers_as_milp:
+                        print("    encode layer {} as MILP".format(current_layer_index))
+                        relu_out = verbas.add_relu_constr(nn_encoding_model, affine_out, len(affine_b),
+                                                          bounds_affine_out[current_layer_index][0].detach().cpu().numpy(),
+                                                          bounds_affine_out[current_layer_index][1].detach().cpu().numpy(),
+                                                          bounds_layer_out[current_layer_index][0].detach().cpu().numpy(),
+                                                          bounds_layer_out[current_layer_index][1].detach().cpu().numpy(),
+                                                          i=current_layer_index)
+
+                    elif current_layer_index in layers_as_snr:
+                        print("    encode layer {} as SNR".format(current_layer_index))
+                        relu_out = verbas.add_single_neuron_constr(nn_encoding_model, affine_out, len(affine_b),
+                                                                   bounds_affine_out[current_layer_index][0].detach().cpu().numpy(),
+                                                                   bounds_affine_out[current_layer_index][1].detach().cpu().numpy(),
+                                                                   bounds_layer_out[current_layer_index][0].detach().cpu().numpy(),
+                                                                   bounds_layer_out[current_layer_index][1].detach().cpu().numpy(),
+                                                                   i=current_layer_index)
+                    for k, var in enumerate(relu_out.tolist()):
+                        var.setAttr("varname", "output_layer_[{}]_[{}]".format(current_layer_index, k))
+
+                    nn_encoding_model.update()
+                    continue
+
+                if grouping_method == "consecutive":
+                    if use_fixed_neurons_in_grouping:
+                        number_of_groups = get_num_of_groups(len(affine_b), group_size)
+                        group_indices = get_current_group_indices(len(affine_b), group_size, [], [])
+                    else:
+                        number_of_groups = get_num_of_groups(len(affine_b) - num_fixed_neurons_layer[current_layer_index],
+                                                             group_size)
+                        group_indices = get_current_group_indices(len(affine_b), group_size,
+                                                                  fixed_neuron_per_layer_lower[current_layer_index],
+                                                                  fixed_neuron_per_layer_upper[current_layer_index])
+
+                elif grouping_method == "random":
+                    if use_fixed_neurons_in_grouping:
+                        number_of_groups = get_num_of_groups(len(affine_b), group_size)
+                        number_of_groups = group_num_multiplier * number_of_groups
+                        group_indices = get_random_groups(len(affine_b), number_of_groups, group_size, [], [])
+                    else:
+                        number_of_groups = get_num_of_groups(len(affine_b) - num_fixed_neurons_layer[current_layer_index],
+                                                             group_size)
+                        number_of_groups = group_num_multiplier * number_of_groups
+                        group_indices = get_random_groups(len(affine_b), number_of_groups, group_size,
+                                                          fixed_neuron_per_layer_lower[current_layer_index],
+                                                          fixed_neuron_per_layer_upper[current_layer_index])
+
+                all_group_indices.append(group_indices)
+
+                gurobi_model = nn_encoding_model.copy()
 
                 t = time.time()
-                group_inc_space = included_space[group_i]
-                group_amb_space = ambient_space[group_i]
+                included_space, ambient_space = sampling_strategy.sampling_by_round(affine_w, affine_b, all_group_indices,
+                                                                                    gurobi_model, current_layer_index,
+                                                                                    bounds_affine_out, bounds_layer_out,
+                                                                                    list_of_icnns)
+
+                time_for_sampling = time.time() - t
+                self.timings.data_sampling_time_per_layer.append(time_for_sampling)
+                print("        time for sampling: {}".format(time_for_sampling))
+
+                if time.time() - time_out_start >= time_out:
+                    self.nn_encoding_model = nn_encoding_model.copy()
+                    return False
 
 
-                mean = norm.get_mean(group_inc_space, group_amb_space)
-                std = norm.get_std(group_inc_space, group_amb_space)
-                group_norm_included_space, group_norm_ambient_space = norm.normalize_data(group_inc_space,
-                                                                                          group_amb_space,
-                                                                                          mean, std)
-                dataset = ConvexDataset(data=group_norm_included_space)
-                train_loader = DataLoader(dataset, batch_size=icnn_batch_size)
-                dataset = ConvexDataset(data=group_norm_ambient_space)
-                ambient_loader = DataLoader(dataset, batch_size=icnn_batch_size)
 
-                if init_network:
-                    low = torch.index_select(bounds_layer_out[current_layer_index][0], 0, index_to_select)
-                    up = torch.index_select(bounds_layer_out[current_layer_index][1], 0, index_to_select)
-                    low = torch.div(torch.add(low, -mean), std)
-                    up = torch.div(torch.add(up, -mean), std)
-                    current_icnn.init_with_box_bounds(low, up)
+                list_of_icnns.append([])
+                self.timings.icnn_training_time_per_layer_per_icnn.append([])
+                total_training_time = time.time()
+                for group_i in range(number_of_groups):
 
-                # train icnn
-                current_icnn.use_training_setup = True  # is only relevant for ApproxMaxICNNs
-                epochs_per_inclusion = icnn_epochs // force_inclusion_steps
-                epochs_in_last_inclusion = icnn_epochs % force_inclusion_steps
-                for inclusion_round in range(force_inclusion_steps):
-                    if inclusion_round > 0:
-                        if inclusion_round == force_inclusion_steps - 1 and epochs_in_last_inclusion > 0:
-                            epochs_per_inclusion = epochs_in_last_inclusion
+                    if time.time() - time_out_start >= time_out:
+                        self.nn_encoding_model = nn_encoding_model.copy()
+                        return False
 
-                        out = current_icnn(group_norm_included_space)
-                        max_out = torch.max(out)
-                        current_icnn.apply_enlargement(max_out)
+                    if break_after is not None:
+                        break_after -= 1
 
-                    train_icnn(current_icnn, train_loader, ambient_loader, epochs=epochs_per_inclusion,
-                               hyper_lambda=hyper_lambda,
-                               optimizer=optimizer, adapt_lambda=adapt_lambda, preemptive_stop=preemptive_stop,
-                               verbose=print_training_loss, print_last_loss=print_last_loss)
+                    if allow_heuristic_timeout_estimate:
+                        time_until_now_in_current_layer = time.time() - prev_layer_start_time
+                        estimated_time_for_left_layers = (layers_left - 1) * time_until_now_in_current_layer # -1 to ignore current layer
+                        time_left_before_time_out = time_out - (time.time() - time_out_start)
+                        if estimated_time_for_left_layers >= time_left_before_time_out:
+                            print(
+                                "abort because of heuristic time out estimate, time in this layer: {}, layer left {}, time left {}".format(
+                                    time_until_now_in_current_layer, layers_left - 1, time_left_before_time_out))
+                            self.nn_encoding_model = nn_encoding_model.copy()
+                            return False
 
-                current_icnn.apply_normalisation(mean, std)
+                    print("    layer progress, group {} of {} ".format(group_i + 1, number_of_groups))
 
-                current_icnn.use_training_setup = False
-                time_for_training = time.time() - t
-                self.timings.icnn_training_time_per_layer_per_icnn[-1].append(time_for_training)
-                print("        time for training: {}".format(time_for_training))
+                    index_to_select = torch.tensor(group_indices[group_i]).to(device)
 
-            self.timings.icnn_training_time_per_layer_total.append(time.time() - total_training_time)
+                    size_of_icnn_input = len(index_to_select)
+                    current_icnn = icnn_factory.get_new_icnn(size_of_icnn_input)
+                    list_of_icnns[current_layer_index].append(current_icnn)
+
+
+
+                    t = time.time()
+                    group_inc_space = included_space[group_i]
+                    group_amb_space = ambient_space[group_i]
+
+
+                    mean = norm.get_mean(group_inc_space, group_amb_space)
+                    std = norm.get_std(group_inc_space, group_amb_space)
+                    group_norm_included_space, group_norm_ambient_space = norm.normalize_data(group_inc_space,
+                                                                                              group_amb_space,
+                                                                                              mean, std)
+                    dataset = ConvexDataset(data=group_norm_included_space)
+                    train_loader = DataLoader(dataset, batch_size=icnn_batch_size)
+                    dataset = ConvexDataset(data=group_norm_ambient_space)
+                    ambient_loader = DataLoader(dataset, batch_size=icnn_batch_size)
+
+                    if init_network:
+                        low = torch.index_select(bounds_layer_out[current_layer_index][0], 0, index_to_select)
+                        up = torch.index_select(bounds_layer_out[current_layer_index][1], 0, index_to_select)
+                        low = torch.div(torch.add(low, -mean), std)
+                        up = torch.div(torch.add(up, -mean), std)
+                        current_icnn.init_with_box_bounds(low, up)
+
+                    # train icnn
+                    current_icnn.use_training_setup = True  # is only relevant for ApproxMaxICNNs
+                    epochs_per_inclusion = icnn_epochs // force_inclusion_steps
+                    epochs_in_last_inclusion = icnn_epochs % force_inclusion_steps
+                    for inclusion_round in range(force_inclusion_steps):
+                        if inclusion_round > 0:
+                            if inclusion_round == force_inclusion_steps - 1 and epochs_in_last_inclusion > 0:
+                                epochs_per_inclusion = epochs_in_last_inclusion
+
+                            out = current_icnn(group_norm_included_space)
+                            max_out = torch.max(out)
+                            current_icnn.apply_enlargement(max_out)
+
+                        train_icnn(current_icnn, train_loader, ambient_loader, epochs=epochs_per_inclusion,
+                                   hyper_lambda=hyper_lambda,
+                                   optimizer=optimizer, adapt_lambda=adapt_lambda, preemptive_stop=preemptive_stop,
+                                   verbose=print_training_loss, print_last_loss=print_last_loss)
+
+                    current_icnn.apply_normalisation(mean, std)
+
+                    current_icnn.use_training_setup = False
+                    time_for_training = time.time() - t
+                    self.timings.icnn_training_time_per_layer_per_icnn[-1].append(time_for_training)
+                    print("        time for training: {}".format(time_for_training))
+
+                self.timings.icnn_training_time_per_layer_total.append(time.time() - total_training_time)
+                t = time.time()
+                # verify and enlarge convex approximation
+
+                if use_over_approximation:
+                    time_left_before_time_out = time_out - (time.time() - time_out_start)
+                    if time_left_before_time_out <= 0:
+                        self.nn_encoding_model = nn_encoding_model.copy()
+                        return False
+
+
+                    Cache.model = nn_encoding_model
+                    Cache.time_per_icnn_refinement = time_per_icnn_refinement
+                    Cache.time_left_before_time_out = time_left_before_time_out
+                    Cache.affine_w = affine_w
+                    Cache.affine_b = affine_b
+                    Cache.bounds_affine_out_current = bounds_affine_out[current_layer_index]
+                    Cache.bounds_layer_out_current = bounds_layer_out[current_layer_index]
+                    Cache.relu_as_lp = encode_relu_enlargement_as_lp
+                    Cache.icnn_as_lp = encode_icnn_enlargement_as_lp
+                    Cache.prev_layer_index = prev_layer_index
+
+                    num_processors = torch.multiprocessing.cpu_count()
+                    args = zip(list_of_icnns[current_layer_index], group_indices)
+                    with torch.multiprocessing.Pool(num_processors) as pool:
+                        result_enlarge = pool.starmap(parallel_icnn_enlargement, args)
+
+                    self.timings.icnn_verification_time_per_layer_per_icnn.append([])
+                    for index, icnn in enumerate(list_of_icnns[current_layer_index]):
+                        c = result_enlarge[index][0]
+                        ver_time = result_enlarge[index][1]
+                        icnn.apply_enlargement(result_enlarge[index][0])
+                        self.timings.icnn_verification_time_per_layer_per_icnn[-1].append(ver_time)
+
+                    total_icnn_ver_time = time.time() - t
+                    self.timings.icnn_verification_time_per_layer_total.append(total_icnn_ver_time)
+                    print("    time for verification: {}".format(total_icnn_ver_time))
+
+
+                    if break_after is not None and break_after == 0:
+                        self.nn_encoding_model = nn_encoding_model.copy()
+                        return False
+
+                # add current layer to model
+                curr_constraint_icnns = list_of_icnns[current_layer_index]
+                curr_group_indices = all_group_indices[current_layer_index]
+                curr_bounds_affine_out = bounds_affine_out[current_layer_index]
+                curr_bounds_layer_out = bounds_layer_out[current_layer_index]
+                curr_fixed_neuron_lower = fixed_neuron_per_layer_lower[current_layer_index]
+                curr_fixed_neuron_upper = fixed_neuron_per_layer_upper[current_layer_index]
+                ver.add_layer_to_model(nn_encoding_model, affine_w.detach().cpu().numpy(), affine_b.detach().cpu().numpy(),
+                                       curr_constraint_icnns, curr_group_indices,
+                                       curr_bounds_affine_out, curr_bounds_layer_out,
+                                       curr_fixed_neuron_lower, curr_fixed_neuron_upper,
+                                       current_layer_index)
+                nn_encoding_model.update()
+
+                total_layer_time = time.time() - prev_layer_start_time
+                self.timings.total_time_per_layer.append(total_layer_time)
+                print("total time for current layer: {}".format(total_layer_time))
+
+            if skip_last_layer:
+                print("the last layer was skipped, as requested")
+                self.nn_encoding_model = nn_encoding_model.copy()
+                return True
+
             t = time.time()
-            # verify and enlarge convex approximation
+            affine_w, affine_b = parameter_list[-2].detach().cpu().numpy(), parameter_list[-1].detach().cpu().numpy()
+            last_layer_index = current_layer_index + 1
+            output_second_last_layer = []
+            for m in range(affine_w.shape[1]):
+                output_second_last_layer.append(
+                    nn_encoding_model.getVarByName("output_layer_[{}]_[{}]".format(last_layer_index - 1, m)))
+            output_second_last_layer = grp.MVar.fromlist(output_second_last_layer)
+            in_lb = bounds_affine_out[last_layer_index][0].detach().cpu().numpy()
+            in_ub = bounds_affine_out[last_layer_index][1].detach().cpu().numpy()
+            output_nn = verbas.add_affine_constr(nn_encoding_model, affine_w, affine_b, output_second_last_layer, in_lb, in_ub, i=last_layer_index)
+            for m, var in enumerate(output_nn.tolist()):
+                var.setAttr("varname", "output_layer_[{}]_[{}]".format(last_layer_index, m))
 
-            if use_over_approximation:
-                time_left_before_time_out = time_out - (time.time() - time_out_start)
-                if time_left_before_time_out <= 0:
-                    return False
-
-
-                Cache.model = nn_encoding_model
-                Cache.time_per_icnn_refinement = time_per_icnn_refinement
-                Cache.time_left_before_time_out = time_left_before_time_out
-                Cache.affine_w = affine_w
-                Cache.affine_b = affine_b
-                Cache.bounds_affine_out_current = bounds_affine_out[current_layer_index]
-                Cache.bounds_layer_out_current = bounds_layer_out[current_layer_index]
-                Cache.relu_as_lp = encode_relu_enlargement_as_lp
-                Cache.icnn_as_lp = encode_icnn_enlargement_as_lp
-                Cache.prev_layer_index = prev_layer_index
-
-                num_processors = torch.multiprocessing.cpu_count()
-                args = zip(list_of_icnns[current_layer_index], group_indices)
-                with torch.multiprocessing.Pool(num_processors) as pool:
-                    result_enlarge = pool.starmap(parallel_icnn_enlargement, args)
-
-                self.timings.icnn_verification_time_per_layer_per_icnn.append([])
-                for index, icnn in enumerate(list_of_icnns[current_layer_index]):
-                    c = result_enlarge[index][0]
-                    ver_time = result_enlarge[index][1]
-                    icnn.apply_enlargement(result_enlarge[index][0])
-                    self.timings.icnn_verification_time_per_layer_per_icnn[-1].append(ver_time)
-
-                total_icnn_ver_time = time.time() - t
-                self.timings.icnn_verification_time_per_layer_total.append(total_icnn_ver_time)
-                print("    time for verification: {}".format(total_icnn_ver_time))
-
-
-                if break_after is not None and break_after == 0:
-                    return False
-
-            # add current layer to model
-            curr_constraint_icnns = list_of_icnns[current_layer_index]
-            curr_group_indices = all_group_indices[current_layer_index]
-            curr_bounds_affine_out = bounds_affine_out[current_layer_index]
-            curr_bounds_layer_out = bounds_layer_out[current_layer_index]
-            curr_fixed_neuron_lower = fixed_neuron_per_layer_lower[current_layer_index]
-            curr_fixed_neuron_upper = fixed_neuron_per_layer_upper[current_layer_index]
-            ver.add_layer_to_model(nn_encoding_model, affine_w.detach().cpu().numpy(), affine_b.detach().cpu().numpy(),
-                                   curr_constraint_icnns, curr_group_indices,
-                                   curr_bounds_affine_out, curr_bounds_layer_out,
-                                   curr_fixed_neuron_lower, curr_fixed_neuron_upper,
-                                   current_layer_index)
             nn_encoding_model.update()
 
-            total_layer_time = time.time() - prev_layer_start_time
-            self.timings.total_time_per_layer.append(total_layer_time)
-            print("total time for current layer: {}".format(total_layer_time))
-
-        if skip_last_layer:
-            print("the last layer was skipped, as requested")
+            print("time for icnn_bound calculation (last layer):{}".format(time.time() - t))
+            self.output_var = output_nn
+            print("done...")
+            self.nn_encoding_model = nn_encoding_model.copy()
             return True
-
-        t = time.time()
-        affine_w, affine_b = parameter_list[-2].detach().cpu().numpy(), parameter_list[-1].detach().cpu().numpy()
-        last_layer_index = current_layer_index + 1
-        output_second_last_layer = []
-        for m in range(affine_w.shape[1]):
-            output_second_last_layer.append(
-                nn_encoding_model.getVarByName("output_layer_[{}]_[{}]".format(last_layer_index - 1, m)))
-        output_second_last_layer = grp.MVar.fromlist(output_second_last_layer)
-        in_lb = bounds_affine_out[last_layer_index][0].detach().cpu().numpy()
-        in_ub = bounds_affine_out[last_layer_index][1].detach().cpu().numpy()
-        output_nn = verbas.add_affine_constr(nn_encoding_model, affine_w, affine_b, output_second_last_layer, in_lb, in_ub, i=last_layer_index)
-        for m, var in enumerate(output_nn.tolist()):
-            var.setAttr("varname", "output_layer_[{}]_[{}]".format(last_layer_index, m))
-
-        nn_encoding_model.update()
-
-        print("time for icnn_bound calculation (last layer):{}".format(time.time() - t))
-        self.output_var = output_nn
-        print("done...")
-        return True
 
 
 class Cache:
@@ -543,28 +556,30 @@ class Cache:
 
 
 def parallel_icnn_enlargement(icnn, group):
-    t = time.time()
-    model = Cache.model.copy()
-    time_per_icnn_refinement = Cache.time_per_icnn_refinement
-    time_left_before_time_out = Cache.time_left_before_time_out
-    affine_w = Cache.affine_w
-    affine_b = Cache.affine_b
-    bounds_affine_out_current = Cache.bounds_affine_out_current
-    bounds_layer_out_current = Cache.bounds_layer_out_current
-    encode_relu_enlargement_as_lp = Cache.relu_as_lp
-    encode_icnn_enlargement_as_lp = Cache.icnn_as_lp
-    prev_layer_index = Cache.prev_layer_index
+    gurobi_params = get_gurobi_params()
 
-    model.setParam("TimeLimit", min(time_per_icnn_refinement, time_left_before_time_out))
-    adversarial_input, c = ver.verification(icnn, model,
-                                            affine_w.cpu().detach().cpu().numpy(),
-                                            affine_b.detach().cpu().numpy(), group,
-                                            bounds_affine_out_current,
-                                            bounds_layer_out_current, prev_layer_index,
-                                            has_relu=True, relu_as_lp=encode_relu_enlargement_as_lp,
-                                            icnn_as_lp=encode_icnn_enlargement_as_lp)
+    with grp.Env(params=gurobi_params) as env, Cache.model.copy(env) as model:
+        t = time.time()
+        time_per_icnn_refinement = Cache.time_per_icnn_refinement
+        time_left_before_time_out = Cache.time_left_before_time_out
+        affine_w = Cache.affine_w
+        affine_b = Cache.affine_b
+        bounds_affine_out_current = Cache.bounds_affine_out_current
+        bounds_layer_out_current = Cache.bounds_layer_out_current
+        encode_relu_enlargement_as_lp = Cache.relu_as_lp
+        encode_icnn_enlargement_as_lp = Cache.icnn_as_lp
+        prev_layer_index = Cache.prev_layer_index
 
-    return c, time.time() - t
+        model.setParam("TimeLimit", min(time_per_icnn_refinement, time_left_before_time_out))
+        adversarial_input, c = ver.verification(icnn, model,
+                                                affine_w.cpu().detach().cpu().numpy(),
+                                                affine_b.detach().cpu().numpy(), group,
+                                                bounds_affine_out_current,
+                                                bounds_layer_out_current, prev_layer_index,
+                                                has_relu=True, relu_as_lp=encode_relu_enlargement_as_lp,
+                                                icnn_as_lp=encode_icnn_enlargement_as_lp)
+
+        return c, time.time() - t
 
 def imshow_flattened(img_flattened, shape):
     img = np.reshape(img_flattened, shape)
