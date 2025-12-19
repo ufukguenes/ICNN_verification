@@ -1,0 +1,20 @@
+{
+    "build": { 
+        "context": "..",
+        "dockerfile": "Dockerfile"
+    },
+    	
+    "customizations": {
+        "vscode": {
+            "settings": {
+                // Point VS Code to the Python interpreter in your 'robomdt' Conda environment
+                "python.defaultInterpreterPath": "/root/miniconda3/envs/icnn_env/bin/python",
+                "python.terminal.activateEnvironment": true
+            },
+            "extensions": [
+                "ms-python.python", // Essential Python extension
+                "ms-toolsai.jupyter" // Jupyter extension (often useful for Python development)
+            ]
+        }
+    },
+}

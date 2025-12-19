@@ -12,8 +12,9 @@ def get_gurobi_params():
         'WLSACCESSID': wlsaccessID,
         'LICENSEID': int(licenseID),
         'WLSSECRET': wlsSecrets,
-        'CSCLIENTLOG': int(3),
-        "LogToConsole": 0
+        'CSCLIENTLOG': int(0),
+        "LogToConsole": 0,
+        "OutputFlag": 0
     }
 
     return p
