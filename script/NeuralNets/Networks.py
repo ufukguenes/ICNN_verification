@@ -301,14 +301,14 @@ class ICNN(nn.Module, VerifiableNet):
             affine_w, affine_b = ws[i].detach().cpu().numpy(), ws[i + 1].detach().cpu().numpy()
 
             out_fet = len(affine_b)
-            affine_out_vars = model.addMVar(out_fet, lb=affine_lb, ub=affine_ub, name="affine_skip_var" + str(i))
+            affine_out_vars = model.addMVar(out_fet, lb=affine_lb, ub=affine_ub)
 
             if i != 0:
                 k = math.floor(i / 2) - 1
                 skip_W = us[k].detach().cpu().numpy()  # has no bias
-                skip_const = model.addConstr(affine_w @ in_var + affine_b + skip_W @ input_vars == affine_out_vars, name="skip_constr")
+                skip_const = model.addConstr(affine_w @ in_var + affine_b + skip_W @ input_vars == affine_out_vars)
             else:
-                affine_no_skip_cons = model.addConstr(affine_w @ in_var + affine_b == affine_out_vars, name="not_skip_const")
+                affine_no_skip_cons = model.addConstr(affine_w @ in_var + affine_b == affine_out_vars)
             out_vars = affine_out_vars
             in_var = affine_out_vars
 
@@ -442,11 +442,11 @@ class ICNNLogical(ICNN):
             bb_var = verbas.add_affine_constr(model, bb_w, bb_b, input_vars, lb, ub, "bb_const")
 
             max_var = model.addVar(lb=-float("inf"))
-            model.addGenConstrMax(max_var, bb_var.tolist(), name="max_out_bb")
+            model.addGenConstrMax(max_var, bb_var.tolist())
 
             new_in = model.addMVar(2, lb=-float('inf'))
-            model.addConstr(new_in[0] == icnn_output_var[0], name="new_in0")
-            model.addConstr(new_in[1] == max_var, name="new_in1")
+            model.addConstr(new_in[0] == icnn_output_var[0])
+            model.addConstr(new_in[1] == max_var)
 
             if self.with_two_layers:
                 affine_w = ls[1].weight.data.detach().cpu().numpy()
@@ -461,11 +461,11 @@ class ICNNLogical(ICNN):
             else:
                 affine_w = ls[1].weight.data.detach().cpu().numpy()
                 affine_var1 = model.addMVar(3, lb=-float("inf"))
-                affine_const = model.addConstr(affine_w @ new_in == affine_var1, name="affine_w_bb")
+                affine_const = model.addConstr(affine_w @ new_in == affine_var1)
                 max_var2 = model.addVar(lb=-float("inf"))
-                model.addGenConstrMax(max_var2, affine_var1.tolist(), name="max_out1")
+                model.addGenConstrMax(max_var2, affine_var1.tolist())
 
-            model.addConstr(max_var2 <= 0, name="max<0")
+            model.addConstr(max_var2 <= 0)
 
             return max_var2
         else:
@@ -565,7 +565,7 @@ class ICNNApproxMax(ICNN):
         tensor_bb_b = torch.tensor(bb_b, dtype=data_type).to(device)
         lb, ub = verbas.calc_affine_out_bound(tensor_bb_w, tensor_bb_b, in_lb, in_ub)
 
-        bb_var = model.addMVar(len(lb), lb=lb.cpu(), ub=ub.cpu(), name="skip_var")
+        bb_var = model.addMVar(len(lb), lb=lb.cpu(), ub=ub.cpu())
         skip_const = model.addConstr(bb_w @ input_vars + bb_b == bb_var)
         max_var = model.addVar(lb=-float("inf"))
         model.addGenConstrMax(max_var, bb_var.tolist())

@@ -1,0 +1,8 @@
+Input name,State of optimization,time for just solving,time overall,was successful?,max distance,total_time_per_layer,neuron_refinement_time_per_layer,data_sampling_time_per_layer,icnn_training_time_per_layer_total,icnn_training_time_per_layer_per_icnn,icnn_verification_time_per_layer_total,icnn_verification_time_per_layer_per_icnn,settings:,"crown_method: alpha-crown, tighten_bounds: True, time_out: 3600, time_per_neuron_refinement: None, allow_heuristic_timeout_estimate: True"
+prop_003_0.015.vnnlib,finished,1.2882130146026611,571.620114326477,False,2748.251069400123,[],"[2.31, 4.34, 12.11, 36.1, 113.13, 170.69, 216.82, 12.0]",[],[],[],[],[]
+prop_003_0.015.vnnlib,finished,1.2641780376434326,553.4211120605469,False,2748.251069400123,[],"[2.26, 4.27, 11.84, 36.36, 109.84, 161.1, 212.1, 11.49]",[],[],[],[],[]
+prop_003_0.015.vnnlib,finished,1.2738449573516846,550.3943736553192,False,2748.251069400123,[],"[2.16, 4.01, 11.46, 37.0, 110.59, 160.19, 209.17, 11.62]",[],[],[],[],[]
+prop_004_0.015.vnnlib,finished,1.3960957527160645,691.1660196781158,False,2748.2510693997947,[],"[2.16, 4.01, 11.46, 37.0, 110.59, 160.19, 209.17, 11.62]",[],[],[],[],[]
+prop_004_0.015.vnnlib,finished,1.3978354930877686,715.1745293140411,False,2748.2510693997947,[],"[2.16, 4.01, 11.46, 37.0, 110.59, 160.19, 209.17, 11.62]",[],[],[],[],[]
+prop_004_0.015.vnnlib,finished,11.49621033668518,732.2460474967957,False,7816.842043031247,[],"[2.16, 4.01, 11.46, 37.0, 110.59, 160.19, 209.17, 11.62]",[],[],[],[],[]
+prop_003_0.015.vnnlib,finished,1.2651317119598389,544.5612595081329,False,2748.251069400123,[],"[2.53, 4.24, 11.44, 35.13, 108.63, 159.45, 208.33, 10.79]",[],[],[],[],[]

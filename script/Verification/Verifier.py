@@ -81,7 +81,7 @@ class SingleNeuronVerifier(Verifier):
 
         lower_bound = self.input_bounds[0].cpu().numpy()
         upper_bound = self.input_bounds[1].cpu().numpy()
-        input_var = m.addMVar(input_size, lb=lower_bound, ub=upper_bound, name="in_var")
+        input_var = m.addMVar(input_size, lb=lower_bound, ub=upper_bound)
 
 
         parameter_list = list(self.net.parameters())
@@ -171,7 +171,7 @@ class MILPVerifier(Verifier):
         lower_bound = self.input_bounds[0].cpu().numpy()
         upper_bound = self.input_bounds[1].cpu().numpy()
         input_var = m.addMVar(input_size, lb=lower_bound,
-                              ub=upper_bound, name="in_var")
+                              ub=upper_bound)
 
         parameter_list = list(self.net.parameters())
         in_var = input_var

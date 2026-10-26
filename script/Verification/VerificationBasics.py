@@ -6,19 +6,19 @@ import gurobipy as grp
 from script.settings import data_type, device
 
 def add_relu_constr(model, input_vars, number_of_out_features, in_lb, in_ub, out_lb, out_ub, i=0):
-    relu_vars = model.addMVar(number_of_out_features, lb=out_lb, ub=out_ub, name="relu_var" + str(i))
+    relu_vars = model.addMVar(number_of_out_features, lb=out_lb, ub=out_ub)
     for k in range(number_of_out_features):
         if in_ub[k] <= 0:
-            model.addConstr(relu_vars[k] == 0, name="relu=0" + str(i))
+            model.addConstr(relu_vars[k] == 0)
         elif in_lb[k] >= 0:
-            model.addConstr(relu_vars[k] == input_vars[k], name="relu=x" + str(i))
+            model.addConstr(relu_vars[k] == input_vars[k])
         else:
             # Variante 1: Dreiecksungleichung
-            a = model.addVar(vtype=grp.GRB.BINARY, name="a" + str(i) + str(k))
-            r1 = model.addConstr(relu_vars[k] >= 0, name="relu_0_lt"+str(i)+"k"+str(k))
-            r2 = model.addConstr(relu_vars[k] >= input_vars[k], name="relu_var_lt"+str(i)+"k"+str(k))
-            r3 = model.addConstr(relu_vars[k] <= input_vars[k] - in_lb[k] * (1 - a), name="relu_var_lt_1-a"+str(i)+"k"+str(k))
-            r4 = model.addConstr(relu_vars[k] <= in_ub[k] * a, name="relu_var_lt_a"+str(i)+"k"+str(k))
+            a = model.addVar(vtype=grp.GRB.BINARY)
+            r1 = model.addConstr(relu_vars[k] >= 0)
+            r2 = model.addConstr(relu_vars[k] >= input_vars[k])
+            r3 = model.addConstr(relu_vars[k] <= input_vars[k] - in_lb[k] * (1 - a))
+            r4 = model.addConstr(relu_vars[k] <= in_ub[k] * a)
 
             # Variante 3: Nutze Gurobi max Constraints
             # const = model.addConstr(relu_vars[k] == grp.max_(0, input_vars[k]))
@@ -28,30 +28,30 @@ def add_relu_constr(model, input_vars, number_of_out_features, in_lb, in_ub, out
 
 def add_affine_constr(model, affine_w, b, input_vars, lb, ub, i=0):
     out_fet = len(b)
-    out_vars = model.addMVar(out_fet, lb=lb, ub=ub, name="affine_var" + str(i))
-    const = model.addConstr(affine_w @ input_vars + b == out_vars, name="affine_const_[{}]".format(i))
+    out_vars = model.addMVar(out_fet, lb=lb, ub=ub)
+    const = model.addConstr(affine_w @ input_vars + b == out_vars)
     return out_vars
 
 
 def add_single_neuron_constr(model, input_vars, number_of_out_features, in_lb, in_ub, out_lb, out_ub, i=0):
-    relu_vars = model.addMVar(number_of_out_features, lb=out_lb, ub=out_ub, name="relu_var"+str(i))
+    relu_vars = model.addMVar(number_of_out_features, lb=out_lb, ub=out_ub)
     for k in range(number_of_out_features):
         if in_ub[k] <= 0:
-            model.addConstr(relu_vars[k] == 0, name="relu=0" + str(i)+"k"+str(k))
+            model.addConstr(relu_vars[k] == 0)
         elif in_lb[k] >= 0:
-            model.addConstr(relu_vars[k] == input_vars[k], name="relu>0" + str(i)+"k"+str(k))
+            model.addConstr(relu_vars[k] == input_vars[k])
         else:
-            model.addConstr(relu_vars[k] >= 0, name="relu_0_lt"+str(i)+"k"+str(k))
-            model.addConstr(relu_vars[k] >= input_vars[k], name="relu_var_lt"+str(i)+"k"+str(k))
-            model.addConstr(relu_vars[k] <= (in_ub[k] * (input_vars[k] - in_lb[k])) / (in_ub[k] - in_lb[k]), name="ub_const" + str(i)+"k"+str(k))
+            model.addConstr(relu_vars[k] >= 0)
+            model.addConstr(relu_vars[k] >= input_vars[k])
+            model.addConstr(relu_vars[k] <= (in_ub[k] * (input_vars[k] - in_lb[k])) / (in_ub[k] - in_lb[k]))
     return relu_vars
 
 
 def add_relu_as_lp(model, input_vars, number_of_out_features, out_lb, out_ub, i=0):
-    relu_vars = model.addMVar(number_of_out_features, lb=out_lb, ub=out_ub, name="relu_var" + str(i))
+    relu_vars = model.addMVar(number_of_out_features, lb=out_lb, ub=out_ub)
     for k in range(number_of_out_features):
-        r1 = model.addConstr(relu_vars[k] >= 0, name="relu_0_lt" + str(i) + "k" + str(k))
-        r2 = model.addConstr(relu_vars[k] >= input_vars[k], name="relu_var_lt" + str(i) + "k" + str(k))
+        r1 = model.addConstr(relu_vars[k] >= 0)
+        r2 = model.addConstr(relu_vars[k] >= input_vars[k])
 
     return relu_vars
 

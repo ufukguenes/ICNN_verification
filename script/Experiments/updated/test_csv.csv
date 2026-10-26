@@ -1,0 +1,10 @@
+Input name,State of optimization,time for just solving,time overall,was successful?,max distance,total_time_per_layer,neuron_refinement_time_per_layer,data_sampling_time_per_layer,icnn_training_time_per_layer_total,icnn_training_time_per_layer_per_icnn,icnn_verification_time_per_layer_total,icnn_verification_time_per_layer_per_icnn,settings:,none
+prop_003_0.015.vnnlib,finished,1.3530466556549072,1.669743537902832,False,2748.2510693997947,[],[],[],[],[],[],[]
+prop_003_0.015.vnnlib,finished,5.96642279624939,6.084013938903809,False,7816.842043031247,[],[],[],[],[],[],[]
+prop_003_0.015.vnnlib,infeasible,0.7225930690765381,1.0031440258026123,False
+prop_003_0.015.vnnlib,finished,1.0848965644836426,1.1965534687042236,False,2748.1629126199505,[],[],[],[],[],[],[]
+prop_003_0.015.vnnlib,finished,7.2949182987213135,7.411353349685669,False,7816.842040754861,[],[],[],[],[],[],[]
+prop_003_0.015.vnnlib,finished,6.823728084564209,6.934970378875732,False,7816.839753542267,[],[],[],[],[],[],[]
+prop_003_0.015.vnnlib,finished,6.675261497497559,6.781015396118164,False,7816.839753542267,[],[],[],[],[],[],[]
+prop_003_0.015.vnnlib,finished,6.691154479980469,6.7993388175964355,False,7816.816858865545,[],[],[],[],[],[],[]
+prop_003_0.015.vnnlib,finished,1.0842070579528809,1.1910459995269775,False,2748.1629126199505,[],[],[],[],[],[],[]
