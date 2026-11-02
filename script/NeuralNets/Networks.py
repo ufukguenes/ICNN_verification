@@ -34,15 +34,16 @@ class VerifiableNet(ABC):
         return output
 
     def apply_enlargement(self, value):
+        """
+        b_K -= value. Computed in float64 and rounded down to data_type, so the set {output <= 0} is never smaller
+        than the shift by value asks for (the old code rounded to nearest).
+        """
         with torch.no_grad():
             last_layer = list(self.ws[-1].parameters())
             b = last_layer[1]
-
-            if torch.is_tensor(value):
-                value.to(device)
-            else:
-                value = torch.tensor(value, device=device)
-            b.data = b - value
+            value = torch.as_tensor(value, dtype=torch.float64).detach().cpu()
+            exact = b.detach().cpu().to(torch.float64) - value
+            b.data = verbas.to_data_type_down(exact).to(device)
 
     @abstractmethod
     def apply_normalisation(self, mean, std):

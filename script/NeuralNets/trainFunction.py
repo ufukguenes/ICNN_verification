@@ -8,16 +8,26 @@ from script.Optimizer.sdlbfgs import SdLBFGS
 from script.settings import device, data_type
 
 def train_icnn(model, train_loader, ambient_loader, epochs=10, optimizer="adam", return_history=False,
-               sequential=False, force_convex=True,  adapt_lambda="none",  hyper_lambda=1, preemptive_stop=True, min_loss_change=1e-3, verbose=False, print_last_loss=False):
+               sequential=False, force_convex=True,  adapt_lambda="none",  hyper_lambda=1, preemptive_stop=True, min_loss_change=1e-3, verbose=False, print_last_loss=False,
+               learning_rate=None, clamp_first_layer=False, legacy_loss_clamp=False, report=None):
+    """
+    Trains model on the included (train_loader) and ambient (ambient_loader) samples.
+
+    learning_rate: None for the optimizer's default. clamp_first_layer: with force_convex, also clamp the first
+    weight matrix W_0 (ws[0]) to >= 0; convexity needs only W_k >= 0 for k >= 1, the old code clamped every matrix
+    of model.ws (legacy-notes #7). legacy_loss_clamp: the old inclusion loss (see deep_hull_simple_loss). If report
+    is a dict, it gets the number of epochs run and the last loss.
+    """
     history = []
 
     params_to_train = model.parameters()
+    lr_kwargs = {} if learning_rate is None else {"lr": learning_rate}
     if optimizer == "adam":
-        opt = torch.optim.Adam(params_to_train)
+        opt = torch.optim.Adam(params_to_train, **lr_kwargs)
     elif optimizer == "LBFGS":
-        opt = torch.optim.LBFGS(params_to_train)
+        opt = torch.optim.LBFGS(params_to_train, **lr_kwargs)
     elif optimizer == "SdLBFGS":
-        opt = SdLBFGS(params_to_train)
+        opt = SdLBFGS(params_to_train, **lr_kwargs)
 
     loss = 0
     low = True
@@ -36,7 +46,8 @@ def train_icnn(model, train_loader, ambient_loader, epochs=10, optimizer="adam",
                     opt.zero_grad()
                     prediction_ambient = model(X_ambient)
                     output = model(X)
-                    loss = deep_hull_simple_loss(output, prediction_ambient, hyper_lambda=hyper_lambda)
+                    loss = deep_hull_simple_loss(output, prediction_ambient, hyper_lambda=hyper_lambda,
+                                                 legacy_clamp=legacy_loss_clamp)
                     loss.backward()
                     return loss
                 loss = closure()
@@ -45,7 +56,8 @@ def train_icnn(model, train_loader, ambient_loader, epochs=10, optimizer="adam",
             else:
                 prediction_ambient = model(X_ambient)
                 output = model(X)
-                loss = deep_hull_simple_loss(output, prediction_ambient, hyper_lambda=hyper_lambda)
+                loss = deep_hull_simple_loss(output, prediction_ambient, hyper_lambda=hyper_lambda,
+                                             legacy_clamp=legacy_loss_clamp)
                 opt.zero_grad()
                 loss.backward()
                 opt.step()
@@ -53,7 +65,8 @@ def train_icnn(model, train_loader, ambient_loader, epochs=10, optimizer="adam",
             if force_convex:
                 if not sequential:
                     with torch.no_grad():
-                        for w in model.ws:
+                        clamped = model.ws if clamp_first_layer else model.ws[1:]
+                        for w in clamped:
                             for p in w.parameters():
                                 if len(p.size()) > 1:  # we have a matrix
                                     # only want positive entries
@@ -93,11 +106,9 @@ def train_icnn(model, train_loader, ambient_loader, epochs=10, optimizer="adam",
             continue
         elif adapt_lambda == "included":
             count_of_outside = 0
-            for x in train_loader:
-                out = model(x)
-                for y in out:
-                    if y > 0:
-                        count_of_outside += 1
+            with torch.no_grad():
+                for x in train_loader:
+                    count_of_outside += int((model(x) > 0).sum().item())
 
             percentage = count_of_outside / len(train_loader.dataset)
 
@@ -112,6 +123,10 @@ def train_icnn(model, train_loader, ambient_loader, epochs=10, optimizer="adam",
             else:
                 hyper_lambda = 1.2
                 low = True
+
+    if report is not None:
+        report["epochs"] = epoch + 1 if epochs > 0 else 0
+        report["final_loss"] = float(loss) if epochs > 0 else None
 
     if verbose or print_last_loss:
         print("Stop after {} Epochs".format(epoch))

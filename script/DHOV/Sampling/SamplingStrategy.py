@@ -37,6 +37,13 @@ class SamplingStrategy(ABC):
     def _sampling_strategy(self):
         pass
 
+    def skip_layer(self, affine_w, affine_b, current_layer_index, bounds_affine_out):
+        """
+        Called by MultiDHOV for every layer it encodes without sampling (SNR / MILP), so that strategies with a
+        per-layer state (zonotope) stay in step with the layer index. Stateless strategies do nothing.
+        """
+        pass
+
     def _sampling_strategy_for_first_layer(self):
 
         sample_space = self._sample_over_input_all_groups(self._current_included_sample_count, self._current_affine_w,
@@ -44,14 +51,17 @@ class SamplingStrategy(ABC):
                                                           rand_samples_percent=self.rand_samples_percent,
                                                           rand_sample_alternation_percent=self.rand_sample_alternation_percent)
 
-        self._current_sample_space = (torch
-                                     .matmul(self._current_affine_w,
-                                             sample_space.view(sample_space.shape[0], sample_space.shape[1],
-                                                               sample_space.shape[2], 1))
-                                     .view(sample_space.shape[0], sample_space.shape[1],
-                                           self._current_affine_w.shape[0])
-                                     .add(self._current_affine_b)
-                                     )
+        # the post-activation values, as for every later layer (the old code returned the pre-activation, so the
+        # included samples of layer 0 had negative coordinates outside the box of the ICNN, legacy-notes #15)
+        self._current_sample_space = self._apply_relu_transform(
+            torch
+            .matmul(self._current_affine_w,
+                    sample_space.view(sample_space.shape[0], sample_space.shape[1],
+                                      sample_space.shape[2], 1))
+            .view(sample_space.shape[0], sample_space.shape[1],
+                  self._current_affine_w.shape[0])
+            .add(self._current_affine_b)
+        )
 
     def sampling_by_round(self, affine_w, affine_b, all_group_indices, gurobi_model, current_layer_index,
                           bounds_affine_out,
@@ -149,7 +159,9 @@ class SamplingStrategy(ABC):
                 cs[i][:num_rand_samples] = cs[i][:num_rand_samples].view(-1).index_fill(0, rand_index, -1).view(
                     num_rand_samples, -1)
 
-            cs[i] = torch.where(cs[i] == -1, (upper - lower) * torch.rand(affine_w.size(0)).to(device) + lower, cs[i])
+            # one random direction per sample (torch.rand(d) was broadcast over all rows, so every sample of a
+            # group had the same direction, legacy-notes #14)
+            cs[i] = torch.where(cs[i] == -1, (upper - lower) * torch.rand_like(cs[i]) + lower, cs[i])
 
         affine_w_temp = torch.matmul(cs, affine_w)
         upper_samples = torch.where(affine_w_temp > 0, upper_bounds, lower_bounds)

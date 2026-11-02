@@ -3,7 +3,55 @@ import math
 import numpy as np
 import torch
 import gurobipy as grp
-from script.settings import data_type, device
+from script.settings import data_type, device, solver_tolerance_absolute, solver_tolerance_relative
+
+
+def widen_down(value):
+    """A value taken from a solver, lowered by the solver tolerance (for lower bounds)."""
+    return value - (solver_tolerance_absolute + solver_tolerance_relative * abs(value))
+
+
+def widen_up(value):
+    """A value taken from a solver, raised by the solver tolerance (for upper bounds)."""
+    return value + (solver_tolerance_absolute + solver_tolerance_relative * abs(value))
+
+
+def to_data_type_down(values):
+    """float64 values (tensor, array or scalar) as a data_type tensor, each rounded down (never above the input)."""
+    exact = torch.as_tensor(values, dtype=torch.float64)
+    rounded = exact.to(data_type)
+    too_high = rounded.to(torch.float64) > exact
+    return torch.where(too_high, torch.nextafter(rounded, torch.tensor(-math.inf, dtype=data_type)), rounded)
+
+
+def to_data_type_up(values):
+    """float64 values (tensor, array or scalar) as a data_type tensor, each rounded up (never below the input)."""
+    exact = torch.as_tensor(values, dtype=torch.float64)
+    rounded = exact.to(data_type)
+    too_low = rounded.to(torch.float64) < exact
+    return torch.where(too_low, torch.nextafter(rounded, torch.tensor(math.inf, dtype=data_type)), rounded)
+
+
+def proven_bound(model):
+    """
+    The bound on the objective that the last optimize() of model proved, or None.
+
+    For a MIP this is the dual bound ObjBound (also after a time limit and without an incumbent), never the
+    incumbent: OPTIMAL only means the gap is below MIPGap, so the incumbent can lie below the true maximum. For an
+    LP it is the optimal value; an LP stopped by a limit proves nothing (keep the old bound).
+    """
+    if model.IsMIP:
+        if model.Status in (grp.GRB.OPTIMAL, grp.GRB.TIME_LIMIT, grp.GRB.USER_OBJ_LIMIT, grp.GRB.INTERRUPTED,
+                            grp.GRB.NODE_LIMIT, grp.GRB.SOLUTION_LIMIT, grp.GRB.ITERATION_LIMIT):
+            try:
+                bound = model.ObjBound
+            except grp.GurobiError:
+                return None
+            return bound if math.isfinite(bound) else None
+        return None
+    if model.Status == grp.GRB.OPTIMAL:
+        return model.ObjVal
+    return None
 
 def add_relu_constr(model, input_vars, number_of_out_features, in_lb, in_ub, out_lb, out_ub, i=0):
     relu_vars = model.addMVar(number_of_out_features, lb=out_lb, ub=out_ub)

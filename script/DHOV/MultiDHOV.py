@@ -7,7 +7,7 @@ import torch.multiprocessing
 from matplotlib import pyplot as plt
 from torch.utils.data import DataLoader
 
-from script.NeuralNets.Networks import SequentialNN
+from script.NeuralNets.Networks import SequentialNN, ICNN
 import torch
 import numpy as np
 
@@ -67,6 +67,7 @@ class MultiDHOV:
         self.list_of_included_samples = []
         self.list_of_ambient_samples = []
         self.timings: Timings = Timings()
+        self.layer_reports = []
 
     def start_verification(self, nn: SequentialNN, input, icnn_factory, group_size, input_bounds, sampling_strategy: SamplingStrategy, icnn_batch_size=1000,
                            icnn_epochs=100, hyper_lambda=1, init_affine_bounds=None, init_layer_bounds=None,
@@ -75,7 +76,8 @@ class MultiDHOV:
                            preemptive_stop=True, store_samples=False, encode_icnn_enlargement_as_lp=False, encode_relu_enlargement_as_lp=False,
                            force_inclusion_steps=0, grouping_method="consecutive", group_num_multiplier=None,
                            init_network=False, adapt_lambda="none", optimizer="adam", time_out=None, allow_heuristic_timeout_estimate=False,
-                           print_training_loss=False, print_last_loss=False, print_optimization_steps=False, print_new_bounds=False):
+                           print_training_loss=False, print_last_loss=False, print_optimization_steps=False, print_new_bounds=False,
+                           learning_rate=None, clamp_first_layer=False, legacy_loss_clamp=False):
         """
 
         :param nn: the NN to encode as a Gurobi model given. This has to be a Sequential/ Feedforward NN
@@ -129,8 +131,16 @@ class MultiDHOV:
             and if applicable data sampling
         :param print_new_bounds: if true, tightened bounds are printed for each layer
         :param sampling_strategy: the sampling strategy to use for generating new training data points for each ICNN defaults to UniformSamplingStrategy
-        :return:
+        :param learning_rate: learning rate of the ICNN optimizer, None for the optimizer's default (Adam: 1e-3;
+            dhov_rust uses Adam with 1e-2)
+        :param clamp_first_layer: whether training also clamps the ICNN's first weight matrix W_0 to >= 0. Convexity
+            needs only W_k >= 0 for k >= 1; the old code always clamped W_0 too (legacy-notes #7)
+        :param legacy_loss_clamp: train with the old, clamped inclusion loss (legacy-notes #2), for comparisons only
+        :return: False if the time-out or the heuristic time-out estimate stopped the encoding, else True.
+            self.layer_reports holds one dict per layer (strategy, unstable neurons, tightening, sampling, and per
+            group the training and the enlargement shift with its source and status).
         """
+        self.layer_reports = []
         valid_adapt_lambda = ["none", "high_low", "included"]
         valid_optimizer = ["adam", "LBFGS", "SdLBFGS"]
         valid_grouping_methods = ["consecutive", "random"]
@@ -147,12 +157,18 @@ class MultiDHOV:
         if grouping_method not in valid_grouping_methods:
             raise AttributeError("Expected grouping method to be one of: {}, actual: {}".format(valid_grouping_methods,
                                                                                    grouping_method))
-        if grouping_method == "random" and group_num_multiplier is None and group_num_multiplier % 1 != 0:
+        if grouping_method == "random" and (group_num_multiplier is None or group_num_multiplier % 1 != 0
+                                            or group_num_multiplier <= 0):
             raise AttributeError(
                 "Expected group_num_multiplier to be integer > 0 , got: {}".format(group_num_multiplier))
         if group_num_multiplier is not None and grouping_method == "consecutive":
             warnings.warn("value for group number multiplier is given with grouping method consecutive. "
                           "consecutive grouping does not use variable number of groups")
+
+        # own copies: layers fixed completely are appended to layers_as_milp below, and the old code changed the
+        # caller's list (and the shared default [] across calls)
+        layers_as_milp = list(layers_as_milp)
+        layers_as_snr = list(layers_as_snr)
 
         input.to(device)
         input_bounds[0].to(device)
@@ -162,11 +178,13 @@ class MultiDHOV:
 
         bounds_affine_out, bounds_layer_out = nn.calculate_box_bounds(input_bounds)
 
+        # copies, because the LP tightening below replaces the bounds of each layer: the old code wrote into the
+        # caller's tensors, so bounds of one run leaked into the next one that was given the same lists
         if init_affine_bounds is not None:
-            bounds_affine_out = init_affine_bounds
+            bounds_affine_out = [[lb.detach().clone(), ub.detach().clone()] for lb, ub in init_affine_bounds]
 
         if init_layer_bounds is not None:
-            bounds_layer_out = init_layer_bounds
+            bounds_layer_out = [[lb.detach().clone(), ub.detach().clone()] for lb, ub in init_layer_bounds]
 
         gurobi_params = get_gurobi_params()
         with grp.Env(params=gurobi_params) as env, grp.Model(env=env) as nn_encoding_model:
@@ -223,8 +241,10 @@ class MultiDHOV:
                 print("")
                 print("approximation of layer: {}".format(current_layer_index))
 
-                num_of_layers = (len(parameter_list) - 2) / 2
-                layers_left = num_of_layers - current_layer_index - len(layers_as_snr) - len(layers_as_milp)
+                num_of_layers = (len(parameter_list) - 2) // 2
+                # DHOV layers from the current one on (the old count subtracted SNR/MILP layers already passed)
+                layers_left = sum(1 for layer in range(current_layer_index, num_of_layers)
+                                  if layer not in layers_as_snr and layer not in layers_as_milp)
                 if allow_heuristic_timeout_estimate:
                     time_for_prev_layer = time.time() - prev_layer_start_time
                     estimated_time_for_left_layers = layers_left * time_for_prev_layer
@@ -235,6 +255,12 @@ class MultiDHOV:
                         return False
 
                 prev_layer_start_time = time.time()
+
+                # per-layer record for comparisons with dhov_rust's LayerReport
+                layer_report = {"layer": current_layer_index, "strategy": None, "unstable": None,
+                                "tightening": {} if tighten_bounds and i != 0 else None, "tighten_secs": 0.0,
+                                "dhov": None}
+                self.layer_reports.append(layer_report)
 
                 if store_samples:
                     self.list_of_included_samples.append([])
@@ -250,18 +276,22 @@ class MultiDHOV:
 
                     t = time.time()
                     copy_model = nn_encoding_model.copy()
-                    copy_model.setParam("TimeLimit", min(time_per_neuron_refinement, time_left_before_time_out))
+                    lp_time_limit = min(time_per_neuron_refinement, time_left_before_time_out)
+                    copy_model.setParam("TimeLimit", lp_time_limit)
                     finished_without_time_out = ver.update_bounds_with_icnns(copy_model,
                                                                              bounds_affine_out, bounds_layer_out,
                                                                              current_layer_index,
                                                                              affine_w.detach().cpu().numpy(),
-                                                                             affine_b.detach().cpu().numpy())
+                                                                             affine_b.detach().cpu().numpy(),
+                                                                             time_limit=lp_time_limit,
+                                                                             report=layer_report["tightening"])
                     if not finished_without_time_out:
                         self.nn_encoding_model = nn_encoding_model.copy()
                         return False
 
                     neuron_refinement_time = time.time() - t
                     self.timings.neuron_refinement_time_per_layer.append(neuron_refinement_time)
+                    layer_report["tighten_secs"] = neuron_refinement_time
 
                     print("    time for icnn_bound calculation: {}".format(neuron_refinement_time))
 
@@ -284,13 +314,17 @@ class MultiDHOV:
                 total_number_of_neurons_in_current_layer = len(bounds_layer_out[current_layer_index][0])
                 total_neurons_fixed = len(fix_lower) + len(fix_upper)
                 print("    number of fixed neurons for current layer: {}".format(total_neurons_fixed))
+                layer_report["unstable"] = total_number_of_neurons_in_current_layer - total_neurons_fixed
 
                 if total_neurons_fixed == total_number_of_neurons_in_current_layer:
-                    if current_layer_index not in layers_as_milp or current_layer_index not in layers_as_snr:
+                    # the old condition (not in A or not in B) was always true and appended duplicates
+                    if current_layer_index not in layers_as_milp and current_layer_index not in layers_as_snr:
                         layers_as_milp.append(current_layer_index)
 
-
                 if current_layer_index in layers_as_milp or current_layer_index in layers_as_snr:
+                    layer_report["strategy"] = "exact" if current_layer_index in layers_as_milp else "snr"
+                    # keep the zonotope of the sampling strategy in step with the layer index (legacy-notes #6)
+                    sampling_strategy.skip_layer(affine_w, affine_b, current_layer_index, bounds_affine_out)
                     all_group_indices.append([])
                     list_of_icnns.append([])
                     self.list_of_included_samples.append([])
@@ -327,7 +361,11 @@ class MultiDHOV:
                         var.setAttr("varname", "output_layer_[{}]_[{}]".format(current_layer_index, k))
 
                     nn_encoding_model.update()
+                    self.timings.total_time_per_layer_all.append(time.time() - prev_layer_start_time)
                     continue
+
+                layer_report["strategy"] = "dhov"
+                layer_report["dhov"] = {"sampling_secs": None, "groups_secs": None, "groups": []}
 
                 if grouping_method == "consecutive":
                     if use_fixed_neurons_in_grouping:
@@ -365,6 +403,7 @@ class MultiDHOV:
 
                 time_for_sampling = time.time() - t
                 self.timings.data_sampling_time_per_layer.append(time_for_sampling)
+                layer_report["dhov"]["sampling_secs"] = time_for_sampling
                 print("        time for sampling: {}".format(time_for_sampling))
 
                 if time.time() - time_out_start >= time_out:
@@ -430,27 +469,39 @@ class MultiDHOV:
 
                     # train icnn
                     current_icnn.use_training_setup = True  # is only relevant for ApproxMaxICNNs
-                    epochs_per_inclusion = icnn_epochs // force_inclusion_steps
-                    epochs_in_last_inclusion = icnn_epochs % force_inclusion_steps
+                    training_report = {"epochs": 0, "final_loss": None}
                     for inclusion_round in range(force_inclusion_steps):
+                        # the epochs spread evenly over the rounds, the first (epochs % rounds) rounds get one more
+                        # (old: the last round got only the remainder, legacy-notes #8)
+                        epochs_this_round = icnn_epochs // force_inclusion_steps \
+                            + (1 if inclusion_round < icnn_epochs % force_inclusion_steps else 0)
                         if inclusion_round > 0:
-                            if inclusion_round == force_inclusion_steps - 1 and epochs_in_last_inclusion > 0:
-                                epochs_per_inclusion = epochs_in_last_inclusion
-
-                            out = current_icnn(group_norm_included_space)
-                            max_out = torch.max(out)
+                            # shift by the maximum of the plain ICNN, the function that is encoded; the old code
+                            # used the L-max output of the training setup, which over-shifts and, for a negative
+                            # maximum, moves samples out (legacy-notes #13)
+                            with torch.no_grad():
+                                max_out = torch.max(ICNN.forward(current_icnn, group_norm_included_space))
                             current_icnn.apply_enlargement(max_out)
 
-                        train_icnn(current_icnn, train_loader, ambient_loader, epochs=epochs_per_inclusion,
+                        round_report = {}
+                        train_icnn(current_icnn, train_loader, ambient_loader, epochs=epochs_this_round,
                                    hyper_lambda=hyper_lambda,
                                    optimizer=optimizer, adapt_lambda=adapt_lambda, preemptive_stop=preemptive_stop,
-                                   verbose=print_training_loss, print_last_loss=print_last_loss)
+                                   verbose=print_training_loss, print_last_loss=print_last_loss,
+                                   learning_rate=learning_rate, clamp_first_layer=clamp_first_layer,
+                                   legacy_loss_clamp=legacy_loss_clamp, report=round_report)
+                        training_report["epochs"] += round_report["epochs"]
+                        training_report["final_loss"] = round_report["final_loss"]
 
                     current_icnn.apply_normalisation(mean, std)
 
                     current_icnn.use_training_setup = False
                     time_for_training = time.time() - t
                     self.timings.icnn_training_time_per_layer_per_icnn[-1].append(time_for_training)
+                    layer_report["dhov"]["groups"].append({"group": group_i, "size": size_of_icnn_input,
+                                                           "training": training_report,
+                                                           "training_secs": time_for_training,
+                                                           "enlargement": None, "enlargement_secs": None})
                     print("        time for training: {}".format(time_for_training))
 
                 self.timings.icnn_training_time_per_layer_total.append(time.time() - total_training_time)
@@ -475,20 +526,27 @@ class MultiDHOV:
                     Cache.icnn_as_lp = encode_icnn_enlargement_as_lp
                     Cache.prev_layer_index = prev_layer_index
 
+                    # one process per group, the cores spread over them (the old code started cpu_count processes
+                    # whose Gurobi models each used all cores, legacy-notes #11)
                     num_processors = torch.multiprocessing.cpu_count()
+                    num_jobs = max(1, min(num_processors, len(group_indices)))
+                    Cache.threads_per_job = max(1, num_processors // max(1, len(group_indices)))
                     args = zip(list_of_icnns[current_layer_index], group_indices)
-                    with torch.multiprocessing.Pool(num_processors) as pool:
+                    with torch.multiprocessing.Pool(num_jobs) as pool:
                         result_enlarge = pool.starmap(parallel_icnn_enlargement, args)
 
                     self.timings.icnn_verification_time_per_layer_per_icnn.append([])
                     for index, icnn in enumerate(list_of_icnns[current_layer_index]):
-                        c = result_enlarge[index][0]
-                        ver_time = result_enlarge[index][1]
-                        icnn.apply_enlargement(result_enlarge[index][0])
+                        c, ver_time, enlargement_report = result_enlarge[index]
+                        icnn.apply_enlargement(c)
                         self.timings.icnn_verification_time_per_layer_per_icnn[-1].append(ver_time)
+                        layer_report["dhov"]["groups"][index]["enlargement"] = enlargement_report
+                        layer_report["dhov"]["groups"][index]["enlargement_secs"] = ver_time
+                        layer_report["dhov"]["groups"][index]["threads"] = Cache.threads_per_job
 
                     total_icnn_ver_time = time.time() - t
                     self.timings.icnn_verification_time_per_layer_total.append(total_icnn_ver_time)
+                    layer_report["dhov"]["groups_secs"] = time.time() - total_training_time
                     print("    time for verification: {}".format(total_icnn_ver_time))
 
 
@@ -512,6 +570,7 @@ class MultiDHOV:
 
                 total_layer_time = time.time() - prev_layer_start_time
                 self.timings.total_time_per_layer.append(total_layer_time)
+                self.timings.total_time_per_layer_all.append(total_layer_time)
                 print("total time for current layer: {}".format(total_layer_time))
 
             if skip_last_layer:
@@ -553,12 +612,15 @@ class Cache:
     relu_as_lp = None
     icnn_as_lp = None
     prev_layer_index = None
+    threads_per_job = 1
 
 
 def parallel_icnn_enlargement(icnn, group):
+    """Enlargement MILP of one group in its own process; returns (shift, seconds, report of ver.verification)."""
     gurobi_params = get_gurobi_params()
 
     with grp.Env(params=gurobi_params) as env, Cache.model.copy(env) as model:
+        model.Params.Threads = Cache.threads_per_job
         t = time.time()
         time_per_icnn_refinement = Cache.time_per_icnn_refinement
         time_left_before_time_out = Cache.time_left_before_time_out
@@ -571,15 +633,16 @@ def parallel_icnn_enlargement(icnn, group):
         prev_layer_index = Cache.prev_layer_index
 
         model.setParam("TimeLimit", min(time_per_icnn_refinement, time_left_before_time_out))
+        report = {}
         adversarial_input, c = ver.verification(icnn, model,
                                                 affine_w.cpu().detach().cpu().numpy(),
                                                 affine_b.detach().cpu().numpy(), group,
                                                 bounds_affine_out_current,
                                                 bounds_layer_out_current, prev_layer_index,
                                                 has_relu=True, relu_as_lp=encode_relu_enlargement_as_lp,
-                                                icnn_as_lp=encode_icnn_enlargement_as_lp)
+                                                icnn_as_lp=encode_icnn_enlargement_as_lp, report=report)
 
-        return c, time.time() - t
+        return c, time.time() - t, report
 
 def imshow_flattened(img_flattened, shape):
     img = np.reshape(img_flattened, shape)

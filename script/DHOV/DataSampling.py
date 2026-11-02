@@ -39,11 +39,11 @@ def sample_per_group_as_lp(data_samples, amount, affine_w, affine_b, index_to_se
     num_rand_samples = math.floor(amount * rand_samples_percent)
     alternations_per_sample = math.floor(affine_w.size(0) * rand_sample_alternation_percent)
     if num_rand_samples > 0 and alternations_per_sample > 0:
-        rand_index = torch.randperm(affine_w.size(0))
-        rand_index = rand_index[:alternations_per_sample]
         rand_samples = (upper - lower) * torch.rand((num_rand_samples, alternations_per_sample),
                                                     dtype=data_type).to(device) + lower
         for i in range(num_rand_samples):
+            # own noise coordinates per direction (the old code used one set for all of them)
+            rand_index = torch.randperm(affine_w.size(0))[:alternations_per_sample]
             for k, index in enumerate(rand_index):
                 cs[i][index] = rand_samples[i][k]
 
@@ -61,6 +61,7 @@ def sample_per_group_as_lp(data_samples, amount, affine_w, affine_b, index_to_se
     output_var = verbas.add_affine_constr(model, numpy_affine_w, numpy_affine_b, output_prev_layer, lb, ub, i=0)
 
     model.update()
+    solved = torch.zeros(amount, dtype=torch.bool)
     for index, c in enumerate(cs):
         c = c.detach().cpu().numpy()
         model.setObjective(c @ output_var, grp.GRB.MAXIMIZE)
@@ -68,8 +69,11 @@ def sample_per_group_as_lp(data_samples, amount, affine_w, affine_b, index_to_se
         model.optimize()
         if model.Status == grp.GRB.OPTIMAL:
             samples[index] = torch.tensor(output_prev_layer.getAttr("X"), dtype=data_type).to(device)
+            solved[index] = True
         else:
             print("Model unfeasible?")
+    # drop the directions whose LP was not optimal (the old code kept their uninitialised rows, legacy-notes #4)
+    samples = samples[solved.to(samples.device)]
 
     if keep_samples and data_samples.size(0) > 0:
         data_samples = torch.cat([data_samples, samples], dim=0)
@@ -164,11 +168,11 @@ def sample_per_group(data_samples, amount, affine_w, input_bounds, index_to_sele
     num_rand_samples = math.floor(amount * rand_samples_percent)
     alternations_per_sample = math.floor(affine_w.size(0) * rand_sample_alternation_percent)
     if num_rand_samples > 0 and alternations_per_sample > 0:
-        rand_index = torch.randperm(affine_w.size(0))
-        rand_index = rand_index[:alternations_per_sample]
         rand_samples = (upper - lower) * torch.rand((num_rand_samples, alternations_per_sample),
                                                     dtype=data_type).to(device) + lower
         for i in range(num_rand_samples):
+            # own noise coordinates per direction (the old code used one set for all of them)
+            rand_index = torch.randperm(affine_w.size(0))[:alternations_per_sample]
             for k, index in enumerate(rand_index):
                 cs[i][index] = rand_samples[i][k]
 

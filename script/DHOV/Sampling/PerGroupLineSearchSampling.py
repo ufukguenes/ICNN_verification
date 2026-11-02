@@ -26,6 +26,10 @@ class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
         self.use_icnn_bounds = use_icnn_bounds
         self.num_iterations = num_iterations
 
+    def _sampling_strategy_for_first_layer(self):
+        # layer 0 uses the same line search as every later layer (as dhov_rust's sampling::LineSearch)
+        self._sampling_strategy()
+
     def _sampling_strategy(self):
         sample_space = self._sample_group_line_search_lp(self._current_included_sample_count, self.nn_model,
                                                          self._current_group_indices, self._current_affine_w,
@@ -56,8 +60,10 @@ class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
                 cs[i][:num_rand_samples] = cs[i][:num_rand_samples].view(-1).index_fill(0, rand_index, -1).view(
                     num_rand_samples, -1)
 
+            # one random direction per sample (torch.rand(d) was broadcast over all rows, so every sample of a
+            # group had the same direction, legacy-notes #14)
             cs[i] = torch.nn.functional.normalize(
-                torch.where(cs[i] == -1, (upper - lower) * torch.rand(affine_w.size(0)).to(device) + lower, cs[i]),
+                torch.where(cs[i] == -1, (upper - lower) * torch.rand_like(cs[i]) + lower, cs[i]),
                 dim=1)
 
         # sample a random point in the input space of the nn_model
@@ -81,41 +87,35 @@ class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
 
         optimizer = torch.optim.Adam([input_samples])
 
-        # do line search until any bound is violated
+        # projected line search: Adam steps along the direction, each followed by a projection onto the input box.
+        # The old loss added a bound-violation penalty 1000 * logical_not(...).any(), a constant without gradient,
+        # so the inputs could leave the box and the samples were not reachable points (legacy-notes #3).
+        lower_bounds, upper_bounds = self.input_bounds[0], self.input_bounds[1]
         num_iterations = self.num_iterations
 
         for i in range(num_iterations):
             optimizer.zero_grad()
-            if self.use_icnn_bounds:
-                loss = self._loss_for_boundary(nn_until_current_layer, input_samples, cs, self.input_bounds,
-                                               list_of_icnns, all_group_indices)
-            else:
-                loss = self._loss_for_boundary_without_icnn(nn_until_current_layer, input_samples, cs,
-                                                            self.input_bounds)
+            previous = input_samples.detach().clone()
+            loss = self._loss_for_direction(nn_until_current_layer, input_samples, cs)
             loss.backward()
             optimizer.step()
-            adapted_input_samples = input_samples
+            with torch.no_grad():
+                input_samples.copy_(torch.minimum(torch.maximum(input_samples, lower_bounds), upper_bounds))
+                if self.use_icnn_bounds and current_layer_index > 0:
+                    # reject the step of every sample that it moved out of an ICNN set of an earlier layer
+                    outside = self._check_icnns(nn_until_current_layer, input_samples, list_of_icnns,
+                                                all_group_indices)
+                    input_samples[outside] = previous[outside]
 
         # get intermediate output before current layer
-        included_space = nn_until_current_layer(adapted_input_samples)
+        with torch.no_grad():
+            included_space = nn_until_current_layer(input_samples)
 
         return included_space.view(len(group_indices), amount, output_samples.shape[-1])
 
-    def _loss_for_boundary(self, nn_model, input_samples, direction, bounds, list_of_icnns,
-                           all_group_indices):
+    def _loss_for_direction(self, nn_model, input_samples, direction):
         output_samples = nn_model(input_samples)
-        loss = torch.sum(output_samples * direction)
-        loss += 1000 * torch.logical_not(torch.logical_and(self._outside_bounds(input_samples, bounds),
-                                                           self._check_icnns(nn_model, input_samples, list_of_icnns,
-                                                                             all_group_indices))).any()  # todo 1000 adaptable machen
-        return loss
-
-
-    def _loss_for_boundary_without_icnn(self, nn_model, input_samples, direction, bounds):
-        output_samples = nn_model(input_samples)
-        loss = torch.sum(output_samples * direction)
-        loss += 1000 * torch.logical_not(self._outside_bounds(input_samples, bounds)).any()  # todo 1000 adaptable machen
-        return loss
+        return torch.sum(output_samples * direction)
 
 
     def _check_icnns(self, nn_model, input_samples, list_of_icnns, all_group_indices, precision=1e-5):
@@ -139,7 +139,8 @@ class PerGroupLineSearchSamplingStrategy(SamplingStrategy):
                 current_indices = all_group_indices[layer_index][group_index]
                 current_intermediate = torch.index_select(intermediate_inputs[layer_index], 1,
                                                           torch.IntTensor(current_indices).to(device))
-                current_is_outside_icnn = torch.greater(current_icnn(current_intermediate), 0 + precision)
+                # view(-1): the ICNN output has shape [n, 1], which broadcast the [n] mask to [n, n]
+                current_is_outside_icnn = torch.greater(current_icnn(current_intermediate), 0 + precision).view(-1)
                 sample_is_outside_any_icnn = torch.logical_or(sample_is_outside_any_icnn, current_is_outside_icnn)
 
         return sample_is_outside_any_icnn

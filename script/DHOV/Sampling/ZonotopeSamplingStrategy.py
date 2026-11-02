@@ -21,6 +21,14 @@ class ZonotopeSamplingStrategy(SamplingStrategy):
     def _sampling_strategy(self):
         pass
 
+    def skip_layer(self, affine_w, affine_b, current_layer_index, bounds_affine_out):
+        # propagate through layers encoded without sampling too; the old code propagated only in sampling_by_round,
+        # so after an SNR / MILP layer the zonotope belonged to an earlier layer (legacy-notes #6)
+        z = ZonotopePropagator.propagate_linear(affine_w, affine_b, self.zono)
+        lb = bounds_affine_out[current_layer_index][0] if self.use_intermediate_bounds else None
+        ub = bounds_affine_out[current_layer_index][1] if self.use_intermediate_bounds else None
+        self.zono = ZonotopePropagator.propagate_relu(z, lb=lb, ub=ub)
+
     def sampling_by_round(self, affine_w, affine_b, group_indices, gurobi_model, current_layer_index, bounds_affine_out,
                           bounds_layer_out, list_of_icnns):
         """

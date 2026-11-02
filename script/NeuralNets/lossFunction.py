@@ -39,29 +39,40 @@ def deep_hull_loss(model_output, output_adv, adversarial_output, hyper_lambda=1,
     return out
 
 
-def deep_hull_simple_loss(model_output, ambient_space, hyper_lambda=1):
-    def l_pos(x, eps=1e-5):
-        sig = torch.sigmoid(x)
-        max_value = torch.zeros_like(sig).add(eps)
-        sig = torch.minimum(sig, max_value)
+def deep_hull_simple_loss(model_output, ambient_space, hyper_lambda=1, legacy_clamp=False):
+    """
+    DeepHull loss without the generator: mean softplus(f(y)) over the included samples plus hyper_lambda times
+    mean softplus(-f(z)) over the ambient samples, i.e. -log(1 - sigmoid(f)) and -log(sigmoid(f)) in stable form.
 
-        loss = - torch.log(1 - sig)
-        loss = torch.sum(loss)
-        ret = loss / len(x)
-        return ret
+    legacy_clamp=True reproduces the old loss for comparisons (decision D7 in dhov_rust): it clamped
+    sigmoid(f) <= 1e-5 in the inclusion term, so that term was a constant without gradient for almost every sample
+    (legacy-notes #2), and sigmoid(f) >= 1e-5 in the ambient term. The thesis results were produced with it.
+    """
+    if legacy_clamp:
+        def l_pos(x, eps=1e-5):
+            sig = torch.sigmoid(x)
+            max_value = torch.zeros_like(sig).add(eps)
+            sig = torch.minimum(sig, max_value)
 
-    def l_neg(z, eps=1e-5):
-        sig = torch.sigmoid(z)
-        min_value = torch.zeros_like(sig).add(eps)
-        sig = torch.maximum(sig, min_value)
+            loss = - torch.log(1 - sig)
+            loss = torch.sum(loss)
+            ret = loss / len(x)
+            return ret
 
-        loss = - torch.log(sig)
-        loss = torch.sum(loss)
-        ret = loss / len(z)
-        return ret
+        def l_neg(z, eps=1e-5):
+            sig = torch.sigmoid(z)
+            min_value = torch.zeros_like(sig).add(eps)
+            sig = torch.maximum(sig, min_value)
 
-    a = l_pos(model_output)
-    b = hyper_lambda * l_neg(ambient_space)
+            loss = - torch.log(sig)
+            loss = torch.sum(loss)
+            ret = loss / len(z)
+            return ret
+        a = l_pos(model_output)
+        b = hyper_lambda * l_neg(ambient_space)
+    else:
+        a = torch.sum(torch.nn.functional.softplus(model_output)) / len(model_output)
+        b = hyper_lambda * torch.sum(torch.nn.functional.softplus(-ambient_space)) / len(ambient_space)
     out = a + b
 
     return out

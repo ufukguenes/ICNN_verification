@@ -8,6 +8,9 @@ class Timings:
         self.icnn_training_time_per_layer_total = []
 
         self.neuron_refinement_time_per_layer = []
+        # total time of every ReLU layer, including SNR / MILP layers (total_time_per_layer only has DHOV layers);
+        # not part of get_all_results, so the CSV columns stay as they were
+        self.total_time_per_layer_all = []
         self.data_sampling_time_per_layer = []
         self.total_time_per_layer = []
 
